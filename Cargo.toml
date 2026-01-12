@@ -40,3 +40,21 @@ clap = { version = "4.4", features = ["derive"] }
 
 dots-family-common = { path = "crates/dots-family-common" }
 dots-family-proto = { path = "crates/dots-family-proto" }
+dots-family-db = { path = "crates/dots-family-db" }
+
+[package]
+name = "dots-family-mode"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+authors = ["dots team"]
+repository = "https://github.com/dots-distro/dots-family-mode"
+
+[dependencies]
+dots-family-common = { path = "crates/dots-family-common" }
+dots-family-proto = { path = "crates/dots-family-proto" }
+dots-family-db = { path = "crates/dots-family-db" }
+tokio = { workspace = true }
+zbus = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
