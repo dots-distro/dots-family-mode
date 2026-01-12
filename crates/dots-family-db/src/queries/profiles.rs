@@ -21,7 +21,7 @@ impl ProfileQueries {
         .bind(&profile.id)
         .bind(&profile.name)
         .bind(&profile.age_group)
-        .bind(&profile.birthday)
+        .bind(profile.birthday)
         .bind(&profile.config)
         .bind(now)
         .bind(now)

@@ -19,14 +19,13 @@ impl Default for DatabaseConfig {
 
 pub struct Database {
     pub pool: Option<Pool<Sqlite>>,
-    config: DatabaseConfig,
 }
 
 impl Database {
     pub async fn new(config: DatabaseConfig) -> Result<Self> {
         let pool = Self::create_pool(&config).await?;
 
-        Ok(Self { pool: Some(pool), config })
+        Ok(Self { pool: Some(pool) })
     }
 
     async fn create_pool(config: &DatabaseConfig) -> Result<Pool<Sqlite>> {
