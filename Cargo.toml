@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/dots-family-common",
     "crates/dots-family-proto",
+    "crates/dots-family-db",
     "crates/dots-family-daemon",
     "crates/dots-family-monitor",
     "crates/dots-family-filter",
