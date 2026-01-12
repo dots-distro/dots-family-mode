@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/dots-family-common",
+    "crates/dots-family-proto",
+    "crates/dots-family-daemon",
+    "crates/dots-family-monitor",
+    "crates/dots-family-filter",
+    "crates/dots-family-ctl",
+    "crates/dots-family-gui",
+    "crates/dots-terminal-filter",
+    "crates/dots-wm-bridge",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+authors = ["dots team"]
+repository = "https://github.com/dots-distro/dots-family-mode"
+
+[workspace.dependencies]
+tokio = { version = "1.35", features = ["full"] }
+zbus = "4.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+config = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+thiserror = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "chrono", "uuid", "migrate"] }
+argon2 = "0.5"
+ring = "0.17"
+clap = { version = "4.4", features = ["derive"] }
+
+dots-family-common = { path = "crates/dots-family-common" }
+dots-family-proto = { path = "crates/dots-family-proto" }
