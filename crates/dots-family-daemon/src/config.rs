@@ -76,6 +76,7 @@ impl DaemonConfig {
     }
 
     /// Save configuration to the default file path
+    #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub fn save(&self) -> Result<()> {
         let config_path = Self::default_config_path();
         self.save_to_path(&config_path)
@@ -102,6 +103,7 @@ impl DaemonConfig {
     }
 
     /// Update the configuration in memory and save to disk
+    #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub fn update_and_save<F>(&mut self, update_fn: F) -> Result<()>
     where
         F: FnOnce(&mut Self),
@@ -111,6 +113,7 @@ impl DaemonConfig {
     }
 
     /// Validate the configuration settings
+    #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub fn validate(&self) -> Result<()> {
         // Validate database path can be created
         if let Some(parent) = Path::new(&self.database.path).parent() {

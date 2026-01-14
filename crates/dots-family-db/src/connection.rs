@@ -46,7 +46,7 @@ impl Database {
         if let Some(key) = &config.encryption_key {
             info!("Configuring SQLCipher encryption");
             options = options
-                .pragma("key", format!("x'{}'", key))
+                .pragma("key", format!("\"{}\"", key)) // Ensure proper quoting for hex format
                 .pragma("cipher_page_size", "4096")
                 .pragma("kdf_iter", "256000");
         } else {

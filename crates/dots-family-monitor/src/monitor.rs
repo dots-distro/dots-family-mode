@@ -112,7 +112,7 @@ pub async fn run() -> Result<()> {
             if let Err(e) = daemon_client.report_activity(&activity).await {
                 warn!("Failed to report activity to daemon: {}", e);
 
-                if let Err(_) = daemon_client.reconnect().await {
+                if daemon_client.reconnect().await.is_err() {
                     warn!("Failed to reconnect to daemon. Will continue monitoring locally.");
                 }
             }
@@ -120,7 +120,7 @@ pub async fn run() -> Result<()> {
 
         heartbeat_counter += 1;
         if heartbeat_counter >= heartbeat_interval {
-            if let Err(_) = daemon_client.send_heartbeat().await {
+            if daemon_client.send_heartbeat().await.is_err() {
                 warn!("Heartbeat failed, attempting to reconnect to daemon");
                 let _ = daemon_client.reconnect().await;
             }

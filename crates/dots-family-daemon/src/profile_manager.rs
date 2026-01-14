@@ -453,6 +453,7 @@ impl ProfileManager {
         }
     }
 
+    #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub async fn set_parent_password(&mut self, password: &str) -> Result<()> {
         if password.is_empty() {
             return Err(anyhow!("Password cannot be empty"));
@@ -482,6 +483,7 @@ impl ProfileManager {
         Ok(())
     }
 
+    #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub fn get_database_encryption_key(&self) -> Option<String> {
         self.config.database.encryption_key.clone()
     }
