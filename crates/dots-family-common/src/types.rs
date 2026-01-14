@@ -130,10 +130,7 @@ mod tests {
                     daily_limit_minutes: 120,
                     weekend_bonus_minutes: 60,
                     exempt_categories: vec!["education".to_string()],
-                    windows: TimeWindows {
-                        weekday: vec![],
-                        weekend: vec![],
-                    },
+                    windows: TimeWindows { weekday: vec![], weekend: vec![] },
                 },
                 applications: ApplicationConfig {
                     mode: ApplicationMode::Allowlist,
@@ -209,10 +206,7 @@ mod tests {
             original.config.screen_time.daily_limit_minutes,
             deserialized.config.screen_time.daily_limit_minutes
         );
-        assert_eq!(
-            original.config.applications.mode,
-            deserialized.config.applications.mode
-        );
+        assert_eq!(original.config.applications.mode, deserialized.config.applications.mode);
     }
 
     #[test]
@@ -221,23 +215,17 @@ mod tests {
         let json = serde_json::to_string(&app_usage).unwrap();
         assert!(json.contains("application_usage"));
 
-        let web_browsing = ActivityType::WebBrowsing {
-            url: "https://example.com".to_string(),
-        };
+        let web_browsing = ActivityType::WebBrowsing { url: "https://example.com".to_string() };
         let json = serde_json::to_string(&web_browsing).unwrap();
         assert!(json.contains("web_browsing"));
         assert!(json.contains("https://example.com"));
 
-        let terminal = ActivityType::TerminalCommand {
-            command: "rm -rf /".to_string(),
-        };
+        let terminal = ActivityType::TerminalCommand { command: "rm -rf /".to_string() };
         let json = serde_json::to_string(&terminal).unwrap();
         assert!(json.contains("terminal_command"));
         assert!(json.contains("rm -rf /"));
 
-        let violation = ActivityType::PolicyViolation {
-            reason: "Time limit exceeded".to_string(),
-        };
+        let violation = ActivityType::PolicyViolation { reason: "Time limit exceeded".to_string() };
         let json = serde_json::to_string(&violation).unwrap();
         assert!(json.contains("policy_violation"));
     }
@@ -266,10 +254,7 @@ mod tests {
 
     #[test]
     fn test_time_window_validation() {
-        let window = TimeWindow {
-            start: "09:00".to_string(),
-            end: "17:00".to_string(),
-        };
+        let window = TimeWindow { start: "09:00".to_string(), end: "17:00".to_string() };
 
         let json = serde_json::to_string(&window).unwrap();
         let deserialized: TimeWindow = serde_json::from_str(&json).unwrap();
@@ -323,10 +308,7 @@ mod tests {
 
         assert_eq!(config.enabled, deserialized.enabled);
         assert_eq!(config.safe_search, deserialized.safe_search);
-        assert_eq!(
-            config.blocked_categories.len(),
-            deserialized.blocked_categories.len()
-        );
+        assert_eq!(config.blocked_categories.len(), deserialized.blocked_categories.len());
     }
 
     #[test]
@@ -336,10 +318,7 @@ mod tests {
             weekend_bonus_minutes: 60,
             exempt_categories: vec!["education".to_string()],
             windows: TimeWindows {
-                weekday: vec![TimeWindow {
-                    start: "16:00".to_string(),
-                    end: "20:00".to_string(),
-                }],
+                weekday: vec![TimeWindow { start: "16:00".to_string(), end: "20:00".to_string() }],
                 weekend: vec![],
             },
         };
@@ -348,20 +327,14 @@ mod tests {
         let deserialized: ScreenTimeConfig = serde_json::from_str(&json).unwrap();
 
         assert_eq!(config.daily_limit_minutes, deserialized.daily_limit_minutes);
-        assert_eq!(
-            config.weekend_bonus_minutes,
-            deserialized.weekend_bonus_minutes
-        );
+        assert_eq!(config.weekend_bonus_minutes, deserialized.weekend_bonus_minutes);
         assert_eq!(config.exempt_categories, deserialized.exempt_categories);
     }
 
     #[test]
     fn test_all_age_groups() {
-        let groups = vec![
-            AgeGroup::EarlyElementary,
-            AgeGroup::LateElementary,
-            AgeGroup::HighSchool,
-        ];
+        let groups =
+            vec![AgeGroup::EarlyElementary, AgeGroup::LateElementary, AgeGroup::HighSchool];
 
         for group in groups {
             let json = serde_json::to_string(&group).unwrap();

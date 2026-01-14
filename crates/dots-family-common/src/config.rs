@@ -8,10 +8,7 @@ pub struct GeneralConfig {
 
 impl Default for GeneralConfig {
     fn default() -> Self {
-        Self {
-            data_dir: None,
-            log_level: "info".to_string(),
-        }
+        Self { data_dir: None, log_level: "info".to_string() }
     }
 }
 

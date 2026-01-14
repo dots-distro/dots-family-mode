@@ -3,7 +3,7 @@ use crate::error::Result;
 use sqlx::migrate::Migrator;
 use tracing::info;
 
-static MIGRATOR: Migrator = sqlx::migrate!("../../migrations");
+static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 impl Database {
     pub async fn run_migrations(&self) -> Result<()> {

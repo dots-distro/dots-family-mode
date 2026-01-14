@@ -1,0 +1,33 @@
+[Unit]
+Description=DOTS Family Mode Daemon
+Documentation=https://github.com/dots-distro/dots-family-mode
+After=network.target dbus.service
+Wants=dbus.service
+
+[Service]
+Type=dbus
+BusName=org.dots.FamilyDaemon
+ExecStart=/usr/bin/dots-family-daemon
+Restart=on-failure
+RestartSec=5
+
+Environment="RUST_LOG=info"
+
+User=root
+Group=root
+
+StateDirectory=dots-family
+ConfigurationDirectory=dots-family
+CacheDirectory=dots-family
+
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+ReadWritePaths=/var/lib/dots-family
+ReadWritePaths=/etc/dots-family
+
+[Install]
+WantedBy=multi-user.target
+Alias=dots-family.service

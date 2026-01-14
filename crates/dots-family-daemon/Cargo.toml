@@ -10,9 +10,21 @@ description = "DOTS Family Mode component"
 [dependencies]
 dots-family-common.workspace = true
 dots-family-proto.workspace = true
+dots-family-db.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+secrecy.workspace = true
+dirs = "5.0"
+toml = "0.8"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
+tempfile = "3"

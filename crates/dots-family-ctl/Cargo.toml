@@ -8,11 +8,12 @@ repository.workspace = true
 description = "DOTS Family Mode component"
 
 [dependencies]
-dots-family-common.workspace = true
 dots-family-proto.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
-tracing.workspace = true
+clap.workspace = true
+zbus.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

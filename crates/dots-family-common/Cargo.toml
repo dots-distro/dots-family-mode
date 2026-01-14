@@ -15,6 +15,13 @@ anyhow.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 tracing.workspace = true
+argon2.workspace = true
+rand.workspace = true
+zeroize.workspace = true
+secrecy.workspace = true
+sha2.workspace = true
+ring.workspace = true
+hex = "0.4"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

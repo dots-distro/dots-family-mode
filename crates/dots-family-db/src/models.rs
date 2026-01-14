@@ -52,6 +52,17 @@ pub struct DbEvent {
     pub metadata: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewAuditLog {
+    pub actor: String,
+    pub action: String,
+    pub resource: String,
+    pub resource_id: Option<String>,
+    pub ip_address: Option<String>,
+    pub success: bool,
+    pub details: Option<String>,
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct DbAuditLog {
     pub id: i64,
@@ -80,6 +91,42 @@ pub struct DbException {
     pub scope: Option<String>,
     pub active: bool,
     pub used: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewException {
+    pub id: String,
+    pub profile_id: String,
+    pub exception_type: String,
+    pub granted_by: String,
+    pub expires_at: DateTime<Utc>,
+    pub reason: Option<String>,
+    pub amount_minutes: Option<i64>,
+    pub app_id: Option<String>,
+    pub website: Option<String>,
+    pub scope: Option<String>,
+}
+
+impl NewException {
+    pub fn new(
+        profile_id: String,
+        exception_type: String,
+        granted_by: String,
+        expires_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            profile_id,
+            exception_type,
+            granted_by,
+            expires_at,
+            reason: None,
+            amount_minutes: None,
+            app_id: None,
+            website: None,
+            scope: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
@@ -146,4 +193,68 @@ pub struct NewEvent {
     pub severity: String,
     pub details: Option<String>,
     pub metadata: Option<String>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbNetworkActivity {
+    pub id: i64,
+    pub profile_id: String,
+    pub timestamp: DateTime<Utc>,
+    pub domain: String,
+    pub category: Option<String>,
+    pub duration_seconds: Option<i64>,
+    pub blocked: bool,
+    pub action: String,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewNetworkActivity {
+    pub profile_id: String,
+    pub domain: String,
+    pub category: Option<String>,
+    pub duration_seconds: Option<i64>,
+    pub blocked: bool,
+    pub action: String,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbTerminalActivity {
+    pub id: i64,
+    pub profile_id: String,
+    pub timestamp: DateTime<Utc>,
+    pub command: String,
+    pub risk_level: String,
+    pub action: String,
+    pub blocked: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewTerminalActivity {
+    pub profile_id: String,
+    pub command: String,
+    pub risk_level: String,
+    pub action: String,
+    pub blocked: bool,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbPolicyVersion {
+    pub id: i64,
+    pub profile_id: String,
+    pub version: i64,
+    pub config: String,
+    pub changed_by: String,
+    pub reason: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewPolicyVersion {
+    pub profile_id: String,
+    pub version: i64,
+    pub config: String,
+    pub changed_by: String,
+    pub reason: Option<String>,
 }

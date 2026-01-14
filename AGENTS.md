@@ -394,7 +394,94 @@ If starting Phase 1:
 2. **Authentication priority**: Implement early or defer?
 3. **GUI work**: Start GTK4 dashboard or keep CLI-only for now?
 
+## Task Management Integration - ENGRAM CLI TRACKING
+
+### ✅ Engram Integration Complete
+
+The project now uses **Engram CLI** for comprehensive task tracking and agent coordination:
+
+**Location:** `/home/shift/bin/engram` (AI Agent Collective Memory System)
+**Agent Profile:** "sisyphus" (coder, rust-systems-programming)
+
+### Current Task Status in Engram
+
+**✅ Completed Tasks (5 backfilled):**
+1. **System Detection Tool** - dots-detect CLI with 8 collectors fully functional
+2. **eBPF Monitoring System** - Process, network, and filesystem monitoring complete  
+3. **Test Suite** - 25 passing tests covering all dots-detect functionality
+4. **Architecture Documentation** - Complete design for 8-component parental control system
+5. **Foundation Crates** - dots-family-common and dots-family-proto with shared types
+
+**⏳ Pending Tasks (5 remaining):**
+1. **Fix Database Compilation** - Resolve DbAuditLog model issues and type annotations
+2. **Complete Daemon** - Finish policy engine and session management integration
+3. **CLI Administration Tool** - Complete the 80% finished dots-family-ctl
+4. **Application Monitor** - Build Wayland integration and process monitoring  
+5. **Content Filter** - Implement web filtering and threat detection
+
+### Quick Engram Commands
+
+```bash
+# Check project status
+engram task list
+engram task list --status completed
+engram task list --agent sisyphus
+
+# View specific task details  
+engram task get <task-id>
+
+# Update task status
+engram task update <task-id> --status in_progress
+engram task update <task-id> --status completed
+
+# Create new tasks for additional work
+engram task create --title "Task Title" --agent sisyphus --description "Details" --priority high
+```
+
+### Documentation Tasks Available
+
+The `docs/` directory contains **289 uncompleted tasks** marked with `[ ]` checkboxes:
+- **IMPLEMENTATION_ROADMAP.md**: 10 phases with detailed task breakdowns
+- **SECURITY_ARCHITECTURE.md**: Security implementation tasks
+- **IMPLEMENTATION_ANALYSIS.md**: Phase analysis tasks  
+- **REVIEW_AND_PRIORITIES.md**: Architecture and system service tasks
+
+**Creating tasks from docs:** Use `grep -r "\[ \]" docs/` to find specific tasks to add to engram.
+
+### Agent Handoff Protocol
+
+**For next agent working on this project:**
+
+1. **Check Environment:**
+   ```bash
+   cd /home/shift/code/endpoint-agent/dots-detection
+   echo $IN_NIX_SHELL  # Should be set
+   engram task list --agent sisyphus  # Check current task status
+   ```
+
+2. **Review Context:**
+   - Main project: `dots-detect` (functional CLI tool)
+   - Family mode: `dots-familt-mode/` (80% complete, some compilation issues)
+   - Documentation: `docs/` (comprehensive specs and roadmap)
+
+3. **Pick Up Work:**
+   ```bash
+   # Mark next task in progress
+   engram task update <task-id> --status in_progress
+   
+   # Work on the task...
+   
+   # Mark complete when done
+   engram task update <task-id> --status completed
+   ```
+
+4. **Track Progress:**
+   - Update task status in engram immediately after completion
+   - Create new tasks for any additional work discovered  
+   - Use `engram sync` to share changes with team
+
 ---
 
-**Last Updated:** 2026-01-12 (after Phase 0 foundation implementation)
-**Next Milestone:** Phase 0 completion (fix tests, add migrations, documentation)
+**Last Updated:** 2026-01-14 (after engram integration and task backfill)
+**Next Milestone:** Phase 0 completion (fix tests, add migrations, documentation)  
+**Task Tracking:** Engram CLI with "sisyphus" agent profile

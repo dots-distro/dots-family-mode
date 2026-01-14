@@ -58,4 +58,21 @@ impl ActivityQueries {
         .await
         .map_err(DbError::Sqlx)
     }
+
+    pub async fn list_by_profile_since(
+        db: &Database,
+        profile_id: &str,
+        since: chrono::DateTime<Utc>,
+    ) -> Result<Vec<DbActivity>> {
+        let pool = db.pool()?;
+
+        sqlx::query_as::<_, DbActivity>(
+            "SELECT * FROM activities WHERE profile_id = ? AND timestamp >= ? ORDER BY timestamp DESC",
+        )
+        .bind(profile_id)
+        .bind(since)
+        .fetch_all(pool)
+        .await
+        .map_err(DbError::Sqlx)
+    }
 }

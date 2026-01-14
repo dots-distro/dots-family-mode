@@ -1,9 +1,19 @@
+pub mod activities;
+pub mod audit;
+pub mod events;
+pub mod exceptions;
+pub mod network_activity;
+pub mod policy_versions;
 pub mod profiles;
 pub mod sessions;
-pub mod activities;
-pub mod events;
+pub mod terminal_activity;
 
+pub use activities::ActivityQueries;
+pub use audit::AuditQueries;
+pub use events::EventQueries;
+pub use exceptions::ExceptionQueries;
+pub use network_activity::NetworkActivityQueries;
+pub use policy_versions::PolicyVersionQueries;
 pub use profiles::ProfileQueries;
 pub use sessions::SessionQueries;
-pub use activities::ActivityQueries;
-pub use events::EventQueries;
+pub use terminal_activity::TerminalActivityQueries;

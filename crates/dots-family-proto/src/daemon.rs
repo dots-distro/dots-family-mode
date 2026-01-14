@@ -14,11 +14,22 @@ pub trait FamilyDaemon {
 
     async fn report_activity(&self, activity_json: &str) -> zbus::Result<()>;
 
+    async fn send_heartbeat(&self, monitor_id: &str) -> zbus::Result<()>;
+
     async fn authenticate_parent(&self, password: &str) -> zbus::Result<String>;
+
+    async fn list_profiles(&self) -> zbus::Result<String>;
+
+    async fn create_profile(&self, name: &str, age_group: &str) -> zbus::Result<String>;
+
+    async fn set_active_profile(&self, profile_id: &str) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn policy_updated(&self, profile_id: &str) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn time_limit_warning(&self, minutes_remaining: u32) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn tamper_detected(&self, reason: &str) -> zbus::Result<()>;
 }

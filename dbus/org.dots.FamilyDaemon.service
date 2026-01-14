@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=org.dots.FamilyDaemon
+Exec=/usr/bin/dots-family-daemon
+User=root
+SystemdService=dots-family-daemon.service
