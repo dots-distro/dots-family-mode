@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 use dots_family_common::security::{EncryptionKey, PasswordManager, SessionToken};
 use dots_family_common::types::{ApplicationMode, Profile};
-use dots_family_db::queries::ProfileQueries;
+use dots_family_db::queries::profiles::ProfileQueries;
 use dots_family_db::Database;
 use secrecy::SecretString;
 use sqlx::Row;
@@ -32,6 +33,8 @@ pub struct ProfileManager {
     active_session_id: Arc<RwLock<Option<String>>>,
     monitor_heartbeats: Arc<RwLock<HashMap<String, MonitorHeartbeat>>>,
     tamper_detected: Arc<RwLock<bool>>,
+    /// Active session tokens for parent authentication
+    active_sessions: Arc<RwLock<HashMap<String, SessionToken>>>,
 }
 
 impl ProfileManager {
@@ -53,6 +56,7 @@ impl ProfileManager {
             active_session_id: Arc::new(RwLock::new(None)),
             monitor_heartbeats: Arc::new(RwLock::new(HashMap::new())),
             tamper_detected: Arc::new(RwLock::new(false)),
+            active_sessions: Arc::new(RwLock::new(HashMap::new())),
         };
 
         manager.load_active_profile_from_db().await?;
@@ -144,7 +148,9 @@ impl ProfileManager {
             id: Uuid::parse_str(&db_profile.id)?,
             name: db_profile.name,
             age_group,
-            birthday: db_profile.birthday.map(|date| date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
+            birthday: db_profile
+                .birthday
+                .map(|date: chrono::NaiveDate| date.and_hms_opt(0, 0, 0).unwrap().and_utc()),
             created_at: db_profile.created_at,
             updated_at: db_profile.updated_at,
             config,
@@ -453,9 +459,19 @@ impl ProfileManager {
         match PasswordManager::verify_password(&password_secret, stored_hash) {
             Ok(true) => {
                 info!("Parent authentication successful");
+
                 // Generate secure session token
                 let session_token = SessionToken::generate();
-                Ok(session_token.token().to_string())
+                let token_string = session_token.token().to_string();
+
+                // Store the session token for validation
+                {
+                    let mut sessions = self.active_sessions.write().await;
+                    sessions.insert(token_string.clone(), session_token);
+                }
+
+                info!("Session token created and stored");
+                Ok(token_string)
             }
             Ok(false) => {
                 warn!("Parent authentication failed - invalid password");
@@ -463,9 +479,38 @@ impl ProfileManager {
             }
             Err(e) => {
                 warn!("Parent authentication error: {}", e);
-                Err(anyhow!("Authentication error: {}", e))
+                Err(anyhow!("Authentication failed"))
             }
         }
+    }
+
+    /// Validate a session token and return whether it's still valid
+    pub async fn validate_session(&self, token: &str) -> bool {
+        let sessions = self.active_sessions.read().await;
+
+        if let Some(session_token) = sessions.get(token) {
+            session_token.is_valid()
+        } else {
+            false
+        }
+    }
+
+    /// Clean up expired session tokens
+    pub async fn cleanup_expired_sessions(&self) {
+        let mut sessions = self.active_sessions.write().await;
+        sessions.retain(|_, session| session.is_valid());
+    }
+
+    /// Revoke a specific session token (logout)
+    pub async fn revoke_session(&self, token: &str) -> bool {
+        let mut sessions = self.active_sessions.write().await;
+        sessions.remove(token).is_some()
+    }
+
+    /// Get count of active sessions
+    pub async fn active_session_count(&self) -> usize {
+        let sessions = self.active_sessions.read().await;
+        sessions.len()
     }
 
     #[allow(dead_code)] // Will be used by CLI/GUI applications
@@ -965,12 +1010,62 @@ mod tests {
         // When authenticating with correct password
         let result = manager.authenticate_parent("test_password_123").await;
 
-        // Then authentication succeeds and returns a secure token
+        // Then authentication succeeds and returns a token
         assert!(result.is_ok());
         let token = result.unwrap();
         assert!(!token.is_empty());
-        assert_ne!(token, "mock_token");
-        assert!(token.len() >= 32); // Secure tokens should be reasonably long
+        assert_eq!(token.len(), 64); // Session tokens are 64 characters
+
+        // And the token should be valid
+        assert!(manager.validate_session(&token).await);
+
+        // And the session should be tracked
+        assert_eq!(manager.active_session_count().await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_bdd_given_session_token_when_validated_then_returns_correct_status() {
+        let (_db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config).await.unwrap();
+
+        // Given a parent password is set and authentication succeeds
+        manager.set_parent_password("test_password_123").await.unwrap();
+        let token = manager.authenticate_parent("test_password_123").await.unwrap();
+
+        // When validating the token immediately
+        let is_valid = manager.validate_session(&token).await;
+
+        // Then the token should be valid
+        assert!(is_valid);
+
+        // When validating a non-existent token
+        let invalid_token = "invalid_token_123";
+        let is_invalid = manager.validate_session(invalid_token).await;
+
+        // Then validation should fail
+        assert!(!is_invalid);
+    }
+
+    #[tokio::test]
+    async fn test_bdd_given_session_token_when_revoked_then_no_longer_valid() {
+        let (_db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config).await.unwrap();
+
+        // Given a parent password is set and authentication succeeds
+        manager.set_parent_password("test_password_123").await.unwrap();
+        let token = manager.authenticate_parent("test_password_123").await.unwrap();
+
+        // When the session is revoked
+        let was_revoked = manager.revoke_session(&token).await;
+
+        // Then revocation should succeed
+        assert!(was_revoked);
+
+        // And the token should no longer be valid
+        assert!(!manager.validate_session(&token).await);
+
+        // And the session count should be zero
+        assert_eq!(manager.active_session_count().await, 0);
     }
 
     #[tokio::test]

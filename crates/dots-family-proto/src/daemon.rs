@@ -18,6 +18,10 @@ pub trait FamilyDaemon {
 
     async fn authenticate_parent(&self, password: &str) -> zbus::Result<String>;
 
+    async fn validate_session(&self, token: &str) -> zbus::Result<bool>;
+
+    async fn revoke_session(&self, token: &str) -> zbus::Result<bool>;
+
     async fn list_profiles(&self) -> zbus::Result<String>;
 
     async fn create_profile(&self, name: &str, age_group: &str) -> zbus::Result<String>;

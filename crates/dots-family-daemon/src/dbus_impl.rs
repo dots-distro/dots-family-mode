@@ -101,6 +101,14 @@ impl FamilyDaemonService {
         }
     }
 
+    async fn validate_session(&self, token: &str) -> bool {
+        self.profile_manager.validate_session(token).await
+    }
+
+    async fn revoke_session(&self, token: &str) -> bool {
+        self.profile_manager.revoke_session(token).await
+    }
+
     async fn set_active_profile(&self, profile_id: &str) {
         if let Err(e) = self.profile_manager._set_active_profile(profile_id).await {
             warn!("Failed to set active profile: {}", e);

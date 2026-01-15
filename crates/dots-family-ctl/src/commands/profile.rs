@@ -1,9 +1,10 @@
+use crate::auth;
 use anyhow::Result;
 use dots_family_proto::daemon::FamilyDaemonProxy;
 use zbus::Connection;
 
 pub async fn list() -> Result<()> {
-    let conn = Connection::system().await?;
+    let conn = Connection::session().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     let profiles_json = proxy.list_profiles().await?;
@@ -22,7 +23,7 @@ pub async fn list() -> Result<()> {
 }
 
 pub async fn show(_name: &str) -> Result<()> {
-    let conn = Connection::system().await?;
+    let conn = Connection::session().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     let profile_json = proxy.get_active_profile().await?;
@@ -32,26 +33,41 @@ pub async fn show(_name: &str) -> Result<()> {
 }
 
 pub async fn create(name: &str, age_group: &str) -> Result<()> {
-    let conn = Connection::system().await?;
-    let proxy = FamilyDaemonProxy::new(&conn).await?;
+    let name = name.to_string();
+    let age_group = age_group.to_string();
 
-    let profile_id = proxy.create_profile(name, age_group).await?;
+    auth::require_auth_simple(|| {
+        Box::pin(async move {
+            let conn = Connection::session().await?;
+            let proxy = FamilyDaemonProxy::new(&conn).await?;
 
-    if let Some(error_msg) = profile_id.strip_prefix("error:") {
-        println!("Failed to create profile: {}", error_msg);
-    } else {
-        println!("Created profile '{}' with ID: {}", name, profile_id);
-    }
+            let profile_id = proxy.create_profile(&name, &age_group).await?;
 
-    Ok(())
+            if let Some(error_msg) = profile_id.strip_prefix("error:") {
+                println!("Failed to create profile: {}", error_msg);
+            } else {
+                println!("Created profile '{}' with ID: {}", name, profile_id);
+            }
+
+            Ok(())
+        })
+    })
+    .await
 }
 
 pub async fn set_active(profile_id: &str) -> Result<()> {
-    let conn = Connection::system().await?;
-    let proxy = FamilyDaemonProxy::new(&conn).await?;
+    let profile_id = profile_id.to_string();
 
-    proxy.set_active_profile(profile_id).await?;
-    println!("Set active profile to: {}", profile_id);
+    auth::require_auth_simple(|| {
+        Box::pin(async move {
+            let conn = Connection::session().await?;
+            let proxy = FamilyDaemonProxy::new(&conn).await?;
 
-    Ok(())
+            proxy.set_active_profile(&profile_id).await?;
+            println!("Set active profile to: {}", profile_id);
+
+            Ok(())
+        })
+    })
+    .await
 }
