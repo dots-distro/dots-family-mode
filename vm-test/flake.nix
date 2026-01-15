@@ -16,20 +16,18 @@
           # VM settings
           virtualisation = {
             memorySize = 4096;
-            cores = 4;
             graphics = true;
             diskSize = 8192;
           };
           
-          # Don't require a physical disk
-          boot.loader.grub.device = "nodev";
+          # Don't require a physical disk for VM
+          boot.loader.grub.device = "/dev/vda";
           fileSystems."/".device = "/dev/disk/by-label/nixos";
           
           # Enable nested virtualization for development
           virtualisation.vmVariant = {
             virtualisation = {
               memorySize = 4096;
-              cores = 4;
             };
           };
         })

@@ -250,5 +250,125 @@
           '';
         };
       }
-    );
+    ) // {
+      # NixOS VM configurations for testing
+      nixosConfigurations = {
+        dots-family-test-vm = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./vm-simple.nix
+            {
+              # Add DOTS Family Mode package
+              environment.systemPackages = with nixpkgs.legacyPackages.x86_64-linux; [
+                # Build our package
+                (nixpkgs.legacyPackages.x86_64-linux.rustPlatform.buildRustPackage {
+                  pname = "dots-family-mode";
+                  version = "0.1.0";
+                  
+                  src = ./.;
+                  
+                  cargoLock = {
+                    lockFile = ./Cargo.lock;
+                  };
+                  
+                  nativeBuildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
+                    pkg-config
+                    sqlite
+                  ];
+                  
+                  buildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
+                    sqlite
+                    dbus
+                    systemd
+                    sqlcipher
+                  ];
+                  
+                  # Build all binaries
+                  cargoBuildFlags = [ "--workspace" ];
+                })
+              ];
+              
+              # DOTS Family Mode system service
+              systemd.services.dots-family-daemon = {
+                description = "DOTS Family Mode Daemon";
+                after = [ "network.target" "dbus.service" ];
+                wants = [ "dbus.service" ];
+                wantedBy = [ "multi-user.target" ];
+                
+                serviceConfig = {
+                  Type = "dbus";
+                  BusName = "org.dots.FamilyDaemon";
+                  ExecStart = "/run/current-system/sw/bin/dots-family-daemon";
+                  Restart = "on-failure";
+                  RestartSec = 5;
+                  
+                  User = "root";
+                  Group = "root";
+                  
+                  StateDirectory = "dots-family";
+                  ConfigurationDirectory = "dots-family";
+                };
+                
+                environment = {
+                  RUST_LOG = "debug";
+                  DATABASE_URL = "sqlite:/var/lib/dots-family/family.db";
+                };
+              };
+              
+              # DBus configuration
+              services.dbus.enable = true;
+              
+              # Create DBus policy
+              environment.etc."dbus-1/system.d/org.dots.FamilyDaemon.conf".text = ''
+                <!DOCTYPE busconfig PUBLIC
+                 "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+                 "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+                <busconfig>
+                  <policy context="default">
+                    <allow own="org.dots.FamilyDaemon"/>
+                    <allow send_destination="org.dots.FamilyDaemon"/>
+                    <allow receive_sender="org.dots.FamilyDaemon"/>
+                  </policy>
+                  
+                  <policy user="root">
+                    <allow own="org.dots.FamilyDaemon"/>
+                    <allow send_destination="org.dots.FamilyDaemon"/>
+                    <allow receive_sender="org.dots.FamilyDaemon"/>
+                  </policy>
+                  
+                  <policy group="wheel">
+                    <allow send_destination="org.dots.FamilyDaemon"/>
+                    <allow receive_sender="org.dots.FamilyDaemon"/>
+                  </policy>
+                </busconfig>
+              '';
+              
+              # Create default configuration
+              system.activationScripts.dots-family-setup = ''
+                # Ensure directories exist
+                mkdir -p /var/lib/dots-family
+                mkdir -p /etc/dots-family
+                
+                # Create default daemon config if it doesn't exist
+                if [ ! -f /etc/dots-family/daemon.toml ]; then
+                  cat > /etc/dots-family/daemon.toml << EOF
+              [database]
+              path = "/var/lib/dots-family/family.db"
+              
+              [auth]
+              # No password hash initially - will be set by admin
+              EOF
+                fi
+                
+                # Set permissions
+                chown -R root:root /var/lib/dots-family
+                chmod 700 /var/lib/dots-family
+                chown -R root:root /etc/dots-family
+                chmod 755 /etc/dots-family
+              '';
+            }
+          ];
+        };
+      };
+    };
 }

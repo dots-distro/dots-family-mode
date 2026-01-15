@@ -71,19 +71,10 @@ EOF
   };
 
 in {
-  # VM configuration
+  # VM configuration - use minimal set of options
   virtualisation = {
     memorySize = 4096;
-    cores = 4;
     diskSize = 8192;
-    
-    # Enable graphics for testing GUI applications
-    graphics = true;
-    
-    # Forward ports for debugging
-    forwardPorts = [
-      { from = "host"; host.port = 2222; guest.port = 22; }
-    ];
   };
   
   # Basic system configuration
@@ -130,8 +121,8 @@ in {
     desktopManager.xfce.enable = true;
   };
   
-  # Wayland compositor (Niri) for testing
-  programs.niri.enable = true;
+  # Note: Niri may not be available in all nixpkgs versions
+  # programs.niri.enable = true;
   
   # Install required packages
   environment.systemPackages = with pkgs; [

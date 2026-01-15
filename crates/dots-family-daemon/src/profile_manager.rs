@@ -73,9 +73,22 @@ impl ProfileManager {
             if !profile_id.is_empty() {
                 match self._load_profile(&profile_id).await {
                     Ok(profile) => {
+                        // Load profile and create a new session
                         let mut active = self.active_profile.write().await;
                         *active = Some(profile);
-                        info!("Loaded active profile from database: {}", profile_id);
+
+                        // Create session for the loaded profile
+                        if let Err(e) = self.create_session_for_profile(&profile_id).await {
+                            warn!(
+                                "Failed to create session for loaded profile {}: {}",
+                                profile_id, e
+                            );
+                        }
+
+                        info!(
+                            "Loaded active profile from database: {} with new session",
+                            profile_id
+                        );
                     }
                     Err(e) => {
                         warn!("Failed to load saved profile {}: {}", profile_id, e);
@@ -84,6 +97,22 @@ impl ProfileManager {
             }
         }
 
+        Ok(())
+    }
+
+    async fn create_session_for_profile(&self, profile_id: &str) -> Result<()> {
+        use dots_family_db::models::NewSession;
+        use dots_family_db::queries::sessions::SessionQueries;
+
+        let new_session = NewSession::new(profile_id.to_string());
+        let session_id = new_session.id.clone();
+
+        SessionQueries::create(&self._db, new_session).await?;
+
+        let mut session = self.active_session_id.write().await;
+        *session = Some(session_id.clone());
+
+        info!("Created session {} for profile {}", session_id, profile_id);
         Ok(())
     }
 
