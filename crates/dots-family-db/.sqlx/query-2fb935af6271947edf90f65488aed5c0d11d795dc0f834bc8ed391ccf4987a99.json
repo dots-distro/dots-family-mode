@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT COUNT(DISTINCT profile_id) \n        FROM policy_cache \n        WHERE expires_at IS NULL OR expires_at > ?1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "COUNT(DISTINCT profile_id)",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2fb935af6271947edf90f65488aed5c0d11d795dc0f834bc8ed391ccf4987a99"
+}

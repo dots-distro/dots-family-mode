@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE policy_cache \n        SET value = ?3, cached_at = ?4, expires_at = ?5\n        WHERE profile_id = ?1 AND key = ?2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "293c59fa1dfa6b409e0da31ad297acba3102b0a277f16972eb9001ce77c42d8a"
+}
