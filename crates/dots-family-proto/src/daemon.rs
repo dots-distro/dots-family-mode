@@ -12,9 +12,9 @@ pub trait FamilyDaemon {
 
     async fn get_remaining_time(&self) -> zbus::Result<u32>;
 
-    async fn report_activity(&self, activity_json: &str) -> zbus::Result<()>;
+    async fn report_activity(&self, activity_json: &str) -> zbus::Result<String>;
 
-    async fn send_heartbeat(&self, monitor_id: &str) -> zbus::Result<()>;
+    async fn send_heartbeat(&self, monitor_id: &str) -> zbus::Result<String>;
 
     async fn authenticate_parent(&self, password: &str) -> zbus::Result<String>;
 

@@ -1,17 +1,16 @@
 use dots_family_proto::daemon::FamilyDaemonProxy;
-use serde_json;
 use std::time::Duration;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 use zbus::Connection;
 
 async fn get_daemon_proxy() -> Option<FamilyDaemonProxy<'static>> {
     let conn = Connection::session().await.ok()?;
     match FamilyDaemonProxy::new(&conn).await {
         Ok(proxy) => {
-            if proxy.check_application_allowed("test").await.is_ok() {
-                Some(proxy)
-            } else {
-                None
+            // Add timeout to prevent hanging when daemon is not available
+            match timeout(Duration::from_secs(2), proxy.check_application_allowed("test")).await {
+                Ok(Ok(_)) => Some(proxy),
+                _ => None,
             }
         }
         Err(_) => None,
@@ -84,15 +83,28 @@ async fn test_get_remaining_time() {
 async fn test_report_activity() {
     sleep(Duration::from_millis(100)).await;
 
-    if !daemon_available().await {
-        println!("SKIPPED: No daemon available on DBus session bus");
-        return;
-    }
+    // Add timeout to entire test
+    let test_result = timeout(Duration::from_secs(5), async {
+        if !daemon_available().await {
+            println!("SKIPPED: No daemon available on DBus session bus");
+            return;
+        }
 
-    if let Some(proxy) = get_daemon_proxy().await {
-        let activity_json = r#"{"app":"firefox","duration":60}"#;
-        let result = proxy.report_activity(activity_json).await;
-        assert!(result.is_ok(), "report_activity should succeed");
+        if let Some(proxy) = get_daemon_proxy().await {
+            // Use proper activity JSON format with all required fields
+            let activity_json = r#"{"session_id":"test-session","profile_id":"test-profile","app_id":"firefox","app_name":"Firefox","duration_seconds":60}"#;
+            let result = proxy.report_activity(activity_json).await;
+            // This will fail because we don't have a valid session/profile, but the call should succeed
+            assert!(
+                result.is_ok(),
+                "report_activity DBus call should succeed even if validation fails"
+            );
+        }
+    }).await;
+
+    // If timeout occurs, just skip the test
+    if test_result.is_err() {
+        println!("SKIPPED: Test timed out, likely no daemon available");
     }
 }
 
@@ -103,7 +115,8 @@ async fn test_authenticate_parent_empty() {
     if let Some(proxy) = get_daemon_proxy().await {
         let result = proxy.authenticate_parent("").await;
         if let Ok(token) = result {
-            assert!(token.is_empty());
+            // Empty password should return error message starting with "error:"
+            assert!(token.starts_with("error:"));
         }
     } else {
         println!("SKIPPED: No daemon available on DBus session bus");

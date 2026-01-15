@@ -16,7 +16,7 @@ pub async fn run() -> Result<()> {
     let service = FamilyDaemonService::new(&config).await?;
     let profile_manager = ProfileManager::new(&config).await?;
 
-    let conn = ConnectionBuilder::session()?
+    let conn = ConnectionBuilder::system()?
         .name("org.dots.FamilyDaemon")?
         .serve_at("/org/dots/FamilyDaemon", service)?
         .build()

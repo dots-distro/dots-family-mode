@@ -369,50 +369,36 @@ impl ProfileManager {
     }
 
     pub async fn report_activity(&self, activity_json: &str) -> Result<()> {
+        use dots_family_common::types::Activity;
         use dots_family_db::models::NewActivity;
         use dots_family_db::queries::activities::ActivityQueries;
 
         info!("Activity reported: {}", activity_json);
 
-        let activity_data: serde_json::Value = serde_json::from_str(activity_json)?;
+        let activity: Activity = serde_json::from_str(activity_json)?;
 
-        let session_id = activity_data["session_id"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing session_id"))?
-            .to_string();
-
-        let profile_id = activity_data["profile_id"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing profile_id"))?
-            .to_string();
-
-        let app_id =
-            activity_data["app_id"].as_str().ok_or_else(|| anyhow!("Missing app_id"))?.to_string();
-
-        let app_name = activity_data["app_name"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing app_name"))?
-            .to_string();
-
-        let duration_seconds = activity_data["duration_seconds"]
-            .as_i64()
-            .ok_or_else(|| anyhow!("Missing or invalid duration_seconds"))?;
-
-        let category = activity_data["category"].as_str().map(|s| s.to_string());
-        let window_title = activity_data["window_title"].as_str().map(|s| s.to_string());
+        let session_id = {
+            let active_session = self.active_session_id.read().await;
+            active_session.clone().unwrap_or_else(|| activity.profile_id.to_string())
+        };
 
         let new_activity = NewActivity {
             session_id,
-            profile_id,
-            app_id,
-            app_name,
-            category,
-            window_title,
-            duration_seconds,
+            profile_id: activity.profile_id.to_string(),
+            app_id: activity.application.as_deref().unwrap_or("unknown").to_string(),
+            app_name: activity.application.as_deref().unwrap_or("Unknown Application").to_string(),
+            category: None,
+            window_title: activity.window_title,
+            duration_seconds: activity.duration_seconds as i64,
         };
 
         ActivityQueries::create(&self._db, new_activity).await?;
-        info!("Activity stored in database");
+        info!(
+            "Activity stored in database: app_id={}, duration={}s, profile_id={}",
+            activity.application.as_deref().unwrap_or("unknown"),
+            activity.duration_seconds,
+            activity.profile_id
+        );
 
         Ok(())
     }

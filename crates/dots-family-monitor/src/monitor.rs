@@ -175,7 +175,7 @@ mod tests {
         let report = activity.unwrap();
         assert_eq!(report.application, Some("firefox".to_string()));
         assert_eq!(report.window_title, Some("GitHub".to_string()));
-        assert!(report.duration_seconds >= 0);
+        assert!(report.duration_seconds > 0);
     }
 
     #[test]
@@ -218,6 +218,6 @@ mod tests {
         assert!(activity.is_some());
         let report = activity.unwrap();
         assert_eq!(report.application, Some("firefox".to_string()));
-        assert!(report.duration_seconds >= 0);
+        assert!(report.duration_seconds > 0);
     }
 }
