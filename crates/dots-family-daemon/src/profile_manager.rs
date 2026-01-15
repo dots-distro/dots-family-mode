@@ -693,7 +693,7 @@ mod tests {
 
         // Then: It should fail with missing field error
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Missing"));
+        assert!(result.unwrap_err().to_string().contains("missing"));
     }
 
     #[tokio::test]
@@ -702,35 +702,32 @@ mod tests {
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        // Create a session for this profile
-        use dots_family_db::models::NewSession;
-        use dots_family_db::queries::sessions::SessionQueries;
-        let new_session = NewSession::new(profile_id.clone());
-        let session_id = new_session.id.clone();
-        SessionQueries::create(&db, new_session).await.unwrap();
-
         let manager = ProfileManager::new(&config).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
 
-        // Set the active session in the manager (we'll need to add this capability)
-        // For now, we'll test with explicit session_id in the JSON
+        let active_session_id = manager.get_active_session_id().await.unwrap();
 
-        // When: Reporting activity with session and profile info
+        // When: Reporting activity with proper Activity structure
         let activity_json = format!(
-            r#"{{"session_id":"{}","profile_id":"{}","app_id":"firefox","app_name":"Firefox","duration_seconds":60}}"#,
-            session_id, profile_id
+            r#"{{"id":"{}","profile_id":"{}","timestamp":"{}","activity_type":{{"type":"application_usage"}},"application":"firefox","window_title":"Example","duration_seconds":60}}"#,
+            uuid::Uuid::new_v4(),
+            profile_id,
+            chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")
         );
         let result = manager.report_activity(&activity_json).await;
 
         // Then: Activity should be stored in database
+        if let Err(e) = &result {
+            eprintln!("Activity report failed: {:?}", e);
+        }
         assert!(result.is_ok());
 
         // Verify it's in the database
         use dots_family_db::queries::activities::ActivityQueries;
-        let activities = ActivityQueries::list_for_session(&db, &session_id).await.unwrap();
+        let activities = ActivityQueries::list_for_session(&db, &active_session_id).await.unwrap();
         assert_eq!(activities.len(), 1);
         assert_eq!(activities[0].app_id, "firefox");
-        assert_eq!(activities[0].app_name, "Firefox");
+        assert_eq!(activities[0].app_name, "firefox");
         assert_eq!(activities[0].duration_seconds, 60);
     }
 
