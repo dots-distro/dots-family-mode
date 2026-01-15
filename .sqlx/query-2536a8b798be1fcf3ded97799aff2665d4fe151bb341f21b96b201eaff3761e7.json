@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM policy_cache WHERE expires_at IS NOT NULL AND expires_at <= ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "2536a8b798be1fcf3ded97799aff2665d4fe151bb341f21b96b201eaff3761e7"
+}

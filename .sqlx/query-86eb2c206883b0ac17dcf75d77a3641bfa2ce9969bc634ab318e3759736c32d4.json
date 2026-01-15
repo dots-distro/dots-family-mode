@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO app_info_cache (app_id, app_name, category, desktop_file, cached_at)\n        VALUES (?1, ?2, ?3, ?4, ?5)\n        ON CONFLICT (app_id) \n        DO UPDATE SET \n            app_name = excluded.app_name,\n            category = excluded.category,\n            desktop_file = excluded.desktop_file,\n            cached_at = excluded.cached_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "86eb2c206883b0ac17dcf75d77a3641bfa2ce9969bc634ab318e3759736c32d4"
+}

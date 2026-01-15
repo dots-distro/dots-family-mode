@@ -1,8 +1,8 @@
 # Simplified NixOS VM configuration for testing DOTS Family Mode
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, modulesPath, ... }:
 
 {
-  imports = [ <nixpkgs/nixos/modules/virtualisation/qemu-vm.nix> ];
+  imports = [ "${modulesPath}/virtualisation/qemu-vm.nix" ];
 
   # Basic system configuration
   time.timeZone = "UTC";
@@ -54,9 +54,8 @@
     foot
     alacritty
     sqlite
-    busctl
-    systemctl
-    journalctl
+    systemd  # Provides busctl and systemctl
+    util-linux  # Provides journalctl
     htop
     vim
     git

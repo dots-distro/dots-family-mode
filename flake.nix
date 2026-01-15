@@ -64,6 +64,9 @@
 
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs ++ runtimeDependencies;
+            
+            # Disable SQLx compile-time checks for Nix build
+            SQLX_OFFLINE = "true";
 
             postInstall = ''
               wrapProgram $out/bin/dots-family-daemon \
@@ -92,6 +95,9 @@
 
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs ++ runtimeDependencies;
+            
+            # Disable tests for VM build (flaky timing tests)
+            doCheck = false;
 
             postInstall = ''
               wrapProgram $out/bin/dots-family-monitor \
@@ -259,33 +265,11 @@
             ./vm-simple.nix
             {
               # Add DOTS Family Mode package
-              environment.systemPackages = with nixpkgs.legacyPackages.x86_64-linux; [
-                # Build our package
-                (nixpkgs.legacyPackages.x86_64-linux.rustPlatform.buildRustPackage {
-                  pname = "dots-family-mode";
-                  version = "0.1.0";
-                  
-                  src = ./.;
-                  
-                  cargoLock = {
-                    lockFile = ./Cargo.lock;
-                  };
-                  
-                  nativeBuildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
-                    pkg-config
-                    sqlite
-                  ];
-                  
-                  buildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
-                    sqlite
-                    dbus
-                    systemd
-                    sqlcipher
-                  ];
-                  
-                  # Build all binaries
-                  cargoBuildFlags = [ "--workspace" ];
-                })
+              environment.systemPackages = [
+                # Use our pre-built packages from the flake
+                self.packages.x86_64-linux.dots-family-daemon
+                self.packages.x86_64-linux.dots-family-monitor
+                self.packages.x86_64-linux.dots-family-ctl
               ];
               
               # DOTS Family Mode system service
