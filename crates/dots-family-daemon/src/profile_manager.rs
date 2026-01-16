@@ -248,7 +248,7 @@ impl ProfileManager {
 
     pub async fn create_profile(&self, name: &str, age_group: &str) -> Result<String> {
         use dots_family_common::types::{
-            AgeGroup, ApplicationConfig, ApplicationMode, Profile, ProfileConfig, ScreenTimeConfig,
+            ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig,
             TerminalFilteringConfig, TimeWindow, TimeWindows, WebFilteringConfig,
         };
         use dots_family_db::models::{NewAuditLog, NewProfile};

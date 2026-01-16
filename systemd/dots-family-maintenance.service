@@ -1,0 +1,61 @@
+[Unit]
+Description=DOTS Family Mode Maintenance Service
+Documentation=https://github.com/dots-distro/dots-family-mode
+After=dots-family-daemon.service
+Wants=dots-family-daemon.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/dots-family-ctl maintenance --cleanup --optimize
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+
+# Environment configuration
+Environment="RUST_LOG=info"
+EnvironmentFile=-/etc/dots-family/maintenance.conf
+
+# Security context
+User=dots-maintenance
+Group=dots-maintenance
+SupplementaryGroups=systemd-journal
+
+# Security hardening
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Network restrictions
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_UNIX
+
+# System call restrictions
+SystemCallFilter=@system-service @file-system ~@debug ~@mount ~@reboot ~@swap
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Memory protection
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+# Maintenance tasks need limited filesystem access
+ReadOnlyPaths=/var/lib/dots-family
+ReadWritePaths=/var/cache/dots-family
+ReadWritePaths=/var/log/dots-family
+
+# Resource limits
+TasksMax=64
+LimitNOFILE=512
+LimitNPROC=32
+
+[Install]
+WantedBy=multi-user.target

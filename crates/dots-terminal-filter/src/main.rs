@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Arg, ArgMatches, Command};
 use tracing::info;
 
+mod command_parser;
 mod config;
 mod educational;
 mod risk_analyzer;

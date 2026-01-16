@@ -200,7 +200,7 @@ in {
     };
 
     # File system restrictions for child users
-    environment.etc."security/limits.d/dots-family.conf".text = lib.mkIf (cfg.childUsers != [ ]) ''
+    environment.etc."security/limits.d/dots-family.conf".text = ''
       # DOTS Family Mode - Resource limits for child users
       ${lib.concatMapStringsSep "\n" (user: ''
         # Limit processes and memory for ${user}

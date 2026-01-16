@@ -1,0 +1,28 @@
+[workspace]
+
+[package]
+name = "dots-family-ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "process-monitor"
+path = "src/process-monitor.rs"
+
+[[bin]]
+name = "network-monitor" 
+path = "src/network-monitor.rs"
+
+[[bin]]
+name = "filesystem-monitor"
+path = "src/filesystem-monitor.rs"
+
+[dependencies]
+aya-ebpf = "0.1"
+aya-log-ebpf = "0.1"
+network-types = "0.0.5"
+
+[profile.release]
+debug = true
+lto = true
+panic = "abort"

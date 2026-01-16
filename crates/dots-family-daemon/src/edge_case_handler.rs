@@ -1,7 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Duration, TimeZone, Utc};
-use std::path::Path;
-use std::time::SystemTime;
+use chrono::{DateTime, Duration, Utc};
 use tokio::time::{sleep, Duration as TokioDuration};
 use tracing::{error, info, warn};
 
@@ -75,8 +73,8 @@ impl EdgeCaseHandler {
 
     fn handle_time_manipulation(
         &self,
-        current_time: DateTime<Utc>,
-        expected_time: DateTime<Utc>,
+        _current_time: DateTime<Utc>,
+        _expected_time: DateTime<Utc>,
     ) -> Result<()> {
         // Log security event
         warn!("System time manipulation detected - enforcing policies based on real time");
@@ -266,7 +264,7 @@ impl EdgeCaseHandler {
     /// Handle low disk space
     pub fn check_disk_space(&self) -> Result<()> {
         let db_path = "/var/lib/dots-family/database.db";
-        if let Ok(metadata) = std::fs::metadata(db_path) {
+        if let Ok(_metadata) = std::fs::metadata(db_path) {
             let disk_usage = self.get_disk_usage(db_path)?;
 
             if disk_usage.available_bytes < 100 * 1024 * 1024 {

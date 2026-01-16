@@ -3,13 +3,49 @@
 let
   cfg = config.services.dots-family;
   
-  # Get the packages from our flake outputs
+  # Build packages directly using the Rust build system
+  # This follows the pattern used by most Rust projects in nixpkgs
+  buildDotsPackage = { pname, cargoRoot ? "crates/${pname}" }:
+    pkgs.rustPlatform.buildRustPackage {
+      inherit pname;
+      version = "0.1.0";
+      
+      src = lib.cleanSource ./../..;  # Points to project root
+      
+      cargoLock = {
+        lockFile = ./../../Cargo.lock;
+      };
+      
+      buildAndTestSubdir = cargoRoot;
+      
+      nativeBuildInputs = with pkgs; [ pkg-config ];
+      buildInputs = with pkgs; [ 
+        openssl sqlite sqlcipher dbus gtk4 libadwaita
+        # Runtime dependencies
+        procps util-linux libnotify polkit
+      ];
+      
+      # Disable SQLx compile-time checks for Nix build
+      SQLX_OFFLINE = "true";
+      
+      # Skip tests for individual packages (run them in workspace)
+      doCheck = false;
+      
+      meta = with lib; {
+        description = "${pname} component for DOTS Family Mode";
+        license = licenses.agpl3Plus;
+        maintainers = [ ];
+      };
+    };
+
+  # Build the packages we need
   dotsFamilyPackages = {
-    daemon = pkgs.dots-family-daemon;
-    monitor = pkgs.dots-family-monitor;
-    ctl = pkgs.dots-family-ctl;
-    filter = pkgs.dots-family-filter;
-    gui = pkgs.dots-family-gui;
+    daemon = buildDotsPackage { pname = "dots-family-daemon"; };
+    monitor = buildDotsPackage { pname = "dots-family-monitor"; };
+    ctl = buildDotsPackage { pname = "dots-family-ctl"; };
+    # Note: These would need additional dependencies
+    # filter = buildDotsPackage { pname = "dots-family-filter"; };
+    # gui = buildDotsPackage { pname = "dots-family-gui"; };
   };
   
 in {
@@ -22,6 +58,25 @@ in {
 
   options.services.dots-family = {
     enable = lib.mkEnableOption "DOTS Family Mode parental controls";
+
+    # Package options - users can override if needed
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = dotsFamilyPackages.daemon;
+      description = "The dots-family-daemon package to use";
+    };
+
+    monitorPackage = lib.mkOption {
+      type = lib.types.package;
+      default = dotsFamilyPackages.monitor;
+      description = "The dots-family-monitor package to use";
+    };
+
+    ctlPackage = lib.mkOption {
+      type = lib.types.package;
+      default = dotsFamilyPackages.ctl;
+      description = "The dots-family-ctl package to use";
+    };
 
     databasePath = lib.mkOption {
       type = lib.types.str;
@@ -146,14 +201,11 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    # System packages
-    environment.systemPackages = with dotsFamilyPackages; [
-      daemon
-      monitor
-      ctl
-      filter
-    ] ++ lib.optionals (builtins.hasAttr "gui" dotsFamilyPackages) [
-      gui
+    # System packages - use the configured packages
+    environment.systemPackages = [
+      cfg.package      # daemon
+      cfg.ctlPackage   # CLI tool
+      # Monitor package is installed per-user in user-services.nix
     ];
 
     # State directory for database and logs
@@ -162,9 +214,13 @@ in {
       "d /var/log/dots-family 0755 root root"
     ];
 
-    # Pass configuration to submodules
+    # Pass configuration to submodules using the configured packages
     services.dots-family.internal = {
-      packages = dotsFamilyPackages;
+      packages = {
+        daemon = cfg.package;
+        monitor = cfg.monitorPackage;
+        ctl = cfg.ctlPackage;
+      };
       config = cfg;
     };
     

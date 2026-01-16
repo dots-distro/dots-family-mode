@@ -205,6 +205,57 @@ impl SimpleComponent for Dashboard {
                                 add_css_class: "title-2",
                             }
                         }
+                    },
+
+                    gtk4::Frame {
+                        add_css_class: "card",
+                        #[wrap(Some)]
+                        set_child = &gtk4::Box {
+                            set_orientation: gtk4::Orientation::Vertical,
+                            set_spacing: 8,
+                            set_margin_all: 16,
+
+                            gtk4::Box {
+                                set_orientation: gtk4::Orientation::Horizontal,
+                                set_spacing: 8,
+
+                                gtk4::Image {
+                                    set_icon_name: Some("computer-symbolic"),
+                                    set_pixel_size: 24,
+                                },
+
+                                gtk4::Label {
+                                    set_label: "Current Activity",
+                                    add_css_class: "heading",
+                                    set_hexpand: true,
+                                    set_halign: gtk4::Align::Start,
+                                }
+                            },
+
+                            gtk4::Box {
+                                set_orientation: gtk4::Orientation::Vertical,
+                                set_spacing: 4,
+
+                                gtk4::Label {
+                                    #[watch]
+                                    set_label: &model.current_activity,
+                                    add_css_class: "title-3",
+                                    set_halign: gtk4::Align::Center,
+                                },
+
+                                gtk4::Label {
+                                    set_label: "Terminal filter active",
+                                    add_css_class: "caption",
+                                    set_halign: gtk4::Align::Center,
+                                },
+
+                                gtk4::ProgressBar {
+                                    set_fraction: if model.connection_status { 1.0 } else { 0.0 },
+                                    set_pulse_step: 0.1,
+                                    add_css_class: "osd",
+                                }
+                            }
+                        }
                     }
                 }
             }

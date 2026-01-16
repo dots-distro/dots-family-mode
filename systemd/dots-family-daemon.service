@@ -1,32 +1,86 @@
 [Unit]
 Description=DOTS Family Mode Daemon
 Documentation=https://github.com/dots-distro/dots-family-mode
-After=network.target dbus.service
+After=network.target dbus.service systemd-resolved.service
 Wants=dbus.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=dbus
 BusName=org.dots.FamilyDaemon
 ExecStart=/usr/bin/dots-family-daemon
+ExecReload=/bin/kill -SIGHUP $MAINPID
 Restart=on-failure
 RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=15
 
+# Environment configuration
 Environment="RUST_LOG=info"
+Environment="DATABASE_URL=/var/lib/dots-family/family.db"
+EnvironmentFile=-/etc/dots-family/daemon.conf
 
+# Run as root for eBPF capabilities
 User=root
 Group=root
 
+# System directories
 StateDirectory=dots-family
+StateDirectoryMode=0750
 ConfigurationDirectory=dots-family
+ConfigurationDirectoryMode=0755
 CacheDirectory=dots-family
+CacheDirectoryMode=0750
+LogsDirectory=dots-family
+LogsDirectoryMode=0750
 
+# Security hardening
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_BPF
+AmbientCapabilities=CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_BPF
+SecureBits=keep-caps
+
+# Filesystem isolation
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-NoNewPrivileges=yes
+PrivateDevices=no
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
 
+# Network restrictions
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+
+# System call restrictions  
+SystemCallFilter=@system-service ~@debug ~@mount ~@reboot ~@swap
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Memory protection
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+# Filesystem access
 ReadWritePaths=/var/lib/dots-family
 ReadWritePaths=/etc/dots-family
+ReadWritePaths=/var/log/dots-family
+ReadWritePaths=/proc
+ReadWritePaths=/sys/kernel/debug
+ReadOnlyPaths=/run/systemd
+BindReadOnlyPaths=/dev/kmsg
+
+# Process limits
+TasksMax=512
+LimitNOFILE=8192
+LimitNPROC=256
 
 [Install]
 WantedBy=multi-user.target

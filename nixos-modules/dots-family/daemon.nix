@@ -45,8 +45,19 @@ in {
         PrivateNetwork = false;  # Need network for filter list updates
         RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
         
-        # Capability restrictions
-        CapabilityBoundingSet = [ "CAP_NET_ADMIN" ];  # For network filtering
+        # Capability restrictions for eBPF monitoring
+        CapabilityBoundingSet = [ 
+          "CAP_SYS_ADMIN"        # eBPF operations and tracepoint attachment
+          "CAP_NET_ADMIN"        # Network monitoring and filtering
+          "CAP_SYS_PTRACE"       # Process monitoring
+          "CAP_DAC_READ_SEARCH"  # Filesystem access for monitoring
+        ];
+        AmbientCapabilities = [
+          "CAP_SYS_ADMIN"        # eBPF operations
+          "CAP_NET_ADMIN"        # Network monitoring  
+          "CAP_SYS_PTRACE"       # Process monitoring
+          "CAP_DAC_READ_SEARCH"  # Filesystem access
+        ];
         NoNewPrivileges = true;
         
         # Memory protection
@@ -93,7 +104,7 @@ in {
           [web_filtering]
           enable = true
           proxy_port = 8888
-          block_page_template = "${packages.filter}/share/dots-family/blocked.html"
+          block_page_template = "/etc/dots-family/blocked.html"
           ''}
           
           ${lib.optionalString cfg.enableTerminalFiltering ''

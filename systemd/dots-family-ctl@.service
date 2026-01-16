@@ -1,0 +1,51 @@
+[Unit]
+Description=DOTS Family Mode Control Interface
+Documentation=https://github.com/dots-distro/dots-family-mode
+After=dots-family-daemon.service
+Wants=dots-family-daemon.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/dots-family-ctl status
+RemainAfterExit=no
+
+# Environment configuration
+Environment="RUST_LOG=warn"
+
+# User context - run as invoking user
+User=%i
+Group=%i
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Network restrictions - only DBus communication
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_UNIX
+
+# System call restrictions
+SystemCallFilter=@system-service ~@debug ~@mount ~@reboot ~@swap
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Memory protection
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+# Resource limits
+TasksMax=64
+LimitNOFILE=256
+LimitNPROC=32
+
+[Install]
+WantedBy=default.target

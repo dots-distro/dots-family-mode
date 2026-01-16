@@ -1,16 +1,36 @@
 # DOTS Family Mode NixOS Modules
 
-This directory contains NixOS modules for integrating DOTS Family Mode into NixOS systems. These modules provide declarative configuration for all parental control components.
+This directory contains NixOS modules for integrating DOTS Family Mode into NixOS systems. These modules provide declarative configuration for all parental control components with **enhanced eBPF monitoring** and **secure DBus policies**.
 
 ## Overview
 
-The DOTS Family Mode NixOS integration consists of four main modules:
+The DOTS Family Mode NixOS integration consists of five main modules:
 
 - **default.nix** - Main module with configuration options
-- **daemon.nix** - System daemon service configuration
-- **dbus.nix** - DBus policies and service files
-- **security.nix** - Polkit rules and security hardening
+- **daemon.nix** - System daemon service with eBPF capabilities
+- **dbus.nix** - Enhanced DBus policies with role-based security
+- **security.nix** - Polkit rules, eBPF configuration, and security hardening
 - **user-services.nix** - Per-user services and desktop integration
+
+## New Features (Phase 8 Integration)
+
+### eBPF Monitoring Integration
+- **Kernel-level monitoring**: Process, network, and filesystem activity tracking
+- **Enhanced performance**: JIT compilation and optimized collection
+- **Security hardening**: Proper capability management for eBPF operations
+- **Fallback support**: Graceful degradation when eBPF is unavailable
+
+### Advanced DBus Security
+- **Role-based access**: Separate permissions for parents, children, and monitors
+- **Method-level control**: Granular permissions for each daemon function
+- **Signal management**: Secure policy update and notification delivery
+- **Monitor isolation**: Per-user monitoring with secure reporting
+
+### Production-Ready Security
+- **Capability isolation**: Minimal privileges for each component
+- **Resource limits**: Memory and process restrictions for child users
+- **AppArmor profiles**: Optional additional security layer
+- **Tamper resistance**: Protected configuration and database access
 
 ## Quick Start
 
@@ -205,6 +225,34 @@ family check firefox            # Check if app is allowed
 
 ## Development and Testing
 
+## Testing and Validation
+
+### Quick Integration Test
+```bash
+# Build and run test VM with all features enabled
+nix build -f integration-test.nix system
+./result/bin/run-*-vm
+
+# In the VM, run the integration test
+sudo /etc/dots-family/integration-test.sh
+```
+
+### eBPF Capability Testing
+```bash
+# Test eBPF support before deployment
+sudo /path/to/ebpf-config/configure-ebpf-capabilities.sh
+
+# Validate system compatibility
+/path/to/ebpf-config/test-ebpf-capabilities.sh
+```
+
+### DBus Security Validation
+```bash
+# Test DBus policies as different users
+sudo -u testparent dbus-send --system --print-reply --dest=org.dots.FamilyDaemon /org/dots/FamilyDaemon org.dots.FamilyDaemon.list_profiles
+sudo -u testchild dbus-send --system --print-reply --dest=org.dots.FamilyDaemon /org/dots/FamilyDaemon org.dots.FamilyDaemon.create_profile string:"test" string:"8-12"  # Should fail
+```
+
 ### VM Testing
 ```bash
 nix build .#nixosConfigurations.dots-family-test-vm.config.system.build.vm
@@ -216,5 +264,43 @@ The modules are organized for maintainability:
 - Each component has its own module file
 - Shared configuration passed via `internal` options
 - Security policies isolated in dedicated module
+- eBPF configuration integrated with kernel parameters
+- DBus policies generated from role-based templates
 
-See `example-configuration.nix` for a complete working example.
+## Production Deployment
+
+### Prerequisites
+- NixOS 23.05+ (for systemd eBPF support)
+- Kernel 4.4+ with eBPF enabled
+- 2GB+ RAM for eBPF monitoring
+- DBus system and session buses
+
+### Deployment Steps
+1. **Add module to flake inputs** (see Quick Start above)
+2. **Configure users and profiles** in NixOS configuration
+3. **Deploy and activate** configuration
+4. **Test eBPF functionality** with provided scripts
+5. **Validate security policies** with test commands
+
+### Production Monitoring
+```bash
+# Monitor daemon health
+systemctl status dots-family-daemon.service
+journalctl -u dots-family-daemon.service -f
+
+# Check eBPF programs
+sudo bpftool prog list | grep family
+sudo bpftool map list | grep family
+
+# Validate DBus security
+dbus-monitor --system "interface=org.dots.FamilyDaemon"
+```
+
+## Integration Files
+
+- **integration-test.nix** - Complete VM test configuration with all features
+- **../dbus-policies/** - Enhanced DBus security policies (referenced by module)
+- **../ebpf-config/** - eBPF kernel configuration and validation scripts
+- **../systemd/** - Enhanced systemd services (referenced by module)
+
+See `integration-test.nix` for a complete working example with test users and validation scripts.

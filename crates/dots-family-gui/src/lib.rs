@@ -1,6 +1,3 @@
-use gtk4::prelude::*;
-use relm4::prelude::*;
-
 pub mod app;
 pub mod components;
 pub mod daemon_client;

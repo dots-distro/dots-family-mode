@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "crates/dots-family-common",
-    "crates/dots-family-proto",
+    "crates/dots-family-proto", 
     "crates/dots-family-db",
     "crates/dots-family-daemon",
     "crates/dots-family-monitor",
@@ -11,6 +11,7 @@ members = [
     "crates/dots-family-gui",
     "crates/dots-terminal-filter",
     "crates/dots-wm-bridge",
+    "dots-family-ebpf",
 ]
 
 [workspace.package]
@@ -41,6 +42,12 @@ rand = "0.8"
 zeroize = { version = "1.8", features = ["derive"] }
 secrecy = "0.10"
 sha2 = "0.10"
+aya = { version = "0.11", features = ["async_tokio"] }
+aya-log = "0.1"
+bytes = "1.0"
+aya-ebpf = "0.1"
+aya-log-ebpf = "0.1"
+network-types = "0.0.5"
 
 dots-family-common = { path = "crates/dots-family-common" }
 dots-family-proto = { path = "crates/dots-family-proto" }

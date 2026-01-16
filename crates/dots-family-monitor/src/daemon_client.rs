@@ -25,7 +25,7 @@ impl DaemonClient {
     }
 
     async fn connect() -> Result<FamilyDaemonProxy<'static>> {
-        let conn = Connection::system().await?;
+        let conn = Connection::session().await?;
         let proxy = FamilyDaemonProxy::new(&conn).await?;
 
         proxy.send_heartbeat("monitor").await?;

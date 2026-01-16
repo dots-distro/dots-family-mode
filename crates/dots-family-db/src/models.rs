@@ -52,6 +52,51 @@ pub struct DbEvent {
     pub metadata: Option<String>,
 }
 
+/// Terminal command filtering policy
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbTerminalPolicy {
+    pub id: String,
+    pub profile_id: String,
+    pub command_pattern: String,
+    pub action: String,     // "block", "warn", "allow"
+    pub risk_level: String, // "low", "medium", "high", "critical"
+    pub educational_message: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub active: bool,
+}
+
+/// Terminal command execution log
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbTerminalCommand {
+    pub id: i64,
+    pub session_id: String,
+    pub profile_id: String,
+    pub timestamp: DateTime<Utc>,
+    pub command: String,
+    pub shell: String, // "bash", "zsh", "fish"
+    pub working_directory: String,
+    pub risk_level: String,
+    pub action_taken: String, // "allowed", "blocked", "warned"
+    pub exit_code: Option<i32>,
+    pub duration_ms: Option<i64>,
+    pub script_path: Option<String>, // If command was a script
+}
+
+/// Script analysis cache and results
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbScriptAnalysis {
+    pub id: String,
+    pub script_path: String,
+    pub content_hash: String, // MD5 hash of script content
+    pub risk_level: String,
+    pub dangerous_patterns: String, // JSON array of detected patterns
+    pub analysis_result: String,    // JSON serialized analysis result
+    pub analyzed_at: DateTime<Utc>,
+    pub file_size: i64,
+    pub line_count: i32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewAuditLog {
     pub actor: String,

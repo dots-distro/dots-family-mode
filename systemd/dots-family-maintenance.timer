@@ -1,0 +1,13 @@
+[Unit]
+Description=DOTS Family Mode Maintenance Timer
+Documentation=https://github.com/dots-distro/dots-family-mode
+Requires=dots-family-maintenance.service
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=900
+Persistent=true
+AccuracySec=1h
+
+[Install]
+WantedBy=timers.target

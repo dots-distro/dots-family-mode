@@ -3,16 +3,18 @@ use tracing::warn;
 use zbus::interface;
 
 use crate::config::DaemonConfig;
+use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
 
 pub struct FamilyDaemonService {
     profile_manager: ProfileManager,
+    monitoring_service: MonitoringService,
 }
 
 impl FamilyDaemonService {
-    pub async fn new(config: &DaemonConfig) -> Result<Self> {
+    pub async fn new(config: &DaemonConfig, monitoring_service: MonitoringService) -> Result<Self> {
         let profile_manager = ProfileManager::new(config).await?;
-        Ok(Self { profile_manager })
+        Ok(Self { profile_manager, monitoring_service })
     }
 }
 
@@ -264,6 +266,17 @@ impl FamilyDaemonService {
             Err(e) => {
                 warn!("Failed to deny request: {}", e);
                 format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn get_monitoring_snapshot(&self) -> String {
+        match self.monitoring_service.get_monitoring_snapshot().await {
+            Ok(data) => serde_json::to_string(&data)
+                .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
+            Err(e) => {
+                warn!("Failed to get monitoring snapshot: {}", e);
+                format!(r#"{{"error":"{}"}}"#, e)
             }
         }
     }

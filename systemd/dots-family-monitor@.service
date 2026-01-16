@@ -1,29 +1,84 @@
 [Unit]
-Description=DOTS Family Mode Activity Monitor
+Description=DOTS Family Mode Activity Monitor for %i
 Documentation=https://github.com/dots-distro/dots-family-mode
 After=dots-family-daemon.service graphical-session.target
 Wants=dots-family-daemon.service
 PartOf=dots-family.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/dots-family-monitor
+ExecReload=/bin/kill -SIGUSR1 $MAINPID
 Restart=always
 RestartSec=10
+TimeoutStartSec=15
+TimeoutStopSec=10
 
+# Environment configuration
 Environment="RUST_LOG=info"
-Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_RUNTIME_DIR=/run/user/%i"
+EnvironmentFile=-/etc/dots-family/monitor.conf
 
+# User session context
 User=%i
 Group=%i
 
+# System directories
+ConfigurationDirectory=dots-family
+CacheDirectory=dots-family/%i
+CacheDirectoryMode=0750
+
+# Security hardening
+CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+NoNewPrivileges=yes
+SecureBits=noroot-locked
+
+# Filesystem isolation
 ProtectSystem=strict
 ProtectHome=read-only
 PrivateTmp=yes
-NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
 
-# Access to Wayland compositor
-BindReadOnlyPaths=/run/user/%i/wayland-0
+# Network restrictions - Monitor needs DBus communication only
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
 
+# System call restrictions
+SystemCallFilter=@system-service @file-system ~@debug ~@mount ~@reboot ~@swap
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Memory protection
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+# Wayland and X11 access for window monitoring
+BindReadOnlyPaths=/run/user/%i/wayland-0:/run/user/%i/wayland-0
+BindReadOnlyPaths=/tmp/.X11-unix:/tmp/.X11-unix
+
+# Proc access for process monitoring fallback
+ReadOnlyPaths=/proc
+ReadOnlyPaths=/sys/class/net
+ReadOnlyPaths=/run/systemd
+ReadWritePaths=/var/cache/dots-family/%i
+
+# Process limits
+TasksMax=256
+LimitNOFILE=1024
+LimitNPROC=64
+
+# Monitoring configuration
 [Install]
 WantedBy=default.target
+Also=dots-family-daemon.service

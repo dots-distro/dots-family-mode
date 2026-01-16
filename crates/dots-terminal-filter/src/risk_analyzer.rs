@@ -42,6 +42,7 @@ pub enum RecommendedAction {
     RequireApproval,
 }
 
+#[derive(Debug, Clone)]
 pub struct RiskAnalyzer {
     config: RiskAnalysisConfig,
     high_risk_patterns: Vec<Regex>,
@@ -71,6 +72,14 @@ impl RiskAnalyzer {
     }
 
     fn initialize_command_risks(&mut self) {
+        let safe_commands = [
+            "ls", "cat", "echo", "pwd", "date", "uptime", "hostname", "uname", "whoami", "id",
+            "which", "whereis", "type", "head", "tail", "grep", "sort", "wc", "less", "more",
+        ];
+        for cmd in &safe_commands {
+            self.command_risk_map.insert(cmd.to_string(), RiskLevel::Safe);
+        }
+
         // Critical risk commands
         let critical_commands = [
             "rm -rf /", "dd", "mkfs", "fdisk", "parted", "cfdisk", "format", "shred", "wipefs",
@@ -84,6 +93,8 @@ impl RiskAnalyzer {
         let high_risk_commands = [
             "sudo",
             "su",
+            "doas",
+            "pkexec",
             "passwd",
             "userdel",
             "usermod",
@@ -107,6 +118,11 @@ impl RiskAnalyzer {
             "reboot",
             "shutdown",
             "halt",
+            "nmap",
+            "ncat",
+            "nc",
+            "netcat",
+            "telnet",
         ];
         for cmd in &high_risk_commands {
             self.command_risk_map.insert(cmd.to_string(), RiskLevel::High);
@@ -115,7 +131,6 @@ impl RiskAnalyzer {
         // Medium risk commands
         let medium_risk_commands = [
             "chmod",
-            "git clone",
             "curl",
             "wget",
             "ssh",
@@ -132,16 +147,47 @@ impl RiskAnalyzer {
             "apt install",
             "yum install",
             "dnf install",
+            "git push",
+            "git remote",
+            "git config",
         ];
         for cmd in &medium_risk_commands {
             self.command_risk_map.insert(cmd.to_string(), RiskLevel::Medium);
         }
 
+        let medium_risk_multipart = ["python -m http.server", "python3 -m http.server"];
+        for cmd in &medium_risk_multipart {
+            self.command_risk_map.insert(cmd.to_string(), RiskLevel::Medium);
+        }
+
         // Low risk commands
         let low_risk_commands = [
-            "ps", "top", "htop", "free", "df", "du", "lscpu", "lsblk", "netstat", "ss", "lsof",
-            "who", "w", "last", "history", "env", "printenv", "set", "alias", "type", "which",
-            "whereis",
+            "ps",
+            "top",
+            "htop",
+            "free",
+            "df",
+            "du",
+            "lscpu",
+            "lsblk",
+            "netstat",
+            "ss",
+            "lsof",
+            "who",
+            "w",
+            "last",
+            "history",
+            "env",
+            "printenv",
+            "set",
+            "alias",
+            "find",
+            "awk",
+            "sed",
+            "git clone",
+            "python",
+            "python3",
+            "node",
         ];
         for cmd in &low_risk_commands {
             self.command_risk_map.insert(cmd.to_string(), RiskLevel::Low);
@@ -188,18 +234,48 @@ impl RiskAnalyzer {
 
             // Check direct command mapping
             if let Some(&cmd_risk) = self.command_risk_map.get(main_command) {
-                risk_level = std::cmp::max(risk_level, cmd_risk);
-                reasons.push(format!(
-                    "Command '{}' has {} risk",
-                    main_command,
-                    match cmd_risk {
-                        RiskLevel::Safe => "safe",
-                        RiskLevel::Low => "low",
-                        RiskLevel::Medium => "medium",
-                        RiskLevel::High => "high",
-                        RiskLevel::Critical => "critical",
+                // Special case: sudo with safe operations should be Medium, not High
+                if main_command == "sudo" && parts.len() > 1 {
+                    match parts[1] {
+                        "apt" | "dnf" | "yum" | "zypper"
+                            if parts.len() > 2
+                                && (parts[2] == "update"
+                                    || parts[2] == "upgrade"
+                                    || parts[2] == "search"
+                                    || parts[2] == "show") =>
+                        {
+                            risk_level = std::cmp::max(risk_level, RiskLevel::Medium);
+                            reasons.push(format!("Safe sudo package manager command: {}", command));
+                        }
+                        _ => {
+                            risk_level = std::cmp::max(risk_level, cmd_risk);
+                            reasons.push(format!(
+                                "Command '{}' has {} risk",
+                                main_command,
+                                match cmd_risk {
+                                    RiskLevel::Safe => "safe",
+                                    RiskLevel::Low => "low",
+                                    RiskLevel::Medium => "medium",
+                                    RiskLevel::High => "high",
+                                    RiskLevel::Critical => "critical",
+                                }
+                            ));
+                        }
                     }
-                ));
+                } else {
+                    risk_level = std::cmp::max(risk_level, cmd_risk);
+                    reasons.push(format!(
+                        "Command '{}' has {} risk",
+                        main_command,
+                        match cmd_risk {
+                            RiskLevel::Safe => "safe",
+                            RiskLevel::Low => "low",
+                            RiskLevel::Medium => "medium",
+                            RiskLevel::High => "high",
+                            RiskLevel::Critical => "critical",
+                        }
+                    ));
+                }
             }
 
             // Check command + arguments combinations
@@ -219,6 +295,25 @@ impl RiskAnalyzer {
                         }
                     ));
                 }
+
+                // Check for more complex command combinations (3+ parts)
+                if parts.len() >= 3 {
+                    let three_part_cmd = format!("{} {} {}", parts[0], parts[1], parts[2]);
+                    if let Some(&cmd_risk) = self.command_risk_map.get(&three_part_cmd) {
+                        risk_level = std::cmp::max(risk_level, cmd_risk);
+                        reasons.push(format!(
+                            "Command combination '{}' has {} risk",
+                            three_part_cmd,
+                            match cmd_risk {
+                                RiskLevel::Safe => "safe",
+                                RiskLevel::Low => "low",
+                                RiskLevel::Medium => "medium",
+                                RiskLevel::High => "high",
+                                RiskLevel::Critical => "critical",
+                            }
+                        ));
+                    }
+                }
             }
         }
 
@@ -237,6 +332,34 @@ impl RiskAnalyzer {
         risk_level: &mut RiskLevel,
         reasons: &mut Vec<String>,
     ) {
+        // Check for dangerous command chains
+        if command.contains("&&") && command.contains("rm -rf") {
+            *risk_level = std::cmp::max(*risk_level, RiskLevel::High);
+            reasons.push("Dangerous chained commands with rm -rf".to_string());
+        }
+
+        // Check for dangerous find -exec patterns
+        if command.contains("find") && command.contains("-exec") {
+            if command.contains("rm")
+                || command.contains("mv")
+                || command.contains("chmod")
+                || command.contains("chown")
+            {
+                *risk_level = std::cmp::max(*risk_level, RiskLevel::High);
+                reasons.push("Dangerous find -exec pattern with destructive command".to_string());
+            }
+        }
+
+        // Check for download and execute patterns
+        if (command.contains("wget") || command.contains("curl"))
+            && (command.contains("chmod +x")
+                || command.contains("chmod 755")
+                || command.contains("chmod 777"))
+        {
+            *risk_level = std::cmp::max(*risk_level, RiskLevel::High);
+            reasons.push("Downloads and makes files executable".to_string());
+        }
+
         // Check for pipe to shell patterns
         if command.contains("| sh") || command.contains("| bash") || command.contains("| zsh") {
             *risk_level = std::cmp::max(*risk_level, RiskLevel::High);
@@ -280,8 +403,15 @@ impl RiskAnalyzer {
 
         // Check for command substitution
         if command.contains("$(") || command.contains("`") {
-            *risk_level = std::cmp::max(*risk_level, RiskLevel::Medium);
-            reasons.push("Contains command substitution".to_string());
+            // Allow safe command substitution patterns
+            let safe_patterns = ["ls $(pwd)", "echo $(date)", "cat $(which", "ls $(dirname"];
+            let is_safe_substitution =
+                safe_patterns.iter().any(|pattern| command.starts_with(pattern));
+
+            if !is_safe_substitution {
+                *risk_level = std::cmp::max(*risk_level, RiskLevel::Medium);
+                reasons.push("Contains command substitution".to_string());
+            }
         }
 
         // Check for redirection to devices

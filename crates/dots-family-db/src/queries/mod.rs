@@ -13,6 +13,7 @@ pub mod policy_cache;
 pub mod policy_versions;
 pub mod profiles;
 pub mod sessions;
+// pub mod terminal;  // Disabled due to missing table migrations
 pub mod terminal_activity;
 pub mod weekly_summaries;
 
@@ -26,5 +27,6 @@ pub use network_activity::NetworkActivityQueries;
 pub use policy_versions::PolicyVersionQueries;
 pub use profiles::ProfileQueries;
 pub use sessions::SessionQueries;
+// pub use terminal::*;  // Disabled due to missing table migrations
 pub use terminal_activity::TerminalActivityQueries;
 pub use weekly_summaries::WeeklySummaryQueries;

@@ -1,0 +1,43 @@
+{
+  "containers": {
+    "dots-testing": {
+      "autoStart": false,
+      "enableTun": true,
+      "config": {
+        "system.stateVersion": "23.11",
+        "boot": {
+          "kernelPackages": "pkgs.linuxPackages_latest",
+          "kernelModules": ["bpf"]
+        },
+        "services.dbus.enable": true,
+        "environment.systemPackages": [
+          "rustc",
+          "cargo", 
+          "git",
+          "sqlite",
+          "sqlcipher",
+          "pkg-config",
+          "openssl",
+          "libbpf",
+          "elfutils",
+          "clang",
+          "llvm"
+        ],
+        "users.users.testuser": {
+          "isNormalUser": true,
+          "extraGroups": ["wheel"],
+          "password": "test123"
+        },
+        "networking": {
+          "firewall.enable": false,
+          "dhcpcd.enable": false,
+          "defaultGateway": "192.168.100.1",
+          "interfaces.eth0.ipv4.addresses": [{
+            "address": "192.168.100.10", 
+            "prefixLength": 24
+          }]
+        }
+      }
+    }
+  }
+}

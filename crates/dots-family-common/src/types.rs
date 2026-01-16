@@ -3,25 +3,42 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+/// Age group classifications for children with pre-configured defaults.
+/// Each age group has appropriate screen time limits and restrictions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AgeGroup {
+    /// Ages 5-7: Early elementary with strict restrictions
     #[serde(rename = "5-7")]
     EarlyElementary,
+    /// Ages 8-12: Late elementary with moderate restrictions
     #[serde(rename = "8-12")]
     LateElementary,
+    /// Ages 13-17: High school with relaxed restrictions
     #[serde(rename = "13-17")]
     HighSchool,
 }
 
+/// Core user profile containing all child settings and configurations.
+///
+/// This is the primary type used throughout the system to manage
+/// individual child accounts and their associated policies.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
+    /// Unique identifier for the profile
     pub id: Uuid,
+    /// Display name for the child
     pub name: String,
+    /// Age-based classification determining default restrictions
     pub age_group: AgeGroup,
+    /// Optional birthday for more precise age-based filtering
     pub birthday: Option<DateTime<Utc>>,
+    /// When this profile was created
     pub created_at: DateTime<Utc>,
+    /// Last modification time
     pub updated_at: DateTime<Utc>,
+    /// Complete configuration for this profile
     pub config: ProfileConfig,
+    /// Whether this profile is currently active
     pub active: bool,
 }
 
@@ -40,23 +57,12 @@ impl Default for Profile {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ProfileConfig {
     pub screen_time: ScreenTimeConfig,
     pub applications: ApplicationConfig,
     pub web_filtering: WebFilteringConfig,
     pub terminal_filtering: TerminalFilteringConfig,
-}
-
-impl Default for ProfileConfig {
-    fn default() -> Self {
-        Self {
-            screen_time: ScreenTimeConfig::default(),
-            applications: ApplicationConfig::default(),
-            web_filtering: WebFilteringConfig::default(),
-            terminal_filtering: TerminalFilteringConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -7,18 +7,22 @@ use zbus::ConnectionBuilder;
 use crate::config::DaemonConfig;
 use crate::dbus_impl::FamilyDaemonService;
 use crate::edge_case_handler::EdgeCaseHandler;
+use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
 
 pub async fn run() -> Result<()> {
     info!("Initializing daemon");
 
     let config = DaemonConfig::load()?;
+    let monitoring_service = MonitoringService::new();
 
-    let service = FamilyDaemonService::new(&config).await?;
+    let service = FamilyDaemonService::new(&config, monitoring_service.clone()).await?;
     let profile_manager = ProfileManager::new(&config).await?;
 
     let mut edge_case_handler = EdgeCaseHandler::new();
     edge_case_handler.start_monitoring().await?;
+
+    monitoring_service.start().await?;
 
     let conn = ConnectionBuilder::system()?
         .name("org.dots.FamilyDaemon")?
@@ -27,6 +31,7 @@ pub async fn run() -> Result<()> {
         .await?;
 
     info!("DBus service registered at org.dots.FamilyDaemon");
+    info!("eBPF monitoring service started");
 
     let conn_clone = conn.clone();
     tokio::spawn(async move {
@@ -69,6 +74,9 @@ pub async fn run() -> Result<()> {
         signal::ctrl_c().await?;
         info!("Received Ctrl+C, shutting down gracefully...");
     }
+
+    monitoring_service.stop().await?;
+    info!("Monitoring service stopped");
 
     info!("Daemon shutdown complete");
 
