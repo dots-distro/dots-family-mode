@@ -149,8 +149,8 @@
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs ++ runtimeDependencies;
             
-            # Disable SQLx compile-time checks for Nix build
-            SQLX_OFFLINE = "true";
+            # Allow SQLx to work without cached queries for development
+            SQLX_OFFLINE = "false";
             
             # eBPF compilation environment for user-space
             KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
