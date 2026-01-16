@@ -42,8 +42,8 @@ rand = "0.8"
 zeroize = { version = "1.8", features = ["derive"] }
 secrecy = "0.10"
 sha2 = "0.10"
-aya = { version = "0.11", features = ["async_tokio"] }
-aya-log = "0.1"
+aya = { version = "0.12", features = ["async_tokio"] }
+aya-log = "0.2"
 bytes = "1.0"
 aya-ebpf = "0.1"
 aya-log-ebpf = "0.1"
@@ -52,20 +52,3 @@ network-types = "0.0.5"
 dots-family-common = { path = "crates/dots-family-common" }
 dots-family-proto = { path = "crates/dots-family-proto" }
 dots-family-db = { path = "crates/dots-family-db" }
-
-[package]
-name = "dots-family-mode"
-version = "0.1.0"
-edition = "2021"
-license = "AGPL-3.0-or-later"
-authors = ["dots team"]
-repository = "https://github.com/dots-distro/dots-family-mode"
-
-[dependencies]
-dots-family-common = { path = "crates/dots-family-common" }
-dots-family-proto = { path = "crates/dots-family-proto" }
-dots-family-db = { path = "crates/dots-family-db" }
-tokio = { workspace = true }
-zbus = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
