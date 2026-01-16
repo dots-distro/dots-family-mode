@@ -3,6 +3,11 @@ use crate::error::{DbError, Result};
 use chrono::{NaiveDate, Utc};
 use sqlx::Row;
 
+#[cfg(test)]
+use crate::models::NewProfile;
+#[cfg(test)]
+use crate::queries::profiles::ProfileQueries;
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DbWeeklySummary {
     pub id: i64,
@@ -326,11 +331,15 @@ mod tests {
     async fn test_create_weekly_summary() {
         let (db, _dir) = setup_test_db().await;
 
+        let profile =
+            NewProfile::new("TestChild".to_string(), "8-12".to_string(), "{}".to_string());
+        let created_profile = ProfileQueries::create(&db, profile).await.unwrap();
+
         let week_start = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(); // Monday
         let week_end = NaiveDate::from_ymd_opt(2024, 1, 21).unwrap(); // Sunday
 
         let summary = NewWeeklySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             week_start,
             week_end,
             total_screen_time_seconds: 25200, // 7 hours
@@ -339,11 +348,11 @@ mod tests {
             violations_count: 3,
             top_apps: r#"[{"app_id":"firefox","duration":12600}]"#.to_string(),
             top_categories: r#"[{"category":"browser","duration":12600}]"#.to_string(),
-            ..NewWeeklySummary::new("test-profile".to_string(), week_start, week_end)
+            ..NewWeeklySummary::new(created_profile.id.clone(), week_start, week_end)
         };
 
         let created = WeeklySummaryQueries::create(&db, summary).await.unwrap();
-        assert_eq!(created.profile_id, "test-profile");
+        assert_eq!(created.profile_id, created_profile.id);
         assert_eq!(created.total_screen_time_seconds, 25200);
         assert_eq!(created.daily_average_seconds, 3600); // 25200 / 7 days
         assert_eq!(created.days_within_limit, 5);
@@ -353,16 +362,20 @@ mod tests {
     async fn test_change_percentage_calculation() {
         let (db, _dir) = setup_test_db().await;
 
+        let profile =
+            NewProfile::new("TestChild".to_string(), "8-12".to_string(), "{}".to_string());
+        let created_profile = ProfileQueries::create(&db, profile).await.unwrap();
+
         let week_start = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let week_end = NaiveDate::from_ymd_opt(2024, 1, 21).unwrap();
 
         let summary = NewWeeklySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             week_start,
             week_end,
             total_screen_time_seconds: 10800, // Current week: 3 hours
             previous_week_seconds: Some(7200), // Previous week: 2 hours
-            ..NewWeeklySummary::new("test-profile".to_string(), week_start, week_end)
+            ..NewWeeklySummary::new(created_profile.id.clone(), week_start, week_end)
         };
 
         let created = WeeklySummaryQueries::create(&db, summary).await.unwrap();
@@ -375,6 +388,10 @@ mod tests {
     async fn test_compliance_stats() {
         let (db, _dir) = setup_test_db().await;
 
+        let profile =
+            NewProfile::new("TestChild".to_string(), "8-12".to_string(), "{}".to_string());
+        let created_profile = ProfileQueries::create(&db, profile).await.unwrap();
+
         // Create two weekly summaries
         let week1_start = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let week1_end = NaiveDate::from_ymd_opt(2024, 1, 21).unwrap();
@@ -382,30 +399,30 @@ mod tests {
         let week2_end = NaiveDate::from_ymd_opt(2024, 1, 14).unwrap();
 
         let summary1 = NewWeeklySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             week_start: week1_start,
             week_end: week1_end,
             total_screen_time_seconds: 14400,
             days_within_limit: 5,
             days_exceeded_limit: 2,
-            ..NewWeeklySummary::new("test-profile".to_string(), week1_start, week1_end)
+            ..NewWeeklySummary::new(created_profile.id.clone(), week1_start, week1_end)
         };
 
         let summary2 = NewWeeklySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             week_start: week2_start,
             week_end: week2_end,
             total_screen_time_seconds: 10800,
             days_within_limit: 6,
             days_exceeded_limit: 1,
-            ..NewWeeklySummary::new("test-profile".to_string(), week2_start, week2_end)
+            ..NewWeeklySummary::new(created_profile.id.clone(), week2_start, week2_end)
         };
 
         WeeklySummaryQueries::create(&db, summary1).await.unwrap();
         WeeklySummaryQueries::create(&db, summary2).await.unwrap();
 
         let (compliant, exceeded, avg_time) =
-            WeeklySummaryQueries::get_compliance_stats(&db, "test-profile", 2).await.unwrap();
+            WeeklySummaryQueries::get_compliance_stats(&db, &created_profile.id, 2).await.unwrap();
 
         assert_eq!(compliant, 11); // 5 + 6
         assert_eq!(exceeded, 3); // 2 + 1

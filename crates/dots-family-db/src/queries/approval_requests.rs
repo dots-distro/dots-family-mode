@@ -1,11 +1,12 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json;
 use sqlx::Row;
 
 use crate::Database;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApprovalRequest {
     pub id: String,
     pub profile_id: String,

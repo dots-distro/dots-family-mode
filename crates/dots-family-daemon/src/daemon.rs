@@ -6,6 +6,7 @@ use zbus::ConnectionBuilder;
 
 use crate::config::DaemonConfig;
 use crate::dbus_impl::FamilyDaemonService;
+use crate::edge_case_handler::EdgeCaseHandler;
 use crate::profile_manager::ProfileManager;
 
 pub async fn run() -> Result<()> {
@@ -15,6 +16,9 @@ pub async fn run() -> Result<()> {
 
     let service = FamilyDaemonService::new(&config).await?;
     let profile_manager = ProfileManager::new(&config).await?;
+
+    let mut edge_case_handler = EdgeCaseHandler::new();
+    edge_case_handler.start_monitoring().await?;
 
     let conn = ConnectionBuilder::system()?
         .name("org.dots.FamilyDaemon")?

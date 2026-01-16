@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chrono::Utc;
 use dots_family_common::types::{Activity, ActivityType};
+use dots_wm_bridge::{WindowInfo, WindowManagerBridge};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
@@ -8,7 +9,6 @@ use uuid::Uuid;
 
 use crate::config::MonitorConfig;
 use crate::daemon_client::DaemonClient;
-use crate::wayland::{WaylandMonitor, WindowInfo};
 
 #[derive(Debug)]
 struct FocusedWindow {
@@ -80,8 +80,11 @@ pub async fn run() -> Result<()> {
     info!("Initializing monitor");
 
     let config = MonitorConfig::load()?;
-    let mut wayland_monitor = WaylandMonitor::new()?;
+    let wm_bridge = WindowManagerBridge::new()?;
     let mut tracker = ActivityTracker::new();
+
+    info!("Using window manager: {}", wm_bridge.get_adapter_name());
+    info!("Monitor capabilities: {:?}", wm_bridge.get_capabilities());
 
     let mut daemon_client = DaemonClient::new().await;
     let mut heartbeat_counter = 0;
@@ -90,7 +93,7 @@ pub async fn run() -> Result<()> {
     info!("Monitor running, polling every {}ms", config.polling_interval_ms);
 
     loop {
-        let window = wayland_monitor.get_focused_window().await?;
+        let window = wm_bridge.get_focused_window().await?;
 
         if let Some(mut activity) = tracker.update_focus(window) {
             match daemon_client.get_active_profile_id().await {
@@ -142,7 +145,10 @@ mod tests {
         let window = WindowInfo {
             app_id: Some("firefox".to_string()),
             title: Some("GitHub".to_string()),
-            _pid: None,
+            pid: None,
+            workspace: None,
+            geometry: None,
+            state: Default::default(),
         };
 
         let activity = tracker.update_focus(Some(window));
@@ -157,16 +163,22 @@ mod tests {
         let window1 = WindowInfo {
             app_id: Some("firefox".to_string()),
             title: Some("GitHub".to_string()),
-            _pid: None,
+            pid: None,
+            workspace: None,
+            geometry: None,
+            state: Default::default(),
         };
         tracker.update_focus(Some(window1));
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(std::time::Duration::from_secs(1));
 
         let window2 = WindowInfo {
             app_id: Some("code".to_string()),
             title: Some("main.rs".to_string()),
-            _pid: None,
+            pid: None,
+            workspace: None,
+            geometry: None,
+            state: Default::default(),
         };
 
         let activity = tracker.update_focus(Some(window2));
@@ -185,14 +197,20 @@ mod tests {
         let window1 = WindowInfo {
             app_id: Some("firefox".to_string()),
             title: Some("GitHub".to_string()),
-            _pid: None,
+            pid: None,
+            workspace: None,
+            geometry: None,
+            state: Default::default(),
         };
         tracker.update_focus(Some(window1.clone()));
 
         let window2 = WindowInfo {
             app_id: Some("firefox".to_string()),
             title: Some("GitHub".to_string()),
-            _pid: None,
+            pid: None,
+            workspace: None,
+            geometry: None,
+            state: Default::default(),
         };
 
         let activity = tracker.update_focus(Some(window2));
@@ -207,11 +225,14 @@ mod tests {
         let window = WindowInfo {
             app_id: Some("firefox".to_string()),
             title: Some("GitHub".to_string()),
-            _pid: None,
+            pid: None,
+            workspace: None,
+            geometry: None,
+            state: Default::default(),
         };
         tracker.update_focus(Some(window));
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(std::time::Duration::from_secs(1));
 
         let activity = tracker.update_focus(None);
 

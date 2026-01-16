@@ -10,6 +10,7 @@ description = "DOTS Family Mode component"
 [dependencies]
 dots-family-common.workspace = true
 dots-family-proto.workspace = true
+dots-wm-bridge = { path = "../dots-wm-bridge" }
 tokio.workspace = true
 anyhow.workspace = true
 tracing.workspace = true

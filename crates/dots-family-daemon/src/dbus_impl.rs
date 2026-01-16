@@ -115,6 +115,159 @@ impl FamilyDaemonService {
         }
     }
 
+    async fn request_parent_permission(
+        &self,
+        request_type: &str,
+        details: &str,
+        token: &str,
+    ) -> String {
+        match self.profile_manager.request_parent_permission(request_type, details, token).await {
+            Ok(response) => response,
+            Err(e) => {
+                warn!("Failed to process permission request: {}", e);
+                format!(r#"{{"error":"{}","status":"denied"}}"#, e)
+            }
+        }
+    }
+
+    async fn request_command_approval(
+        &self,
+        command: &str,
+        risk_level: &str,
+        reasons: &str,
+    ) -> String {
+        match self.profile_manager.request_command_approval(command, risk_level, reasons).await {
+            Ok(response) => response,
+            Err(e) => {
+                warn!("Failed to process command approval request: {}", e);
+                format!(r#"{{"error":"{}","status":"denied"}}"#, e)
+            }
+        }
+    }
+
+    // ============================================================================
+    // Exception Management Methods
+    // ============================================================================
+
+    async fn create_exception(
+        &self,
+        exception_type: &str,
+        reason: &str,
+        duration_json: &str,
+        token: &str,
+    ) -> String {
+        match self
+            .profile_manager
+            .create_exception(exception_type, reason, duration_json, token)
+            .await
+        {
+            Ok(exception_id) => {
+                format!(r#"{{"status":"success","exception_id":"{}"}}"#, exception_id)
+            }
+            Err(e) => {
+                warn!("Failed to create exception: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn list_active_exceptions(&self, profile_id: &str, token: &str) -> String {
+        match self.profile_manager.list_active_exceptions(profile_id, token).await {
+            Ok(exceptions) => {
+                serde_json::to_string(&exceptions).unwrap_or_else(|_| "[]".to_string())
+            }
+            Err(e) => {
+                warn!("Failed to list active exceptions: {}", e);
+                format!(r#"{{"error":"{}"}}"#, e)
+            }
+        }
+    }
+
+    async fn revoke_exception(&self, exception_id: &str, token: &str) -> String {
+        match self.profile_manager.revoke_exception(exception_id, token).await {
+            Ok(()) => r#"{"status":"success"}"#.to_string(),
+            Err(e) => {
+                warn!("Failed to revoke exception: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn check_exception_applies(&self, exception_type: &str, resource_id: &str) -> bool {
+        match self.profile_manager.check_exception_applies(exception_type, resource_id).await {
+            Ok(applies) => applies,
+            Err(e) => {
+                warn!("Failed to check exception: {}", e);
+                false
+            }
+        }
+    }
+
+    // ============================================================================
+    // Approval Request Methods
+    // ============================================================================
+
+    async fn submit_approval_request(
+        &self,
+        request_type: &str,
+        message: &str,
+        details_json: &str,
+    ) -> String {
+        match self
+            .profile_manager
+            .submit_approval_request(request_type, message, details_json)
+            .await
+        {
+            Ok(request_id) => {
+                format!(r#"{{"status":"success","request_id":"{}"}}"#, request_id)
+            }
+            Err(e) => {
+                warn!("Failed to submit approval request: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn list_pending_requests(&self, token: &str) -> String {
+        match self.profile_manager.list_pending_requests(token).await {
+            Ok(requests) => serde_json::to_string(&requests).unwrap_or_else(|_| "[]".to_string()),
+            Err(e) => {
+                warn!("Failed to list pending requests: {}", e);
+                format!(r#"{{"error":"{}"}}"#, e)
+            }
+        }
+    }
+
+    async fn approve_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> String {
+        match self.profile_manager.approve_request(request_id, response_message, token).await {
+            Ok(exception_id) => {
+                format!(
+                    r#"{{"status":"success","exception_id":"{}"}}"#,
+                    exception_id.unwrap_or_default()
+                )
+            }
+            Err(e) => {
+                warn!("Failed to approve request: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn deny_request(&self, request_id: &str, response_message: &str, token: &str) -> String {
+        match self.profile_manager.deny_request(request_id, response_message, token).await {
+            Ok(()) => r#"{"status":"success"}"#.to_string(),
+            Err(e) => {
+                warn!("Failed to deny request: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
     #[zbus(signal)]
     async fn policy_updated(
         signal_ctxt: &zbus::SignalContext<'_>,
@@ -125,5 +278,11 @@ impl FamilyDaemonService {
     async fn time_limit_warning(
         signal_ctxt: &zbus::SignalContext<'_>,
         minutes_remaining: u32,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn tamper_detected(
+        signal_ctxt: &zbus::SignalContext<'_>,
+        reason: &str,
     ) -> zbus::Result<()>;
 }

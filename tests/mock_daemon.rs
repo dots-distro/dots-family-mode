@@ -31,13 +31,36 @@ impl MockDaemon {
         state.remaining_time
     }
 
-    async fn report_activity(&self, activity_json: &str) {
+    async fn report_activity(&self, activity_json: &str) -> String {
         let _activity = activity_json;
+        "ok".to_string()
     }
 
     async fn authenticate_parent(&self, _password: &str) -> String {
         "mock_token".to_string()
     }
+
+    async fn validate_session(&self, _token: &str) -> bool {
+        true
+    }
+
+    async fn revoke_session(&self, _token: &str) -> bool {
+        true
+    }
+
+    async fn send_heartbeat(&self, _monitor_id: &str) -> String {
+        "ok".to_string()
+    }
+
+    async fn list_profiles(&self) -> String {
+        "[]".to_string()
+    }
+
+    async fn create_profile(&self, _name: &str, _age_group: &str) -> String {
+        "mock_profile_id".to_string()
+    }
+
+    async fn set_active_profile(&self, _profile_id: &str) {}
 }
 
 impl MockDaemon {

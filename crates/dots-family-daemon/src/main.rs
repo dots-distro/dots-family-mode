@@ -1,9 +1,12 @@
 use anyhow::Result;
 use tracing::{error, info};
 
+mod behavior_analyzer;
 mod config;
 mod daemon;
 mod dbus_impl;
+mod edge_case_handler;
+mod notification_manager;
 mod profile_manager;
 mod session_manager;
 

@@ -1,0 +1,46 @@
+[Unit]
+Description=DOTS Family Mode Web Content Filter
+Documentation=https://github.com/dots-distro/dots-family-mode
+After=network.target dots-family-daemon.service
+Wants=dots-family-daemon.service
+PartOf=dots-family.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/dots-family-filter --port 8080 --bind-address 0.0.0.0 --daemon-mode
+Restart=on-failure
+RestartSec=5
+
+Environment="RUST_LOG=info"
+
+User=dots-filter
+Group=dots-filter
+
+# Directories for configuration and cache
+StateDirectory=dots-family-filter
+ConfigurationDirectory=dots-family-filter
+CacheDirectory=dots-family-filter
+
+# Security hardening
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+# Network access for proxy functionality
+PrivateNetwork=false
+
+# Capabilities for binding to port 8080
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+ReadWritePaths=/var/lib/dots-family-filter
+ReadWritePaths=/var/cache/dots-family-filter
+
+[Install]
+WantedBy=multi-user.target

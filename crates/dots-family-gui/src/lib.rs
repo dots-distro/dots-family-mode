@@ -1,1 +1,10 @@
-pub fn placeholder() {}
+use gtk4::prelude::*;
+use relm4::prelude::*;
+
+pub mod app;
+pub mod components;
+pub mod daemon_client;
+pub mod state;
+pub mod views;
+
+pub use app::AppModel;

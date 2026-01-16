@@ -11,6 +11,14 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+    let
+      # NixOS modules for cross-system support
+      nixosModules = {
+        dots-family = import ./nixos-modules/dots-family/default.nix;
+        
+        default = nixosModules.dots-family;
+      };
+    in
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
@@ -44,14 +52,14 @@
           procps        # Process monitoring
           util-linux    # System utilities
           dbus          # Inter-process communication
+          libnotify     # Desktop notifications
+          polkit        # Authentication framework
         ];
 
-      in
-      {
-        packages = {
-          # Individual crate packages
-          dots-family-daemon = pkgs.rustPlatform.buildRustPackage {
-            pname = "dots-family-daemon";
+        # Helper function to build individual crate packages
+        buildCrate = { pname, subdir ? "crates/${pname}", doCheck ? false }: 
+          pkgs.rustPlatform.buildRustPackage {
+            inherit pname doCheck;
             version = "0.1.0";
 
             src = ./.;
@@ -60,106 +68,40 @@
               lockFile = ./Cargo.lock;
             };
 
-            buildAndTestSubdir = "crates/dots-family-daemon";
+            buildAndTestSubdir = subdir;
 
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs ++ runtimeDependencies;
             
             # Disable SQLx compile-time checks for Nix build
             SQLX_OFFLINE = "true";
-            
-            # Disable tests for VM build (require home directory access)
-            doCheck = false;
 
             postInstall = ''
-              wrapProgram $out/bin/dots-family-daemon \
-                --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
+              # Wrap binaries with runtime dependencies
+              for bin in $out/bin/*; do
+                wrapProgram $bin \
+                  --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
+              done
             '';
 
             meta = with pkgs.lib; {
-              description = "Family safety daemon for dots NixOS";
+              description = "${pname} component for DOTS Family Mode";
               homepage = "https://github.com/dots-distro/dots-family-mode";
               license = licenses.agpl3Plus;
               maintainers = [ ];
             };
           };
 
-          dots-family-monitor = pkgs.rustPlatform.buildRustPackage {
-            pname = "dots-family-monitor";
-            version = "0.1.0";
-
-            src = ./.;
-
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-            };
-
-            buildAndTestSubdir = "crates/dots-family-monitor";
-
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs ++ runtimeDependencies;
-            
-            # Disable tests for VM build (flaky timing tests)
-            doCheck = false;
-
-            postInstall = ''
-              wrapProgram $out/bin/dots-family-monitor \
-                --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
-            '';
-
-            meta = with pkgs.lib; {
-              description = "Activity monitor for dots family mode";
-              homepage = "https://github.com/dots-distro/dots-family-mode";
-              license = licenses.agpl3Plus;
-              maintainers = [ ];
-            };
-          };
-
-          dots-family-ctl = pkgs.rustPlatform.buildRustPackage {
-            pname = "dots-family-ctl";
-            version = "0.1.0";
-
-            src = ./.;
-
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-            };
-
-            buildAndTestSubdir = "crates/dots-family-ctl";
-
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs ++ runtimeDependencies;
-
-            meta = with pkgs.lib; {
-              description = "CLI control tool for dots family mode";
-              homepage = "https://github.com/dots-distro/dots-family-mode";
-              license = licenses.agpl3Plus;
-              maintainers = [ ];
-            };
-          };
-
-          dots-family-gui = pkgs.rustPlatform.buildRustPackage {
-            pname = "dots-family-gui";
-            version = "0.1.0";
-
-            src = ./.;
-
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-            };
-
-            buildAndTestSubdir = "crates/dots-family-gui";
-
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs ++ runtimeDependencies;
-
-            meta = with pkgs.lib; {
-              description = "GUI dashboard for dots family mode";
-              homepage = "https://github.com/dots-distro/dots-family-mode";
-              license = licenses.agpl3Plus;
-              maintainers = [ ];
-            };
-          };
+      in
+      {
+        packages = {
+          # Individual crate packages using helper function
+          dots-family-daemon = buildCrate { pname = "dots-family-daemon"; };
+          dots-family-monitor = buildCrate { pname = "dots-family-monitor"; };
+          dots-family-ctl = buildCrate { pname = "dots-family-ctl"; doCheck = true; };
+          dots-family-gui = buildCrate { pname = "dots-family-gui"; };
+          dots-family-filter = buildCrate { pname = "dots-family-filter"; };
+          dots-terminal-filter = buildCrate { pname = "dots-terminal-filter"; };
 
           # Default package builds all workspace members
           default = pkgs.rustPlatform.buildRustPackage {
@@ -174,6 +116,12 @@
 
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs ++ runtimeDependencies;
+            
+            # Disable SQLx compile-time checks
+            SQLX_OFFLINE = "true";
+            
+            # Skip tests for full workspace build (some are integration tests)
+            doCheck = false;
 
             postInstall = ''
               # Wrap all binaries with runtime dependencies
@@ -260,105 +208,37 @@
         };
       }
     ) // {
+      # Export NixOS modules for system integration
+      inherit nixosModules;
+      
       # NixOS VM configurations for testing
       nixosConfigurations = {
         dots-family-test-vm = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
             ./vm-simple.nix
+            nixosModules.dots-family
             {
-              # Add DOTS Family Mode package
-              environment.systemPackages = [
-                # Use our pre-built packages from the flake
-                self.packages.x86_64-linux.dots-family-daemon
-                self.packages.x86_64-linux.dots-family-monitor
-                self.packages.x86_64-linux.dots-family-ctl
-              ];
-              
-              # DOTS Family Mode system service
-              systemd.services.dots-family-daemon = {
-                description = "DOTS Family Mode Daemon";
-                after = [ "network.target" "dbus.service" ];
-                wants = [ "dbus.service" ];
-                wantedBy = [ "multi-user.target" ];
+              # Enable DOTS Family Mode with test configuration
+              services.dots-family = {
+                enable = true;
+                parentUsers = [ "parent" ];
+                childUsers = [ "child" ];
+                reportingOnly = true;  # Safe mode for testing
                 
-                serviceConfig = {
-                  Type = "dbus";
-                  BusName = "org.dots.FamilyDaemon";
-                  ExecStart = "/run/current-system/sw/bin/dots-family-daemon";
-                  Restart = "on-failure";
-                  RestartSec = 5;
-                  
-                  User = "root";
-                  Group = "root";
-                  
-                  StateDirectory = "dots-family";
-                  ConfigurationDirectory = "dots-family";
-                };
-                
-                environment = {
-                  RUST_LOG = "debug";
-                  DATABASE_URL = "sqlite:/var/lib/dots-family/family.db";
+                profiles.child = {
+                  name = "Test Child";
+                  ageGroup = "8-12";
+                  dailyScreenTimeLimit = "2h";
+                  timeWindows = [{
+                    start = "09:00";
+                    end = "17:00";
+                    days = [ "mon" "tue" "wed" "thu" "fri" ];
+                  }];
+                  allowedApplications = [ "firefox" "calculator" ];
+                  webFilteringLevel = "moderate";
                 };
               };
-              
-              # DBus configuration
-              services.dbus.enable = true;
-              
-              # TODO: DBus policy configuration will be added after VM build succeeds
-              # The environment.etc approach has permission issues in Nix sandbox
-              # Will configure DBus policy through activation scripts instead
-              
-              # Create default configuration
-              system.activationScripts.dots-family-setup = ''
-                # Ensure directories exist
-                mkdir -p /var/lib/dots-family
-                mkdir -p /etc/dots-family
-                mkdir -p /etc/dbus-1/system.d
-                
-                # Create default daemon config if it doesn't exist
-                if [ ! -f /etc/dots-family/daemon.toml ]; then
-                  cat > /etc/dots-family/daemon.toml << EOF
-              [database]
-              path = "/var/lib/dots-family/family.db"
-              
-              [auth]
-              # No password hash initially - will be set by admin
-              EOF
-                fi
-                
-                # Create DBus policy file
-                cat > /etc/dbus-1/system.d/org.dots.FamilyDaemon.conf << EOF
-              <!DOCTYPE busconfig PUBLIC
-               "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
-               "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
-              <busconfig>
-                <policy context="default">
-                  <allow own="org.dots.FamilyDaemon"/>
-                  <allow send_destination="org.dots.FamilyDaemon"/>
-                  <allow receive_sender="org.dots.FamilyDaemon"/>
-                </policy>
-                
-                <policy user="root">
-                  <allow own="org.dots.FamilyDaemon"/>
-                  <allow send_destination="org.dots.FamilyDaemon"/>
-                  <allow receive_sender="org.dots.FamilyDaemon"/>
-                </policy>
-                
-                <policy group="wheel">
-                  <allow send_destination="org.dots.FamilyDaemon"/>
-                  <allow receive_sender="org.dots.FamilyDaemon"/>
-                </policy>
-              </busconfig>
-              EOF
-                
-                # Set permissions
-                chown -R root:root /var/lib/dots-family
-                chmod 700 /var/lib/dots-family
-                chown -R root:root /etc/dots-family
-                chmod 755 /etc/dots-family
-                chmod 644 /etc/dbus-1/system.d/org.dots.FamilyDaemon.conf
-              '';
             }
           ];
         };

@@ -1,0 +1,44 @@
+warning: unused imports: `DateTime` and `Utc`
+ --> crates/dots-family-daemon/src/profile_manager.rs:2:14
+  |
+2 | use chrono::{DateTime, Utc};
+  |              ^^^^^^^^  ^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: methods `cleanup_expired_sessions` and `active_session_count` are never used
+   --> crates/dots-family-daemon/src/profile_manager.rs:499:18
+    |
+ 40 | impl ProfileManager {
+    | ------------------- methods in this implementation
+...
+499 |     pub async fn cleanup_expired_sessions(&self) {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+511 |     pub async fn active_session_count(&self) -> usize {
+    |                  ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `dots-family-daemon` (bin "dots-family-daemon") generated 2 warnings (run `cargo fix --bin "dots-family-daemon" -p dots-family-daemon` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running `target/x86_64-unknown-linux-gnu/debug/dots-family-daemon`
+[2m2026-01-15T21:31:06.627154Z[0m [32m INFO[0m ThreadId(01) [2m22:[0m Starting DOTS Family Daemon
+[2m2026-01-15T21:31:06.627196Z[0m [32m INFO[0m ThreadId(01) [2m12:[0m Initializing daemon
+[2m2026-01-15T21:31:06.627478Z[0m [32m INFO[0m ThreadId(01) [2m74:[0m Loaded daemon configuration from "/home/shift/.config/dots-family/daemon.toml"
+[2m2026-01-15T21:31:06.627507Z[0m [32m INFO[0m ThreadId(01) [2m42:[0m Initializing ProfileManager
+[2m2026-01-15T21:31:06.627598Z[0m [32m INFO[0m ThreadId(01) [2m37:[0m Created database directory: /tmp/.tmphN15mG
+[2m2026-01-15T21:31:06.627728Z[0m [32m INFO[0m ThreadId(01) [2m47:[0m Configuring SQLCipher encryption
+[2m2026-01-15T21:31:06.630682Z[0m [32m INFO[0m ThreadId(01) [2m58:[0m Database connection pool created: /tmp/.tmphN15mG/test.db
+[2m2026-01-15T21:31:06.630734Z[0m [32m INFO[0m ThreadId(01) [2m12:[0m Running database migrations
+[2m2026-01-15T21:31:06.642521Z[0m [32m INFO[0m ThreadId(01) [2m14:[0m Database migrations completed successfully
+[2m2026-01-15T21:31:06.642783Z[0m [32m INFO[0m ThreadId(01) [2m42:[0m Initializing ProfileManager
+[2m2026-01-15T21:31:06.642851Z[0m [32m INFO[0m ThreadId(01) [2m47:[0m Configuring SQLCipher encryption
+[2m2026-01-15T21:31:06.644154Z[0m [32m INFO[0m ThreadId(01) [2m58:[0m Database connection pool created: /tmp/.tmphN15mG/test.db
+[2m2026-01-15T21:31:06.644175Z[0m [32m INFO[0m ThreadId(01) [2m12:[0m Running database migrations
+[2m2026-01-15T21:31:06.644574Z[0m [32m INFO[0m ThreadId(01) [2m14:[0m Database migrations completed successfully
+[2m2026-01-15T21:31:06.648882Z[0m [31mERROR[0m ThreadId(01) [2m25:[0m Daemon error: org.freedesktop.DBus.Error.AccessDenied: Request to own name refused by policy
+Error: org.freedesktop.DBus.Error.AccessDenied: Request to own name refused by policy
+
+Caused by:
+    org.freedesktop.DBus.Error.AccessDenied: Request to own name refused by policy

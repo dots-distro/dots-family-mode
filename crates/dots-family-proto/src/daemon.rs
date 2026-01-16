@@ -28,6 +28,20 @@ pub trait FamilyDaemon {
 
     async fn set_active_profile(&self, profile_id: &str) -> zbus::Result<()>;
 
+    async fn request_parent_permission(
+        &self,
+        request_type: &str,
+        details: &str,
+        token: &str,
+    ) -> zbus::Result<String>;
+
+    async fn request_command_approval(
+        &self,
+        command: &str,
+        risk_level: &str,
+        reasons: &str,
+    ) -> zbus::Result<String>;
+
     #[zbus(signal)]
     async fn policy_updated(&self, profile_id: &str) -> zbus::Result<()>;
 

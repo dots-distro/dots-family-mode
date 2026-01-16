@@ -246,7 +246,7 @@ cargo build -p dots-family-ctl
 cargo test -p dots-family-daemon
 cargo test -p dots-family-db
 
-# Run daemon (requires DBus session bus)
+# Run daemon (requires DBus system bus)
 cargo run -p dots-family-daemon
 
 # Run monitor
@@ -368,7 +368,7 @@ a6ca72a refactor: fix clippy warnings and improve code quality
 
 ### 3. DBus Errors
 **Problem:** "No such interface" or "Service not found"
-**Solution:** Check if session bus is running: `echo $DBUS_SESSION_BUS_ADDRESS`
+**Solution:** Check if system bus is running: `echo $DBUS_SYSTEM_BUS_ADDRESS`
 
 ### 4. Clippy Warnings
 **Problem:** Many warnings about unused code

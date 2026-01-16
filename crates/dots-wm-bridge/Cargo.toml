@@ -5,7 +5,11 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "DOTS Family Mode component"
+description = "DOTS Family Mode window manager bridge"
+
+[lib]
+name = "dots_wm_bridge"
+path = "src/lib.rs"
 
 [dependencies]
 dots-family-common.workspace = true
@@ -13,6 +17,10 @@ dots-family-proto.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+async-trait = "0.1"
+which = "6.0"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

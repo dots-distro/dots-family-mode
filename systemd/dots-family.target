@@ -1,0 +1,8 @@
+[Unit]
+Description=DOTS Family Mode - Complete parental control system
+Documentation=https://github.com/dots-distro/dots-family-mode
+Requires=dots-family-daemon.service
+Wants=dots-family-monitor@.service dots-family-filter.service
+
+[Install]
+WantedBy=multi-user.target

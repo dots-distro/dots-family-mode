@@ -1,0 +1,243 @@
+DOTS Framework Family Mode - Comprehensive Planning Documentation
+==================================================================
+
+Created: January 12, 2026
+Total Files: 10 markdown documents
+Total Lines: 7,963 lines
+Total Size: ~210 KB
+
+Documentation Files:
+--------------------
+
+1. README.md (6.4 KB)
+   - Overview of Family Mode system
+   - Core philosophy and key features
+   - Architecture overview
+   - Age-based profiles
+   - Security model and privacy guarantees
+   - Quick start guide
+
+2. ARCHITECTURE.md (20 KB)
+   - System architecture overview with diagrams
+   - Core component specifications
+   - Data flow diagrams
+   - Communication protocols (DBus)
+   - Security architecture
+   - Performance considerations
+   - Error handling and deployment
+
+3. PARENTAL_CONTROLS.md (17 KB)
+   - Time management (daily limits, windows, bedtime)
+   - Application control (allow/block lists, categories)
+   - Age-based profile templates (5-7, 8-12, 13-17)
+   - Progressive access system
+   - Exceptions and overrides
+   - Multi-child management
+   - Parent authentication (password, MFA, PIN)
+   - Notification and communication
+
+4. CONTENT_FILTERING.md (23 KB)
+   - Web content filtering architecture
+   - HTTP/HTTPS proxy implementation
+   - Filter lists and category-based filtering
+   - Safe search enforcement
+   - Application content filtering
+   - Terminal command filtering
+   - File system monitoring
+   - Filter list updates
+   - Performance optimization
+
+5. MONITORING.md (24 KB)
+   - Activity data collection
+   - Window and application tracking
+   - Network activity monitoring
+   - Screen time calculation
+   - Event logging
+   - Database storage
+   - Daily and weekly reporting
+   - Real-time dashboard
+   - Alerts and notifications
+   - Privacy and transparency
+
+6. RUST_APPLICATIONS.md (28 KB)
+   - Detailed specifications for 7 Rust applications:
+     * dots-family-daemon (core service)
+     * dots-family-monitor (activity tracking)
+     * dots-family-filter (web filtering)
+     * dots-terminal-filter (command filtering)
+     * dots-wm-bridge (window manager integration)
+     * dots-family-ctl (CLI tool)
+     * dots-family-gui (GTK4 dashboard)
+   - Common patterns and dependencies
+   - CLI interfaces
+   - Configuration formats
+   - Testing strategies
+
+7. WM_INTEGRATION.md (28 KB)
+   - Window manager adapter trait
+   - Niri integration (native Rust IPC)
+   - Swayfx integration (Sway IPC protocol)
+   - Hyprland integration (socket protocol)
+   - Automatic WM detection
+   - Generic Wayland fallback
+   - Performance considerations
+   - Testing approaches
+
+8. TERMINAL_INTEGRATION.md (27 KB)
+   - Ghostty terminal integration
+   - Shell integration (bash, zsh, fish)
+   - Command parsing and analysis
+   - Risk classification system
+   - Educational feedback
+   - Script detection and inspection
+   - PTY-level filtering fallback
+   - Testing strategies
+
+9. DATA_SCHEMA.md (19 KB)
+   - SQLite database architecture
+   - Database encryption (SQLCipher)
+   - Complete schema for all tables:
+     * Configuration (profiles, policies)
+     * Activity (sessions, activities, network, terminal)
+     * Events and audit logging
+     * Aggregated data (daily/weekly summaries)
+     * Exceptions and approvals
+     * Filter lists and rules
+   - Migration system
+   - Data retention and archival
+   - Query patterns
+   - Backup and recovery
+
+10. IMPLEMENTATION_ROADMAP.md (17 KB)
+    - 10-phase implementation plan (~39 weeks)
+    - Phase 0: Foundation (Weeks 1-2)
+    - Phase 1: Core Daemon and Monitoring (Weeks 3-6)
+    - Phase 2: Web Filtering (Weeks 7-10)
+    - Phase 3: Multi-WM Support (Weeks 11-13)
+    - Phase 4: Terminal Filtering (Weeks 14-17)
+    - Phase 5: Reporting and Dashboard (Weeks 18-22)
+    - Phase 6: Advanced Features (Weeks 23-26)
+    - Phase 7: NixOS Integration (Weeks 27-30)
+    - Phase 8: Polish and Documentation (Weeks 31-34)
+    - Phase 9: Beta Testing (Weeks 35-38)
+    - Phase 10: Release (Week 39+)
+    - Resource requirements and success metrics
+
+Key Features Documented:
+------------------------
+
+Parental Controls:
+- Daily screen time limits with configurable windows
+- Application allow/block lists with category filtering
+- Age-appropriate profile templates (5-7, 8-12, 13-17)
+- Progressive access as children mature
+- Time-based application access
+- Launch approval system
+- Homework mode and exceptions
+- Multi-child profile management
+- Parent authentication (password, MFA, PIN)
+
+Content Filtering:
+- HTTP/HTTPS proxy with category-based filtering
+- Safe search enforcement on major search engines
+- Custom filter lists (AdBlock Plus compatible)
+- Application content inspection (optional)
+- Terminal command filtering with educational feedback
+- Script inspection and approval
+- Download monitoring
+- Automatic filter list updates
+
+Monitoring:
+- Window and application usage tracking
+- Network activity monitoring (domain-level, privacy-preserving)
+- Screen time calculation (active vs idle)
+- Event logging for audit trail
+- Daily and weekly summaries
+- Real-time dashboard with charts
+- Alert system for policy violations
+- Activity reports with insights
+
+Window Manager Support:
+- Niri (native Rust IPC)
+- Swayfx (Sway IPC protocol)
+- Hyprland (socket protocol)
+- Automatic detection and fallback
+
+Terminal Safety:
+- Command-level filtering before execution
+- Risk classification (safe, educational, risky, dangerous)
+- Educational warnings for common mistakes
+- Parent approval for risky commands
+- Script content inspection
+- Support for bash, zsh, and fish shells
+- Ghostty terminal integration
+
+Technical Architecture:
+- 7 Rust applications communicating via DBus
+- SQLite database with SQLCipher encryption
+- Local-only operation (no cloud dependencies)
+- Systemd service management
+- GTK4-based GUI
+- Declarative NixOS/Home Manager configuration
+- Comprehensive testing (unit, integration, system)
+
+Security:
+- Configuration encryption with parent password
+- Argon2id password hashing
+- Session token authentication
+- Database encryption at rest
+- Audit logging (immutable)
+- Capability-based access control
+- Tamper detection
+
+Privacy:
+- All data stored locally
+- No keystroke logging
+- No screenshot capture (except optional content inspection)
+- Configurable data retention
+- Domain-only logging (not full URLs)
+- Window title tracking optional
+- Child notification of monitoring scope
+
+Implementation Strategy:
+- Phased development (40 weeks to v1.0)
+- MVP approach (core features first)
+- Regular milestones and decision points
+- Comprehensive testing at each phase
+- Beta testing program before release
+- Continuous improvement post-release
+
+Development Estimates:
+- Total effort: ~800 hours
+- Timeline: ~9 months for v1.0
+- 1 Rust developer (part-time, 20 hours/week)
+- 10 implementation phases
+- Regular testing and documentation
+
+Success Metrics:
+- <1% CPU usage average
+- <50MB RAM per component
+- <10ms command filtering latency
+- 80%+ test coverage
+- Installation < 10 minutes
+- False positive rate < 5%
+- Parent satisfaction > 4/5
+
+Future Enhancements:
+- ML-based content classification
+- Behavioral anomaly detection
+- Multiple parent accounts
+- Time banking and rewards system
+- Profile template sharing
+
+Related Projects Referenced:
+- Qustodio (commercial)
+- Net Nanny (commercial)
+- OpenDNS FamilyShield
+- KDE Parental Controls
+
+This documentation provides a complete blueprint for implementing
+a comprehensive, privacy-focused parental control system for Linux
+desktop environments, specifically designed to integrate with the
+DOTS Framework and work seamlessly across Niri, Swayfx, and Hyprland
+window managers.

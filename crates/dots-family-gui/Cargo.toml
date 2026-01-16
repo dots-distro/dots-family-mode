@@ -13,6 +13,13 @@ dots-family-proto.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
+zbus = { workspace = true }
+gtk4 = { version = "0.8", features = ["v4_10"] }
+libadwaita = { version = "0.6", features = ["v1_5"] }
+relm4 = "0.8"
+relm4-components = "0.8"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

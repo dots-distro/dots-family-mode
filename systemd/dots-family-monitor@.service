@@ -1,0 +1,29 @@
+[Unit]
+Description=DOTS Family Mode Activity Monitor
+Documentation=https://github.com/dots-distro/dots-family-mode
+After=dots-family-daemon.service graphical-session.target
+Wants=dots-family-daemon.service
+PartOf=dots-family.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/dots-family-monitor
+Restart=always
+RestartSec=10
+
+Environment="RUST_LOG=info"
+Environment="WAYLAND_DISPLAY=wayland-0"
+
+User=%i
+Group=%i
+
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+# Access to Wayland compositor
+BindReadOnlyPaths=/run/user/%i/wayland-0
+
+[Install]
+WantedBy=default.target

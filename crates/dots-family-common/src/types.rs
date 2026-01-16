@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -12,7 +13,7 @@ pub enum AgeGroup {
     HighSchool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
     pub id: Uuid,
     pub name: String,
@@ -24,14 +25,41 @@ pub struct Profile {
     pub active: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for Profile {
+    fn default() -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            name: String::new(),
+            age_group: AgeGroup::EarlyElementary,
+            birthday: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            config: ProfileConfig::default(),
+            active: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileConfig {
     pub screen_time: ScreenTimeConfig,
     pub applications: ApplicationConfig,
     pub web_filtering: WebFilteringConfig,
+    pub terminal_filtering: TerminalFilteringConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for ProfileConfig {
+    fn default() -> Self {
+        Self {
+            screen_time: ScreenTimeConfig::default(),
+            applications: ApplicationConfig::default(),
+            web_filtering: WebFilteringConfig::default(),
+            terminal_filtering: TerminalFilteringConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScreenTimeConfig {
     pub daily_limit_minutes: u32,
     pub weekend_bonus_minutes: u32,
@@ -39,24 +67,46 @@ pub struct ScreenTimeConfig {
     pub windows: TimeWindows,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for ScreenTimeConfig {
+    fn default() -> Self {
+        Self {
+            daily_limit_minutes: 120,
+            weekend_bonus_minutes: 0,
+            exempt_categories: Vec::new(),
+            windows: TimeWindows { weekday: Vec::new(), weekend: Vec::new() },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeWindows {
     pub weekday: Vec<TimeWindow>,
     pub weekend: Vec<TimeWindow>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimeWindow {
     pub start: String,
     pub end: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApplicationConfig {
     pub mode: ApplicationMode,
     pub allowed: Vec<String>,
     pub blocked: Vec<String>,
     pub blocked_categories: Vec<String>,
+}
+
+impl Default for ApplicationConfig {
+    fn default() -> Self {
+        Self {
+            mode: ApplicationMode::Allowlist,
+            allowed: Vec::new(),
+            blocked: Vec::new(),
+            blocked_categories: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,13 +116,50 @@ pub enum ApplicationMode {
     Blocklist,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WebFilteringConfig {
     pub enabled: bool,
     pub safe_search: bool,
     pub blocked_categories: Vec<String>,
     pub allowed_domains: Vec<String>,
     pub blocked_domains: Vec<String>,
+}
+
+impl Default for WebFilteringConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            safe_search: true,
+            blocked_categories: Vec::new(),
+            allowed_domains: Vec::new(),
+            blocked_domains: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalFilteringConfig {
+    pub enabled: bool,
+    pub block_threshold: String,
+    pub approval_threshold: String,
+    pub blocked_commands: Vec<String>,
+    pub allowed_commands: Vec<String>,
+    pub educational_messages: bool,
+    pub log_all_commands: bool,
+}
+
+impl Default for TerminalFilteringConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            block_threshold: "critical".to_string(),
+            approval_threshold: "high".to_string(),
+            blocked_commands: Vec::new(),
+            allowed_commands: Vec::new(),
+            educational_messages: true,
+            log_all_commands: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,9 +182,398 @@ pub enum ActivityType {
     PolicyViolation { reason: String },
 }
 
+// ============================================================================
+// Exception Management System
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExceptionType {
+    /// Temporarily allows a blocked application
+    ApplicationOverride { app_id: String },
+    /// Temporarily allows access to a blocked website or domain
+    WebsiteOverride { domain: String },
+    /// Extends screen time beyond daily limit
+    ScreenTimeExtension { extra_minutes: u32 },
+    /// Allows access outside normal time windows
+    TimeWindowOverride { start: DateTime<Utc>, end: DateTime<Utc> },
+    /// Temporarily allows a blocked terminal command
+    TerminalCommandOverride { command: String },
+    /// Custom override with specific policy changes
+    CustomOverride { description: String, policy_changes: HashMap<String, String> },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExceptionDuration {
+    /// Exception expires after specified duration
+    Duration(Duration),
+    /// Exception expires at specific time
+    UntilTime(DateTime<Utc>),
+    /// Exception expires after current session ends
+    UntilSessionEnd,
+    /// Exception expires at end of current day
+    UntilEndOfDay,
+    /// Manual expiration only (requires parent to revoke)
+    Manual,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExceptionStatus {
+    /// Exception is active and being enforced
+    Active,
+    /// Exception has expired naturally
+    Expired,
+    /// Exception was manually revoked by parent
+    Revoked,
+    /// Exception is scheduled for future activation
+    Scheduled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Exception {
+    pub id: Uuid,
+    pub profile_id: Uuid,
+    pub exception_type: ExceptionType,
+    pub reason: String,
+    pub duration: ExceptionDuration,
+    pub status: ExceptionStatus,
+    pub created_at: DateTime<Utc>,
+    pub activated_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub created_by: String, // "parent" or "auto" or "system"
+}
+
+impl Exception {
+    pub fn new(
+        profile_id: Uuid,
+        exception_type: ExceptionType,
+        reason: String,
+        duration: ExceptionDuration,
+        created_by: String,
+    ) -> Self {
+        let now = Utc::now();
+        let expires_at = match &duration {
+            ExceptionDuration::Duration(d) => Some(now + *d),
+            ExceptionDuration::UntilTime(time) => Some(*time),
+            ExceptionDuration::UntilEndOfDay => {
+                let end_of_day = now.date_naive().and_hms_opt(23, 59, 59).unwrap();
+                Some(DateTime::from_naive_utc_and_offset(end_of_day, Utc))
+            }
+            ExceptionDuration::UntilSessionEnd | ExceptionDuration::Manual => None,
+        };
+
+        Self {
+            id: Uuid::new_v4(),
+            profile_id,
+            exception_type,
+            reason,
+            duration,
+            status: ExceptionStatus::Active,
+            created_at: now,
+            activated_at: Some(now),
+            expires_at,
+            revoked_at: None,
+            created_by,
+        }
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.status == ExceptionStatus::Active && !self.is_expired()
+    }
+
+    pub fn is_expired(&self) -> bool {
+        if let Some(expires_at) = self.expires_at {
+            Utc::now() > expires_at
+        } else {
+            false
+        }
+    }
+
+    pub fn revoke(&mut self) {
+        self.status = ExceptionStatus::Revoked;
+        self.revoked_at = Some(Utc::now());
+    }
+}
+
+// ============================================================================
+// Approval Request System
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RequestType {
+    /// Child requests access to blocked application
+    ApplicationAccess { app_id: String },
+    /// Child requests access to blocked website
+    WebsiteAccess { url: String, domain: String },
+    /// Child requests extra screen time
+    ScreenTimeExtension { requested_minutes: u32 },
+    /// Child requests to extend time window
+    TimeExtension { requested_end_time: DateTime<Utc> },
+    /// Child requests to run blocked command
+    TerminalCommand { command: String },
+    /// Custom request with free-form description
+    Custom { description: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RequestStatus {
+    /// Request is pending parent review
+    Pending,
+    /// Parent approved the request
+    Approved,
+    /// Parent denied the request
+    Denied,
+    /// Request was auto-approved by system rules
+    AutoApproved,
+    /// Request expired without response
+    Expired,
+    /// Request was cancelled by child
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApprovalRequest {
+    pub id: Uuid,
+    pub profile_id: Uuid,
+    pub request_type: RequestType,
+    pub message: Option<String>, // Optional message from child
+    pub status: RequestStatus,
+    pub created_at: DateTime<Utc>,
+    pub responded_at: Option<DateTime<Utc>>,
+    pub response_message: Option<String>, // Optional message from parent
+    pub expires_at: DateTime<Utc>,        // Requests expire after 1 hour by default
+    pub auto_approve_rule: Option<String>, // ID of auto-approval rule if applicable
+}
+
+impl ApprovalRequest {
+    pub fn new(
+        profile_id: Uuid,
+        request_type: RequestType,
+        message: Option<String>,
+        expires_in: Duration,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4(),
+            profile_id,
+            request_type,
+            message,
+            status: RequestStatus::Pending,
+            created_at: now,
+            responded_at: None,
+            response_message: None,
+            expires_at: now + expires_in,
+            auto_approve_rule: None,
+        }
+    }
+
+    pub fn approve(&mut self, response_message: Option<String>) {
+        self.status = RequestStatus::Approved;
+        self.responded_at = Some(Utc::now());
+        self.response_message = response_message;
+    }
+
+    pub fn deny(&mut self, response_message: Option<String>) {
+        self.status = RequestStatus::Denied;
+        self.responded_at = Some(Utc::now());
+        self.response_message = response_message;
+    }
+
+    pub fn auto_approve(&mut self, rule_id: String) {
+        self.status = RequestStatus::AutoApproved;
+        self.responded_at = Some(Utc::now());
+        self.auto_approve_rule = Some(rule_id);
+    }
+
+    pub fn is_expired(&self) -> bool {
+        Utc::now() > self.expires_at && self.status == RequestStatus::Pending
+    }
+
+    pub fn cancel(&mut self) {
+        self.status = RequestStatus::Cancelled;
+        self.responded_at = Some(Utc::now());
+    }
+}
+
+// ============================================================================
+// Notification System
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NotificationType {
+    /// New approval request from child
+    ApprovalRequest { request_id: Uuid },
+    /// Policy violation occurred
+    PolicyViolation { violation_type: String, details: String },
+    /// Screen time limit approaching
+    ScreenTimeLimitWarning { minutes_remaining: u32 },
+    /// Time window ending soon
+    TimeWindowEnding { minutes_remaining: u32 },
+    /// Unusual activity detected
+    UnusualActivity { activity_description: String },
+    /// System error or issue
+    SystemAlert { severity: AlertSeverity, message: String },
+    /// Daily/weekly usage report available
+    UsageReport { report_type: String, period: String },
+    /// New exception created
+    ExceptionCreated { exception_id: Uuid },
+    /// Exception expired or revoked
+    ExceptionEnded { exception_id: Uuid, reason: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AlertSeverity {
+    Info,
+    Warning,
+    Error,
+    Critical,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NotificationStatus {
+    Pending,
+    Sent,
+    Delivered,
+    Read,
+    Failed,
+    Dismissed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Notification {
+    pub id: Uuid,
+    pub profile_id: Option<Uuid>, // None for system-wide notifications
+    pub notification_type: NotificationType,
+    pub title: String,
+    pub message: String,
+    pub status: NotificationStatus,
+    pub created_at: DateTime<Utc>,
+    pub sent_at: Option<DateTime<Utc>>,
+    pub read_at: Option<DateTime<Utc>>,
+    pub priority: NotificationPriority,
+    pub channels: Vec<NotificationChannel>, // Where to send (desktop, email, etc.)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NotificationPriority {
+    Low,
+    Normal,
+    High,
+    Urgent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NotificationChannel {
+    Desktop, // freedesktop.org notifications
+    Email,   // SMTP email
+    Sms,     // SMS (future)
+    Push,    // Mobile push (future)
+    InApp,   // GUI application notification
+}
+
+impl Notification {
+    pub fn new(
+        profile_id: Option<Uuid>,
+        notification_type: NotificationType,
+        title: String,
+        message: String,
+        priority: NotificationPriority,
+        channels: Vec<NotificationChannel>,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            profile_id,
+            notification_type,
+            title,
+            message,
+            status: NotificationStatus::Pending,
+            created_at: Utc::now(),
+            sent_at: None,
+            read_at: None,
+            priority,
+            channels,
+        }
+    }
+
+    pub fn mark_sent(&mut self) {
+        self.status = NotificationStatus::Sent;
+        self.sent_at = Some(Utc::now());
+    }
+
+    pub fn mark_read(&mut self) {
+        self.status = NotificationStatus::Read;
+        self.read_at = Some(Utc::now());
+    }
+}
+
+// ============================================================================
+// Behavioral Pattern Detection
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActivityPattern {
+    pub id: Uuid,
+    pub profile_id: Uuid,
+    pub pattern_type: PatternType,
+    pub description: String,
+    pub threshold_value: f64,
+    pub current_value: f64,
+    pub detection_window: Duration, // How far back to look
+    pub created_at: DateTime<Utc>,
+    pub last_detected: Option<DateTime<Utc>>,
+    pub alert_count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PatternType {
+    /// Unusual spike in activity for specific app
+    ApplicationSpike { app_id: String },
+    /// Accessing blocked content repeatedly
+    RepeatedViolations { violation_type: String },
+    /// Screen time consistently hitting limits
+    ScreenTimeTrend,
+    /// Trying to access restricted content at unusual times
+    OffHoursActivity,
+    /// Pattern of requesting many exceptions
+    ExcessiveRequests,
+    /// Time spent on specific category changing significantly
+    CategoryUsageChange { category: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BehaviorAlert {
+    pub id: Uuid,
+    pub profile_id: Uuid,
+    pub pattern_id: Uuid,
+    pub alert_type: AlertType,
+    pub severity: AlertSeverity,
+    pub description: String,
+    pub recommendation: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub acknowledged_at: Option<DateTime<Utc>>,
+    pub dismissed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AlertType {
+    TrendAlert,
+    ThresholdExceeded,
+    AnomalyDetected,
+    ComplianceIssue,
+    SystemHealth,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_profile_default() {
+        let profile = Profile::default();
+        assert!(!profile.active);
+        assert_eq!(profile.name, "");
+        assert_eq!(profile.age_group, AgeGroup::EarlyElementary);
+    }
 
     #[test]
     fn test_age_group_serialization() {
@@ -145,6 +621,7 @@ mod tests {
                     allowed_domains: vec![],
                     blocked_domains: vec![],
                 },
+                terminal_filtering: TerminalFilteringConfig::default(),
             },
             active: true,
         };
@@ -191,6 +668,7 @@ mod tests {
                     allowed_domains: vec!["khan-academy.org".to_string()],
                     blocked_domains: vec!["reddit.com".to_string()],
                 },
+                terminal_filtering: TerminalFilteringConfig::default(),
             },
             active: true,
         };

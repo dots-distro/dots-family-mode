@@ -49,9 +49,7 @@ mod tests {
 
         let deserialized: Event = serde_json::from_str(&json).unwrap();
         match deserialized {
-            Event::TimeLimitWarning {
-                minutes_remaining, ..
-            } => {
+            Event::TimeLimitWarning { minutes_remaining, .. } => {
                 assert_eq!(minutes_remaining, 15);
             }
             _ => panic!("Wrong event type"),
@@ -63,19 +61,14 @@ mod tests {
         let profile_id = Uuid::new_v4();
         let timestamp = Utc::now();
 
-        let event = Event::PolicyUpdated {
-            profile_id,
-            timestamp,
-        };
+        let event = Event::PolicyUpdated { profile_id, timestamp };
 
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("policy_updated"));
 
         let deserialized: Event = serde_json::from_str(&json).unwrap();
         match deserialized {
-            Event::PolicyUpdated {
-                profile_id: pid, ..
-            } => {
+            Event::PolicyUpdated { profile_id: pid, .. } => {
                 assert_eq!(pid, profile_id);
             }
             _ => panic!("Wrong event type"),
@@ -84,10 +77,7 @@ mod tests {
 
     #[test]
     fn test_time_limit_reached_event() {
-        let event = Event::TimeLimitReached {
-            profile_id: Uuid::new_v4(),
-            timestamp: Utc::now(),
-        };
+        let event = Event::TimeLimitReached { profile_id: Uuid::new_v4(), timestamp: Utc::now() };
 
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("time_limit_reached"));
@@ -115,11 +105,7 @@ mod tests {
 
         let deserialized: Event = serde_json::from_str(&json).unwrap();
         match deserialized {
-            Event::ApplicationBlocked {
-                application,
-                reason,
-                ..
-            } => {
+            Event::ApplicationBlocked { application, reason, .. } => {
                 assert_eq!(application, "discord");
                 assert_eq!(reason, "Not in allowlist");
             }
@@ -157,19 +143,9 @@ mod tests {
         let timestamp = Utc::now();
 
         let events = vec![
-            Event::PolicyUpdated {
-                profile_id,
-                timestamp,
-            },
-            Event::TimeLimitWarning {
-                profile_id,
-                minutes_remaining: 10,
-                timestamp,
-            },
-            Event::TimeLimitReached {
-                profile_id,
-                timestamp,
-            },
+            Event::PolicyUpdated { profile_id, timestamp },
+            Event::TimeLimitWarning { profile_id, minutes_remaining: 10, timestamp },
+            Event::TimeLimitReached { profile_id, timestamp },
             Event::ApplicationBlocked {
                 profile_id,
                 application: "steam".to_string(),

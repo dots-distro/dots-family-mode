@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
 use dots_family_common::security::{EncryptionKey, PasswordManager, SessionToken};
 use dots_family_common::types::{ApplicationMode, Profile};
 use dots_family_db::queries::profiles::ProfileQueries;
@@ -14,6 +13,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::config::DaemonConfig;
+use crate::notification_manager::NotificationManager;
 
 #[allow(dead_code)]
 const HEARTBEAT_TIMEOUT_SECS: u64 = 30;
@@ -35,6 +35,8 @@ pub struct ProfileManager {
     tamper_detected: Arc<RwLock<bool>>,
     /// Active session tokens for parent authentication
     active_sessions: Arc<RwLock<HashMap<String, SessionToken>>>,
+    /// Notification manager for desktop and system notifications
+    notification_manager: NotificationManager,
 }
 
 impl ProfileManager {
@@ -57,6 +59,7 @@ impl ProfileManager {
             monitor_heartbeats: Arc::new(RwLock::new(HashMap::new())),
             tamper_detected: Arc::new(RwLock::new(false)),
             active_sessions: Arc::new(RwLock::new(HashMap::new())),
+            notification_manager: NotificationManager::new(),
         };
 
         manager.load_active_profile_from_db().await?;
@@ -245,8 +248,8 @@ impl ProfileManager {
 
     pub async fn create_profile(&self, name: &str, age_group: &str) -> Result<String> {
         use dots_family_common::types::{
-            ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig, TimeWindow,
-            TimeWindows, WebFilteringConfig,
+            AgeGroup, ApplicationConfig, ApplicationMode, Profile, ProfileConfig, ScreenTimeConfig,
+            TerminalFilteringConfig, TimeWindow, TimeWindows, WebFilteringConfig,
         };
         use dots_family_db::models::{NewAuditLog, NewProfile};
         use dots_family_db::queries::{audit::AuditQueries, profiles::ProfileQueries};
@@ -305,6 +308,7 @@ impl ProfileManager {
                 allowed_domains: vec![],
                 blocked_domains: vec![],
             },
+            terminal_filtering: TerminalFilteringConfig::default(),
         };
 
         let config_json = serde_json::to_string(&config)?;
@@ -496,6 +500,7 @@ impl ProfileManager {
     }
 
     /// Clean up expired session tokens
+    #[allow(dead_code)]
     pub async fn cleanup_expired_sessions(&self) {
         let mut sessions = self.active_sessions.write().await;
         sessions.retain(|_, session| session.is_valid());
@@ -508,6 +513,7 @@ impl ProfileManager {
     }
 
     /// Get count of active sessions
+    #[allow(dead_code)]
     pub async fn active_session_count(&self) -> usize {
         let sessions = self.active_sessions.read().await;
         sessions.len()
@@ -595,14 +601,383 @@ impl ProfileManager {
     pub async fn is_tampered(&self) -> bool {
         *self.tamper_detected.read().await
     }
+
+    pub async fn request_parent_permission(
+        &self,
+        request_type: &str,
+        details: &str,
+        token: &str,
+    ) -> Result<String> {
+        self.ensure_valid_session(token).await?;
+
+        let approval_id = self.log_permission_request(request_type, details).await?;
+
+        self.create_pending_approval_response(approval_id, request_type, details)
+    }
+
+    async fn ensure_valid_session(&self, token: &str) -> Result<()> {
+        use dots_family_db::models::NewAuditLog;
+        use dots_family_db::queries::audit::AuditQueries;
+
+        if !self.validate_session(token).await {
+            let audit = NewAuditLog {
+                actor: "child".to_string(),
+                action: "request_permission".to_string(),
+                resource: "permission".to_string(),
+                resource_id: None,
+                ip_address: None,
+                success: false,
+                details: Some("Invalid session token".to_string()),
+            };
+            let _ = AuditQueries::log(&self._db, audit).await;
+            return Err(anyhow!("Unauthorized: Invalid session token"));
+        }
+        Ok(())
+    }
+
+    async fn log_permission_request(&self, request_type: &str, details: &str) -> Result<String> {
+        use dots_family_db::models::NewAuditLog;
+        use dots_family_db::queries::audit::AuditQueries;
+
+        let approval_id = Uuid::new_v4().to_string();
+
+        let audit = NewAuditLog {
+            actor: "child".to_string(),
+            action: "request_permission".to_string(),
+            resource: "permission".to_string(),
+            resource_id: Some(approval_id.clone()),
+            ip_address: None,
+            success: true,
+            details: Some(format!("Type: {}, Details: {}", request_type, details)),
+        };
+        AuditQueries::log(&self._db, audit).await?;
+
+        Ok(approval_id)
+    }
+
+    fn create_pending_approval_response(
+        &self,
+        approval_id: String,
+        request_type: &str,
+        details: &str,
+    ) -> Result<String> {
+        let response = serde_json::json!({
+            "approval_id": approval_id,
+            "status": "pending",
+            "message": "Permission request logged. Please ask a parent to approve this action.",
+            "request_type": request_type,
+            "details": details
+        });
+
+        Ok(response.to_string())
+    }
+
+    pub async fn request_command_approval(
+        &self,
+        command: &str,
+        risk_level: &str,
+        reasons: &str,
+    ) -> Result<String> {
+        use dots_family_db::models::NewAuditLog;
+        use dots_family_db::queries::audit::AuditQueries;
+
+        let approval_id = Uuid::new_v4().to_string();
+
+        let audit = NewAuditLog {
+            actor: "child".to_string(),
+            action: "request_command_approval".to_string(),
+            resource: "terminal_command".to_string(),
+            resource_id: Some(approval_id.clone()),
+            ip_address: None,
+            success: true,
+            details: Some(format!(
+                "Command: {}, Risk: {}, Reasons: {}",
+                command, risk_level, reasons
+            )),
+        };
+        AuditQueries::log(&self._db, audit).await?;
+
+        let response = serde_json::json!({
+            "approval_id": approval_id,
+            "status": "pending",
+            "message": "Command requires parent approval. Request logged for review.",
+            "command": command,
+            "risk_level": risk_level,
+            "reasons": reasons
+        });
+
+        Ok(response.to_string())
+    }
+
+    // ============================================================================
+    // Exception Management Methods
+    // ============================================================================
+
+    /// Create a new exception for temporary policy overrides
+    pub async fn create_exception(
+        &self,
+        exception_type: &str,
+        reason: &str,
+        duration_json: &str,
+        token: &str,
+    ) -> Result<String> {
+        use chrono::Duration;
+        use dots_family_common::types::{Exception, ExceptionDuration, ExceptionType};
+        use serde_json;
+
+        // Verify parent authentication
+        self.ensure_valid_session(token).await?;
+
+        let active_profile =
+            self.get_active_profile().await?.ok_or_else(|| anyhow!("No active profile"))?;
+
+        // Parse duration from JSON
+        let duration: ExceptionDuration = serde_json::from_str(duration_json)
+            .map_err(|e| anyhow!("Invalid duration JSON: {}", e))?;
+
+        // Parse exception type
+        let exception_type_enum: ExceptionType = match exception_type {
+            "application_override" => {
+                let data: serde_json::Value = serde_json::from_str(reason)?;
+                ExceptionType::ApplicationOverride {
+                    app_id: data["app_id"].as_str().unwrap_or_default().to_string(),
+                }
+            }
+            "website_override" => {
+                let data: serde_json::Value = serde_json::from_str(reason)?;
+                ExceptionType::WebsiteOverride {
+                    domain: data["domain"].as_str().unwrap_or_default().to_string(),
+                }
+            }
+            "screen_time_extension" => {
+                let data: serde_json::Value = serde_json::from_str(reason)?;
+                ExceptionType::ScreenTimeExtension {
+                    extra_minutes: data["extra_minutes"].as_u64().unwrap_or(30) as u32,
+                }
+            }
+            _ => return Err(anyhow!("Unknown exception type: {}", exception_type)),
+        };
+
+        // Create exception
+        let exception = Exception::new(
+            active_profile.id,
+            exception_type_enum,
+            reason.to_string(),
+            duration,
+            "parent".to_string(),
+        );
+
+        // Convert to database format and store
+        let db_exception = dots_family_db::models::NewException {
+            id: exception.id.to_string(),
+            profile_id: exception.profile_id.to_string(),
+            exception_type: exception_type.to_string(),
+            granted_by: exception.created_by.clone(),
+            expires_at: exception
+                .expires_at
+                .unwrap_or_else(|| chrono::Utc::now() + Duration::hours(1)),
+            reason: Some(exception.reason),
+            amount_minutes: None,
+            app_id: None,
+            website: None,
+            scope: None,
+        };
+
+        dots_family_db::queries::exceptions::ExceptionQueries::create(&self._db, db_exception)
+            .await?;
+
+        Ok(exception.id.to_string())
+    }
+
+    /// List active exceptions for the current profile
+    pub async fn list_active_exceptions(
+        &self,
+        profile_id: &str,
+        token: &str,
+    ) -> Result<Vec<dots_family_common::types::Exception>> {
+        self.ensure_valid_session(token).await?;
+
+        let db_exceptions =
+            dots_family_db::queries::exceptions::ExceptionQueries::list_active_for_profile(
+                &self._db, profile_id,
+            )
+            .await?;
+
+        // Convert database exceptions to domain exceptions (simplified for now)
+        let exceptions = db_exceptions
+            .into_iter()
+            .map(|db_ex| dots_family_common::types::Exception {
+                id: uuid::Uuid::parse_str(&db_ex.id).unwrap_or_default(),
+                profile_id: uuid::Uuid::parse_str(&db_ex.profile_id).unwrap_or_default(),
+                exception_type: dots_family_common::types::ExceptionType::CustomOverride {
+                    description: db_ex.exception_type.clone(),
+                    policy_changes: std::collections::HashMap::new(),
+                },
+                reason: db_ex.reason.unwrap_or_default(),
+                duration: dots_family_common::types::ExceptionDuration::UntilTime(db_ex.expires_at),
+                status: if db_ex.active {
+                    dots_family_common::types::ExceptionStatus::Active
+                } else {
+                    dots_family_common::types::ExceptionStatus::Expired
+                },
+                created_at: db_ex.granted_at,
+                activated_at: Some(db_ex.granted_at),
+                expires_at: Some(db_ex.expires_at),
+                revoked_at: None,
+                created_by: db_ex.granted_by,
+            })
+            .collect();
+
+        Ok(exceptions)
+    }
+
+    /// Revoke an active exception
+    pub async fn revoke_exception(&self, exception_id: &str, token: &str) -> Result<()> {
+        self.ensure_valid_session(token).await?;
+
+        dots_family_db::queries::exceptions::ExceptionQueries::revoke_exception(
+            &self._db,
+            exception_id,
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Check if an exception applies to a specific resource
+    pub async fn check_exception_applies(
+        &self,
+        exception_type: &str,
+        resource_id: &str,
+    ) -> Result<bool> {
+        let active_profile =
+            self.get_active_profile().await?.ok_or_else(|| anyhow!("No active profile"))?;
+
+        let exception =
+            dots_family_db::queries::exceptions::ExceptionQueries::check_active_exception(
+                &self._db,
+                &active_profile.id.to_string(),
+                exception_type,
+                Some(resource_id),
+            )
+            .await?;
+
+        Ok(exception.is_some())
+    }
+
+    // ============================================================================
+    // Approval Request Methods
+    // ============================================================================
+
+    /// Submit a new approval request from child
+    pub async fn submit_approval_request(
+        &self,
+        request_type: &str,
+        _message: &str,
+        details_json: &str,
+    ) -> Result<String> {
+        use dots_family_db::queries::approval_requests::ApprovalRequestQueries;
+        use serde_json::Value;
+
+        let active_profile =
+            self.get_active_profile().await?.ok_or_else(|| anyhow!("No active profile"))?;
+
+        let details: Value = serde_json::from_str(details_json)
+            .map_err(|e| anyhow!("Invalid details JSON: {}", e))?;
+
+        let request_id = ApprovalRequestQueries::create(
+            &self._db,
+            &active_profile.id.to_string(),
+            request_type,
+            &details,
+        )
+        .await?;
+
+        let notification = NotificationManager::create_approval_request_notification(
+            uuid::Uuid::parse_str(&request_id).unwrap_or_default(),
+            &active_profile.name,
+            &format!("{} request", request_type),
+        );
+
+        if let Err(e) = self.notification_manager.send_notification(notification).await {
+            warn!("Failed to send approval request notification: {}", e);
+        }
+
+        Ok(request_id)
+    }
+
+    /// List pending approval requests (for parent)
+    pub async fn list_pending_requests(
+        &self,
+        token: &str,
+    ) -> Result<Vec<dots_family_db::queries::approval_requests::ApprovalRequest>> {
+        use dots_family_db::queries::approval_requests::ApprovalRequestQueries;
+
+        self.ensure_valid_session(token).await?;
+
+        let active_profile =
+            self.get_active_profile().await?.ok_or_else(|| anyhow!("No active profile"))?;
+
+        let requests =
+            ApprovalRequestQueries::list_pending(&self._db, &active_profile.id.to_string()).await?;
+        Ok(requests)
+    }
+
+    /// Approve an approval request and optionally create exception
+    pub async fn approve_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> Result<Option<String>> {
+        use dots_family_db::queries::approval_requests::ApprovalRequestQueries;
+
+        self.ensure_valid_session(token).await?;
+
+        ApprovalRequestQueries::review_request(
+            &self._db,
+            request_id,
+            "approved",
+            "parent",
+            Some(response_message),
+        )
+        .await?;
+
+        // TODO: Create corresponding exception based on request type
+        // For now, return None until we implement exception creation logic
+
+        Ok(None)
+    }
+
+    /// Deny an approval request  
+    pub async fn deny_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> Result<()> {
+        use dots_family_db::queries::approval_requests::ApprovalRequestQueries;
+
+        self.ensure_valid_session(token).await?;
+
+        ApprovalRequestQueries::review_request(
+            &self._db,
+            request_id,
+            "denied",
+            "parent",
+            Some(response_message),
+        )
+        .await?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use dots_family_common::types::{
-        ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig, TimeWindows,
-        WebFilteringConfig,
+        ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig,
+        TerminalFilteringConfig, TimeWindows, WebFilteringConfig,
     };
     use dots_family_db::queries::profiles::ProfileQueries;
     use dots_family_db::Database;
@@ -651,6 +1026,7 @@ mod tests {
                 allowed_domains: vec![],
                 blocked_domains: vec![],
             },
+            terminal_filtering: TerminalFilteringConfig::default(),
         };
 
         let new_profile = dots_family_db::models::NewProfile {

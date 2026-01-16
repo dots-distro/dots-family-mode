@@ -3,6 +3,11 @@ use crate::error::{DbError, Result};
 use chrono::{NaiveDate, Utc};
 use sqlx::Row;
 
+#[cfg(test)]
+use crate::models::NewProfile;
+#[cfg(test)]
+use crate::queries::profiles::ProfileQueries;
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DbDailySummary {
     pub id: i64,
@@ -281,8 +286,12 @@ mod tests {
     async fn test_create_daily_summary() {
         let (db, _dir) = setup_test_db().await;
 
+        let profile =
+            NewProfile::new("TestChild".to_string(), "8-12".to_string(), "{}".to_string());
+        let created_profile = ProfileQueries::create(&db, profile).await.unwrap();
+
         let summary = NewDailySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             date: NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
             screen_time_seconds: 3600,
             active_time_seconds: 3000,
@@ -298,7 +307,7 @@ mod tests {
         };
 
         let created = DailySummaryQueries::create(&db, summary).await.unwrap();
-        assert_eq!(created.profile_id, "test-profile");
+        assert_eq!(created.profile_id, created_profile.id);
         assert_eq!(created.screen_time_seconds, 3600);
         assert_eq!(created.app_launches, 10);
     }
@@ -307,21 +316,25 @@ mod tests {
     async fn test_get_total_screen_time_by_profile() {
         let (db, _dir) = setup_test_db().await;
 
+        let profile =
+            NewProfile::new("TestChild".to_string(), "8-12".to_string(), "{}".to_string());
+        let created_profile = ProfileQueries::create(&db, profile).await.unwrap();
+
         let date1 = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let date2 = NaiveDate::from_ymd_opt(2024, 1, 16).unwrap();
 
         let summary1 = NewDailySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             date: date1,
             screen_time_seconds: 3600,
-            ..NewDailySummary::new("test-profile".to_string(), date1)
+            ..NewDailySummary::new(created_profile.id.clone(), date1)
         };
 
         let summary2 = NewDailySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             date: date2,
             screen_time_seconds: 2400,
-            ..NewDailySummary::new("test-profile".to_string(), date2)
+            ..NewDailySummary::new(created_profile.id.clone(), date2)
         };
 
         DailySummaryQueries::create(&db, summary1).await.unwrap();
@@ -329,7 +342,7 @@ mod tests {
 
         let total = DailySummaryQueries::get_total_screen_time_by_profile(
             &db,
-            "test-profile",
+            &created_profile.id,
             date1,
             date2,
         )
@@ -343,29 +356,34 @@ mod tests {
     async fn test_daily_average() {
         let (db, _dir) = setup_test_db().await;
 
+        let profile =
+            NewProfile::new("TestChild".to_string(), "8-12".to_string(), "{}".to_string());
+        let created_profile = ProfileQueries::create(&db, profile).await.unwrap();
+
         let date1 = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let date2 = NaiveDate::from_ymd_opt(2024, 1, 16).unwrap();
 
         let summary1 = NewDailySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             date: date1,
             screen_time_seconds: 3600,
-            ..NewDailySummary::new("test-profile".to_string(), date1)
+            ..NewDailySummary::new(created_profile.id.clone(), date1)
         };
 
         let summary2 = NewDailySummary {
-            profile_id: "test-profile".to_string(),
+            profile_id: created_profile.id.clone(),
             date: date2,
             screen_time_seconds: 2400,
-            ..NewDailySummary::new("test-profile".to_string(), date2)
+            ..NewDailySummary::new(created_profile.id.clone(), date2)
         };
 
         DailySummaryQueries::create(&db, summary1).await.unwrap();
         DailySummaryQueries::create(&db, summary2).await.unwrap();
 
-        let average = DailySummaryQueries::get_daily_average(&db, "test-profile", date1, date2)
-            .await
-            .unwrap();
+        let average =
+            DailySummaryQueries::get_daily_average(&db, &created_profile.id, date1, date2)
+                .await
+                .unwrap();
 
         assert_eq!(average, 3000.0);
     }

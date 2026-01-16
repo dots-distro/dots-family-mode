@@ -5,14 +5,29 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "DOTS Family Mode component"
+description = "DOTS Family Mode web content filtering and proxy"
 
 [dependencies]
 dots-family-common.workspace = true
 dots-family-proto.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["net", "rt-multi-thread", "macros"] }
 anyhow.workspace = true
 tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+hyper = { version = "1.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+http-body-util = "0.1"
+reqwest = { version = "0.12", features = ["json"] }
+url = "2.5"
+regex = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+clap = { version = "4.0", features = ["derive"] }
+toml = "0.8"
+dirs = "5.0"
+zbus = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

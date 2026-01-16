@@ -1,5 +1,5 @@
 pub mod daemon;
-pub mod monitor;
 pub mod events;
+pub mod monitor;
 
 pub use events::*;
