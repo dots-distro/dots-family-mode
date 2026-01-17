@@ -2,9 +2,125 @@ pub mod filesystem_monitor;
 pub mod network_monitor;
 pub mod process_monitor;
 
+use anyhow::Result;
+use aya::Bpf;
+use std::collections::HashMap;
+use tracing::{error, info, warn};
+
 pub use filesystem_monitor::FilesystemMonitorEbpf;
 pub use network_monitor::NetworkMonitorEbpf;
 pub use process_monitor::ProcessMonitorEbpf;
+
+/// Health status for eBPF programs
+#[derive(Debug, Clone)]
+pub struct EbpfHealth {
+    pub programs: HashMap<String, bool>,
+}
+
+/// Manager for loading and monitoring eBPF programs
+pub struct EbpfManager {
+    loaded_programs: HashMap<String, Bpf>,
+    health: EbpfHealth,
+}
+
+impl EbpfManager {
+    /// Create a new eBPF manager instance
+    pub async fn new() -> Result<Self> {
+        info!("Initializing eBPF manager");
+
+        let mut programs = HashMap::new();
+        programs.insert("process".to_string(), false);
+        programs.insert("network".to_string(), false);
+        programs.insert("filesystem".to_string(), false);
+
+        let health = EbpfHealth { programs };
+
+        Ok(Self { loaded_programs: HashMap::new(), health })
+    }
+
+    /// Load all eBPF programs from environment variables
+    pub async fn load_all_programs(&mut self) -> Result<()> {
+        info!("Loading eBPF programs");
+
+        // Environment variables for eBPF program paths
+        let env_vars = [
+            ("process", "BPF_PROCESS_MONITOR_PATH"),
+            ("network", "BPF_NETWORK_MONITOR_PATH"),
+            ("filesystem", "BPF_FILESYSTEM_MONITOR_PATH"),
+        ];
+
+        for (program_name, env_var) in &env_vars {
+            match std::env::var(env_var) {
+                Ok(path) if !path.is_empty() => {
+                    match self.load_program(program_name, &path).await {
+                        Ok(_) => {
+                            info!(
+                                "Successfully loaded {} eBPF program from {}",
+                                program_name, path
+                            );
+                            self.health.programs.insert(program_name.to_string(), true);
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to load {} eBPF program from {}: {}",
+                                program_name, path, e
+                            );
+                            self.health.programs.insert(program_name.to_string(), false);
+                        }
+                    }
+                }
+                Ok(_) => {
+                    info!(
+                        "Environment variable {} is empty, skipping {} program",
+                        env_var, program_name
+                    );
+                    self.health.programs.insert(program_name.to_string(), false);
+                }
+                Err(_) => {
+                    info!(
+                        "Environment variable {} not set, skipping {} program",
+                        env_var, program_name
+                    );
+                    self.health.programs.insert(program_name.to_string(), false);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Load a specific eBPF program from file path
+    async fn load_program(&mut self, name: &str, path: &str) -> Result<()> {
+        info!("Attempting to load {} eBPF program from {}", name, path);
+
+        // Read the ELF bytecode
+        let elf_bytes = match std::fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                error!("Failed to read eBPF program file {}: {}", path, e);
+                return Err(anyhow::anyhow!("Failed to read eBPF program file: {}", e));
+            }
+        };
+
+        // Load the eBPF program
+        match Bpf::load(&elf_bytes) {
+            Ok(bpf) => {
+                info!("Successfully loaded {} eBPF program ({} bytes)", name, elf_bytes.len());
+                self.loaded_programs.insert(name.to_string(), bpf);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to load {} eBPF program: {}", name, e);
+                Err(anyhow::anyhow!("Failed to load eBPF program: {}", e))
+            }
+        }
+    }
+
+    /// Get health status of all eBPF programs
+    pub fn get_health_status(&self) -> EbpfHealth {
+        self.health.clone()
+    }
+}
 
 /// Check if eBPF is available on the current system
 pub fn ebpf_available() -> bool {
