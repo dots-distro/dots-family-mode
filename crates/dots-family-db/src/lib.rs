@@ -6,6 +6,9 @@ pub mod queries;
 
 pub use connection::{Database, DatabaseConfig};
 pub use error::{DbError, Result};
+pub use migrations::{
+    create_database_if_not_exists, get_migration_status, run_migrations, MigrationStatus,
+};
 pub use models::*;
 
 #[cfg(test)]
