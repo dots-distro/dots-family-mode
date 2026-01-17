@@ -46,7 +46,7 @@ fn main() {
         println!("cargo:rustc-env=USING_NIX_EBPF=0");
 
         // Fallback: try to build eBPF programs using aya-build (for local development)
-        if let Ok(_) = env::var("CARGO_CFG_TARGET_ARCH") {
+        if env::var("CARGO_CFG_TARGET_ARCH").is_ok() {
             // Only attempt eBPF build if we have aya-build available and we're not cross-compiling
             match build_ebpf_programs() {
                 Ok(_) => println!("cargo:info=Built eBPF programs locally"),
