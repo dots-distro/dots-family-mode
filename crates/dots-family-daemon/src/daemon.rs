@@ -1,29 +1,77 @@
 use anyhow::Result;
+use std::sync::Arc;
 use tokio::signal;
 use tokio::time::{interval, Duration};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use zbus::ConnectionBuilder;
 
 use crate::config::DaemonConfig;
 use crate::dbus_impl::FamilyDaemonService;
-use crate::ebpf::EbpfManager;
+use crate::ebpf::{EbpfHealth, EbpfManager};
 use crate::edge_case_handler::EdgeCaseHandler;
 use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
 
-pub async fn run() -> Result<()> {
-    info!("Initializing daemon");
+pub struct Daemon {
+    ebpf_manager: Option<EbpfManager>,
+    config: DaemonConfig,
+}
 
-    let config = DaemonConfig::load()?;
+impl Daemon {
+    pub async fn new() -> Result<Self> {
+        info!("Initializing daemon");
+
+        let config = DaemonConfig::load()?;
+
+        // Initialize eBPF manager
+        let ebpf_manager = match EbpfManager::new().await {
+            Ok(mut manager) => {
+                info!("eBPF manager initialized successfully");
+
+                // Load eBPF programs if manager is available
+                if let Err(e) = manager.load_all_programs().await {
+                    error!("Failed to load eBPF programs: {}", e);
+                } else {
+                    let status = manager.get_health_status().await;
+                    info!(
+                        "eBPF programs loaded: {}/{} healthy",
+                        status.programs_loaded,
+                        if status.all_healthy { "all" } else { "some" }
+                    );
+                }
+
+                Some(manager)
+            }
+            Err(e) => {
+                error!("Failed to initialize eBPF manager: {}", e);
+                None
+            }
+        };
+
+        Ok(Self { ebpf_manager, config })
+    }
+
+    pub async fn get_ebpf_health(&self) -> Option<EbpfHealth> {
+        if let Some(ref manager) = self.ebpf_manager {
+            Some(manager.get_health_status().await)
+        } else {
+            None
+        }
+    }
+}
+
+pub async fn run() -> Result<()> {
+    let daemon = Arc::new(Daemon::new().await?);
+
     let monitoring_service = MonitoringService::new();
 
-    // Initialize eBPF manager
-    let mut ebpf_manager = EbpfManager::new().await?;
-    ebpf_manager.load_all_programs().await?;
-    info!("eBPF manager initialized and programs loaded");
-
-    let service = FamilyDaemonService::new(&config, monitoring_service.clone()).await?;
-    let profile_manager = ProfileManager::new(&config).await?;
+    let service = FamilyDaemonService::new_with_daemon(
+        &daemon.config,
+        monitoring_service.clone(),
+        daemon.clone(),
+    )
+    .await?;
+    let profile_manager = ProfileManager::new(&daemon.config).await?;
 
     let mut edge_case_handler = EdgeCaseHandler::new();
     edge_case_handler.start_monitoring().await?;

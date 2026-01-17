@@ -1,20 +1,32 @@
 use anyhow::Result;
+use std::sync::Arc;
 use tracing::warn;
 use zbus::interface;
 
 use crate::config::DaemonConfig;
+use crate::daemon::Daemon;
 use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
 
 pub struct FamilyDaemonService {
     profile_manager: ProfileManager,
     monitoring_service: MonitoringService,
+    daemon: Option<Arc<Daemon>>,
 }
 
 impl FamilyDaemonService {
     pub async fn new(config: &DaemonConfig, monitoring_service: MonitoringService) -> Result<Self> {
         let profile_manager = ProfileManager::new(config).await?;
-        Ok(Self { profile_manager, monitoring_service })
+        Ok(Self { profile_manager, monitoring_service, daemon: None })
+    }
+
+    pub async fn new_with_daemon(
+        config: &DaemonConfig,
+        monitoring_service: MonitoringService,
+        daemon: Arc<Daemon>,
+    ) -> Result<Self> {
+        let profile_manager = ProfileManager::new(config).await?;
+        Ok(Self { profile_manager, monitoring_service, daemon: Some(daemon) })
     }
 }
 
@@ -278,6 +290,26 @@ impl FamilyDaemonService {
                 warn!("Failed to get monitoring snapshot: {}", e);
                 format!(r#"{{"error":"{}"}}"#, e)
             }
+        }
+    }
+
+    async fn get_ebpf_status(&self) -> (u32, bool, String) {
+        if let Some(ref daemon) = self.daemon {
+            if let Some(status) = daemon.get_ebpf_health().await {
+                (
+                    status.programs_loaded as u32,
+                    status.all_healthy,
+                    format!(
+                        "eBPF manager active: {}/{} programs loaded",
+                        status.programs_loaded,
+                        status.program_status.len()
+                    ),
+                )
+            } else {
+                (0, false, "eBPF manager not available".to_string())
+            }
+        } else {
+            (0, false, "eBPF status not yet connected".to_string())
         }
     }
 
