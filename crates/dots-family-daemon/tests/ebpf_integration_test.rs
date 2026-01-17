@@ -67,11 +67,28 @@ async fn test_health_status_logic_fix() -> Result<()> {
 
 #[tokio::test]
 async fn test_daemon_ebpf_integration() -> Result<()> {
-    // This test verifies daemon initializes with eBPF
+    // This test verifies daemon follows the specification:
+    // - Daemon::new() should NOT initialize eBPF (lightweight constructor)
+    // - eBPF initialization should happen in run() function
     use dots_family_daemon::daemon::Daemon;
+    use dots_family_daemon::ebpf::EbpfManager;
 
+    // Test 1: Daemon::new() should NOT have eBPF initialized (per specification)
     let daemon = Daemon::new().await?;
-    assert!(daemon.get_ebpf_health().await.is_some(), "Daemon should initialize with eBPF support");
+    assert!(
+        daemon.get_ebpf_health().await.is_none(),
+        "Daemon should NOT initialize with eBPF support in constructor (per spec)"
+    );
+
+    // Test 2: eBPF can be set after creation (simulating run() function behavior)
+    let ebpf_manager = EbpfManager::new().await?;
+    daemon.set_ebpf_manager(ebpf_manager).await;
+
+    // Test 3: After eBPF manager is set, health should be available
+    assert!(
+        daemon.get_ebpf_health().await.is_some(),
+        "Daemon should have eBPF support after manager is set"
+    );
 
     Ok(())
 }

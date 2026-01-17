@@ -131,6 +131,26 @@ impl MonitoringService {
             "filesystem_monitoring": filesystem_data
         }))
     }
+
+    pub async fn health_check(&self) -> Result<bool> {
+        // Simple health check - verify all monitors are accessible
+        let process_healthy = {
+            let monitor = self.process_monitor.lock().await;
+            monitor.collect_snapshot().await.is_ok()
+        };
+        
+        let network_healthy = {
+            let monitor = self.network_monitor.lock().await;
+            monitor.collect_snapshot().await.is_ok()
+        };
+        
+        let filesystem_healthy = {
+            let monitor = self.filesystem_monitor.lock().await;
+            monitor.collect_snapshot().await.is_ok()
+        };
+        
+        Ok(process_healthy && network_healthy && filesystem_healthy)
+    }
 }
 
 async fn collect_monitoring_data(

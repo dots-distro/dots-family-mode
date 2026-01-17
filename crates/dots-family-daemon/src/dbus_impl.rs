@@ -1,12 +1,13 @@
 use anyhow::Result;
 use std::sync::Arc;
-use tracing::warn;
+use tracing::{debug, error, info, warn};
 use zbus::interface;
 
 use crate::config::DaemonConfig;
 use crate::daemon::Daemon;
 use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
+use dots_family_proto::events::ActivityEvent;
 
 pub struct FamilyDaemonService {
     profile_manager: ProfileManager,
@@ -73,6 +74,46 @@ impl FamilyDaemonService {
                 format!("error:{}", e)
             }
         }
+    }
+
+    async fn report_activity_event(&self, event_json: &str) -> String {
+        match serde_json::from_str::<ActivityEvent>(event_json) {
+            Ok(event) => {
+                info!("Received activity event: {:?}", event);
+
+                match event {
+                    ActivityEvent::WindowFocused { pid, app_id, window_title, .. } => {
+                        info!(
+                            "Window focused - PID: {}, App: {}, Title: {}",
+                            pid, app_id, window_title
+                        );
+                    }
+                    ActivityEvent::ProcessStarted { pid, executable, args, .. } => {
+                        info!(
+                            "Process started - PID: {}, Executable: {}, Args: {:?}",
+                            pid, executable, args
+                        );
+                    }
+                    ActivityEvent::NetworkConnection { pid, local_addr, remote_addr, .. } => {
+                        info!(
+                            "Network connection - PID: {}, Local: {}, Remote: {}",
+                            pid, local_addr, remote_addr
+                        );
+                    }
+                }
+
+                "success".to_string()
+            }
+            Err(e) => {
+                error!("Failed to parse activity event JSON: {}", e);
+                format!("error:Invalid event JSON: {}", e)
+            }
+        }
+    }
+
+    async fn ping(&self) -> bool {
+        debug!("Received ping from monitor");
+        true
     }
 
     async fn send_heartbeat(&self, monitor_id: &str) -> String {

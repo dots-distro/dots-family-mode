@@ -40,6 +40,10 @@ impl EbpfManager {
         Ok(instance)
     }
 
+    pub fn set_health_status_for_test(&mut self, health: EbpfHealth) {
+        self.health_status = health;
+    }
+
     /// Update health status based on current program state
     fn update_health_status(&mut self) {
         let mut program_status = HashMap::new();

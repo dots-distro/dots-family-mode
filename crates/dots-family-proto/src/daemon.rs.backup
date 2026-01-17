@@ -16,8 +16,6 @@ pub trait FamilyDaemon {
 
     async fn send_heartbeat(&self, monitor_id: &str) -> zbus::Result<String>;
 
-    async fn ping(&self) -> zbus::Result<String>;
-
     async fn authenticate_parent(&self, password: &str) -> zbus::Result<String>;
 
     async fn validate_session(&self, token: &str) -> zbus::Result<bool>;
