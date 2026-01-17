@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::sync::Arc;
 use tokio::signal;
+use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
 use zbus::ConnectionBuilder;
@@ -11,9 +12,10 @@ use crate::ebpf::{EbpfHealth, EbpfManager};
 use crate::edge_case_handler::EdgeCaseHandler;
 use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
+use dots_family_db::{migrations, Database, DatabaseConfig};
 
 pub struct Daemon {
-    ebpf_manager: Option<EbpfManager>,
+    ebpf_manager: RwLock<Option<EbpfManager>>,
     config: DaemonConfig,
 }
 
@@ -23,36 +25,17 @@ impl Daemon {
 
         let config = DaemonConfig::load()?;
 
-        // Initialize eBPF manager
-        let ebpf_manager = match EbpfManager::new().await {
-            Ok(mut manager) => {
-                info!("eBPF manager initialized successfully");
+        Ok(Self { ebpf_manager: RwLock::new(None), config })
+    }
 
-                // Load eBPF programs if manager is available
-                if let Err(e) = manager.load_all_programs().await {
-                    error!("Failed to load eBPF programs: {}", e);
-                } else {
-                    let status = manager.get_health_status().await;
-                    info!(
-                        "eBPF programs loaded: {}/{} healthy",
-                        status.programs_loaded,
-                        if status.all_healthy { "all" } else { "some" }
-                    );
-                }
-
-                Some(manager)
-            }
-            Err(e) => {
-                error!("Failed to initialize eBPF manager: {}", e);
-                None
-            }
-        };
-
-        Ok(Self { ebpf_manager, config })
+    pub async fn set_ebpf_manager(&self, manager: EbpfManager) {
+        let mut ebpf_manager = self.ebpf_manager.write().await;
+        *ebpf_manager = Some(manager);
     }
 
     pub async fn get_ebpf_health(&self) -> Option<EbpfHealth> {
-        if let Some(ref manager) = self.ebpf_manager {
+        let ebpf_manager = self.ebpf_manager.read().await;
+        if let Some(ref manager) = *ebpf_manager {
             Some(manager.get_health_status().await)
         } else {
             None
@@ -60,8 +43,57 @@ impl Daemon {
     }
 }
 
+pub async fn initialize_database() -> Result<Database> {
+    info!("Initializing database");
+
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "/tmp/dots-family.db".to_string());
+
+    migrations::create_database_if_not_exists(&database_url)
+        .await
+        .context("Failed to create database")?;
+
+    let database_config = DatabaseConfig { path: database_url, encryption_key: None };
+    let database = Database::new(database_config).await.context("Failed to connect to database")?;
+
+    migrations::run_migrations(database.pool()?).await.context("Failed to run migrations")?;
+
+    info!("Database initialized successfully");
+    Ok(database)
+}
+
 pub async fn run() -> Result<()> {
+    info!("Initializing daemon");
+
+    let _database = initialize_database().await?;
+
     let daemon = Arc::new(Daemon::new().await?);
+
+    let ebpf_manager = match EbpfManager::new().await {
+        Ok(mut manager) => {
+            info!("eBPF manager initialized successfully");
+
+            // Load eBPF programs if manager is available
+            if let Err(e) = manager.load_all_programs().await {
+                error!("Failed to load eBPF programs: {}", e);
+            } else {
+                let status = manager.get_health_status().await;
+                info!(
+                    "eBPF programs loaded: {}/{} healthy",
+                    status.programs_loaded,
+                    if status.all_healthy { "all" } else { "some" }
+                );
+            }
+
+            // Set eBPF manager in daemon
+            daemon.set_ebpf_manager(manager).await;
+            true
+        }
+        Err(e) => {
+            error!("Failed to initialize eBPF manager: {}", e);
+            false
+        }
+    };
 
     let monitoring_service = MonitoringService::new();
 
@@ -85,7 +117,11 @@ pub async fn run() -> Result<()> {
         .await?;
 
     info!("DBus service registered at org.dots.FamilyDaemon");
-    info!("eBPF monitoring service started");
+    if ebpf_manager {
+        info!("eBPF monitoring service started");
+    } else {
+        warn!("eBPF monitoring service not available - running in degraded mode");
+    }
 
     let conn_clone = conn.clone();
     tokio::spawn(async move {
