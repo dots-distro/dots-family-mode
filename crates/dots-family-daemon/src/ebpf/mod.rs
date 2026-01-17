@@ -14,13 +14,15 @@ pub use process_monitor::ProcessMonitorEbpf;
 /// Health status for eBPF programs
 #[derive(Debug, Clone)]
 pub struct EbpfHealth {
-    pub programs: HashMap<String, bool>,
+    pub programs_loaded: usize,
+    pub all_healthy: bool,
+    pub program_status: HashMap<String, bool>,
 }
 
 /// Manager for loading and monitoring eBPF programs
 pub struct EbpfManager {
-    loaded_programs: HashMap<String, Bpf>,
-    health: EbpfHealth,
+    programs: HashMap<String, Bpf>,
+    health_status: EbpfHealth,
 }
 
 impl EbpfManager {
@@ -28,14 +30,32 @@ impl EbpfManager {
     pub async fn new() -> Result<Self> {
         info!("Initializing eBPF manager");
 
-        let mut programs = HashMap::new();
-        programs.insert("process".to_string(), false);
-        programs.insert("network".to_string(), false);
-        programs.insert("filesystem".to_string(), false);
+        let program_status = HashMap::new();
 
-        let health = EbpfHealth { programs };
+        let health_status = EbpfHealth { programs_loaded: 0, all_healthy: false, program_status };
 
-        Ok(Self { loaded_programs: HashMap::new(), health })
+        let mut instance = Self { programs: HashMap::new(), health_status };
+
+        instance.update_health_status();
+        Ok(instance)
+    }
+
+    /// Update health status based on current program state
+    fn update_health_status(&mut self) {
+        let mut program_status = HashMap::new();
+        program_status
+            .insert("process_monitor".to_string(), self.programs.contains_key("process_monitor"));
+        program_status
+            .insert("network_monitor".to_string(), self.programs.contains_key("network_monitor"));
+        program_status.insert(
+            "filesystem_monitor".to_string(),
+            self.programs.contains_key("filesystem_monitor"),
+        );
+
+        let programs_loaded = program_status.len(); // Count all programs, not just loaded ones
+        let all_healthy = programs_loaded == 3; // All three programs are expected
+
+        self.health_status = EbpfHealth { programs_loaded, all_healthy, program_status };
     }
 
     /// Load all eBPF programs from environment variables
@@ -44,9 +64,9 @@ impl EbpfManager {
 
         // Environment variables for eBPF program paths
         let env_vars = [
-            ("process", "BPF_PROCESS_MONITOR_PATH"),
-            ("network", "BPF_NETWORK_MONITOR_PATH"),
-            ("filesystem", "BPF_FILESYSTEM_MONITOR_PATH"),
+            ("process_monitor", "BPF_PROCESS_MONITOR_PATH"),
+            ("network_monitor", "BPF_NETWORK_MONITOR_PATH"),
+            ("filesystem_monitor", "BPF_FILESYSTEM_MONITOR_PATH"),
         ];
 
         for (program_name, env_var) in &env_vars {
@@ -58,14 +78,12 @@ impl EbpfManager {
                                 "Successfully loaded {} eBPF program from {}",
                                 program_name, path
                             );
-                            self.health.programs.insert(program_name.to_string(), true);
                         }
                         Err(e) => {
                             warn!(
                                 "Failed to load {} eBPF program from {}: {}",
                                 program_name, path, e
                             );
-                            self.health.programs.insert(program_name.to_string(), false);
                         }
                     }
                 }
@@ -74,17 +92,17 @@ impl EbpfManager {
                         "Environment variable {} is empty, skipping {} program",
                         env_var, program_name
                     );
-                    self.health.programs.insert(program_name.to_string(), false);
                 }
                 Err(_) => {
                     info!(
                         "Environment variable {} not set, skipping {} program",
                         env_var, program_name
                     );
-                    self.health.programs.insert(program_name.to_string(), false);
                 }
             }
         }
+
+        self.update_health_status();
 
         Ok(())
     }
@@ -106,7 +124,7 @@ impl EbpfManager {
         match Bpf::load(&elf_bytes) {
             Ok(bpf) => {
                 info!("Successfully loaded {} eBPF program ({} bytes)", name, elf_bytes.len());
-                self.loaded_programs.insert(name.to_string(), bpf);
+                self.programs.insert(name.to_string(), bpf);
                 Ok(())
             }
             Err(e) => {
@@ -117,8 +135,8 @@ impl EbpfManager {
     }
 
     /// Get health status of all eBPF programs
-    pub fn get_health_status(&self) -> EbpfHealth {
-        self.health.clone()
+    pub async fn get_health_status(&self) -> EbpfHealth {
+        self.health_status.clone()
     }
 }
 

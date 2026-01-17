@@ -6,6 +6,7 @@ use zbus::ConnectionBuilder;
 
 use crate::config::DaemonConfig;
 use crate::dbus_impl::FamilyDaemonService;
+use crate::ebpf::EbpfManager;
 use crate::edge_case_handler::EdgeCaseHandler;
 use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
@@ -15,6 +16,11 @@ pub async fn run() -> Result<()> {
 
     let config = DaemonConfig::load()?;
     let monitoring_service = MonitoringService::new();
+
+    // Initialize eBPF manager
+    let mut ebpf_manager = EbpfManager::new().await?;
+    ebpf_manager.load_all_programs().await?;
+    info!("eBPF manager initialized and programs loaded");
 
     let service = FamilyDaemonService::new(&config, monitoring_service.clone()).await?;
     let profile_manager = ProfileManager::new(&config).await?;
