@@ -52,10 +52,14 @@ impl EbpfManager {
             self.programs.contains_key("filesystem_monitor"),
         );
 
-        let programs_loaded = program_status.len(); // Count all programs, not just loaded ones
-        let all_healthy = programs_loaded == 3; // All three programs are expected
+        let actually_loaded_programs = program_status.values().filter(|&loaded| *loaded).count();
+        let all_programs_loaded = actually_loaded_programs == 3;
 
-        self.health_status = EbpfHealth { programs_loaded, all_healthy, program_status };
+        self.health_status = EbpfHealth {
+            programs_loaded: actually_loaded_programs,
+            all_healthy: all_programs_loaded,
+            program_status,
+        };
     }
 
     /// Load all eBPF programs from environment variables
