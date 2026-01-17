@@ -774,6 +774,7 @@ name = "dots-family-daemon"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "aya 0.12.0",
  "aya-log",
  "bytes",

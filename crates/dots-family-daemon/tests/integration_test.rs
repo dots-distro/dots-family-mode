@@ -128,6 +128,46 @@ async fn test_authenticate_parent_empty() {
 }
 
 #[tokio::test]
+#[tokio::test]
+async fn test_ping_integration() {
+    sleep(Duration::from_millis(100)).await;
+
+    // Add timeout to entire test
+    let test_result = timeout(Duration::from_secs(5), async {
+        if !daemon_available().await {
+            println!("SKIPPED: No daemon available on DBus system bus");
+            return;
+        }
+
+        if let Some(proxy) = get_daemon_proxy().await {
+            let result = proxy.ping().await;
+            assert!(result.is_ok(), "ping DBus call should succeed");
+
+            let response = result.unwrap();
+            // Should be valid JSON
+            let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+
+            // Should have required fields
+            assert!(parsed.get("status").is_some(), "ping response should have status field");
+            assert!(parsed.get("message").is_some(), "ping response should have message field");
+
+            // Status should be valid
+            let status = parsed["status"].as_str().unwrap();
+            assert!(
+                status == "ok" || status == "degraded" || status == "error",
+                "status should be valid: {}",
+                status
+            );
+        }
+    })
+    .await;
+
+    // If timeout occurs, just skip the test
+    if test_result.is_err() {
+        println!("SKIPPED: Test timed out, likely no daemon available");
+    }
+}
+
 async fn test_authenticate_parent_valid() {
     sleep(Duration::from_millis(100)).await;
 

@@ -40,6 +40,7 @@ clap = { version = "4.4", features = ["derive"] }
 rand = "0.8"
 zeroize = { version = "1.8", features = ["derive"] }
 secrecy = "0.10"
+async-trait = "0.1"
 sha2 = "0.10"
 aya = { version = "0.12", features = ["async_tokio"] }
 aya-log = "0.2"

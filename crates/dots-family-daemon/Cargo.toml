@@ -20,6 +20,7 @@ serde_json.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 serde.workspace = true
+async-trait.workspace = true
 sqlx.workspace = true
 secrecy.workspace = true
 dirs = "5.0"

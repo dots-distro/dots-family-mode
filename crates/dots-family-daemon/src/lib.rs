@@ -6,6 +6,7 @@ pub mod ebpf;
 pub mod edge_case_handler;
 pub mod monitoring_service;
 pub mod notification_manager;
+pub mod policy_engine;
 pub mod profile_manager;
 pub mod session_manager;
 

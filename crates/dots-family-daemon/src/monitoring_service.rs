@@ -138,17 +138,17 @@ impl MonitoringService {
             let monitor = self.process_monitor.lock().await;
             monitor.collect_snapshot().await.is_ok()
         };
-        
+
         let network_healthy = {
             let monitor = self.network_monitor.lock().await;
             monitor.collect_snapshot().await.is_ok()
         };
-        
+
         let filesystem_healthy = {
             let monitor = self.filesystem_monitor.lock().await;
             monitor.collect_snapshot().await.is_ok()
         };
-        
+
         Ok(process_healthy && network_healthy && filesystem_healthy)
     }
 }

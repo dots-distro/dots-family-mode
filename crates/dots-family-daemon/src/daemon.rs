@@ -11,6 +11,7 @@ use crate::dbus_impl::FamilyDaemonService;
 use crate::ebpf::{EbpfHealth, EbpfManager};
 use crate::edge_case_handler::EdgeCaseHandler;
 use crate::monitoring_service::MonitoringService;
+use crate::policy_engine::PolicyEngine;
 use crate::profile_manager::ProfileManager;
 use dots_family_db::{migrations, Database, DatabaseConfig};
 
@@ -65,7 +66,12 @@ pub async fn initialize_database() -> Result<Database> {
 pub async fn run() -> Result<()> {
     info!("Initializing daemon");
 
+    // Initialize database first
     let _database = initialize_database().await?;
+
+    // Initialize policy engine
+    let _policy_engine = PolicyEngine::new().await.context("Failed to initialize policy engine")?;
+    info!("Policy engine initialized successfully");
 
     let daemon = Arc::new(Daemon::new().await?);
 
