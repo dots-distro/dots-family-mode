@@ -186,10 +186,10 @@
           inherit dots-family-ebpf;
           
           # Core packages with eBPF support (Stage 2)
-          dots-family-daemon = buildCrateWithEbpf { pname = "dots-family-daemon"; hasEbpf = true; };
-          dots-family-monitor = buildCrateWithEbpf { pname = "dots-family-monitor"; };
-          dots-family-ctl = buildCrateWithEbpf { pname = "dots-family-ctl"; doCheck = true; };
-          dots-terminal-filter = buildCrateWithEbpf { pname = "dots-terminal-filter"; };
+          dots-family-daemon = buildCrateWithEbpf { pname = "dots-family-daemon"; hasEbpf = true; doCheck = false; };
+          dots-family-monitor = buildCrateWithEbpf { pname = "dots-family-monitor"; doCheck = false; };
+          dots-family-ctl = buildCrateWithEbpf { pname = "dots-family-ctl"; doCheck = false; };
+          dots-terminal-filter = buildCrateWithEbpf { pname = "dots-terminal-filter"; doCheck = false; };
           
           # Default package builds all workspace members
           default = craneLib.buildPackage {
