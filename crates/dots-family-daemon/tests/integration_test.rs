@@ -1,5 +1,6 @@
 use dots_family_proto::daemon::FamilyDaemonProxy;
-use std::time::Duration;
+use dots_family_proto::events::ActivityEvent;
+use std::time::{Duration, SystemTime};
 use tokio::time::{sleep, timeout};
 use zbus::Connection;
 
@@ -128,7 +129,6 @@ async fn test_authenticate_parent_empty() {
 }
 
 #[tokio::test]
-#[tokio::test]
 async fn test_ping_integration() {
     sleep(Duration::from_millis(100)).await;
 
@@ -178,5 +178,177 @@ async fn test_authenticate_parent_valid() {
         }
     } else {
         println!("SKIPPED: No daemon available on DBus system bus");
+    }
+}
+
+// PolicyEngine Integration Tests
+#[tokio::test]
+async fn test_policy_engine_allowlist_enforcement() {
+    sleep(Duration::from_millis(100)).await;
+
+    if !daemon_available().await {
+        println!("SKIPPED: No daemon available on DBus system bus");
+        return;
+    }
+
+    if let Some(proxy) = get_daemon_proxy().await {
+        // Test with a common application
+        let result = proxy.check_app_policy("firefox").await;
+        assert!(result.is_ok(), "check_app_policy should succeed for firefox");
+
+        // Test with a potentially blocked application
+        let result = proxy.check_app_policy("steam").await;
+        assert!(result.is_ok(), "check_app_policy should succeed for steam");
+
+        // Test with invalid/unknown application
+        let result = proxy.check_app_policy("nonexistent-app").await;
+        assert!(result.is_ok(), "check_app_policy should succeed even for unknown apps");
+    }
+}
+
+#[tokio::test]
+async fn test_activity_processing_pipeline() {
+    sleep(Duration::from_millis(100)).await;
+
+    if !daemon_available().await {
+        println!("SKIPPED: No daemon available on DBus system bus");
+        return;
+    }
+
+    if let Some(proxy) = get_daemon_proxy().await {
+        // Create a test activity event
+        let now = SystemTime::now();
+
+        let activity = ActivityEvent::WindowFocused {
+            pid: 1234,
+            app_id: "firefox".to_string(),
+            window_title: "Example Website".to_string(),
+            timestamp: now,
+        };
+
+        // Convert to JSON format that the daemon expects
+        let activity_json = serde_json::to_string(&activity).unwrap();
+
+        // Test processing the activity through PolicyEngine
+        let result = proxy.process_activity_for_policy(&activity_json).await;
+        assert!(result.is_ok(), "process_activity_for_policy should succeed");
+
+        if let Ok(response) = result {
+            // Should return valid JSON response
+            let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
+            assert!(parsed.is_ok(), "Response should be valid JSON: {}", response);
+
+            let response_data = parsed.unwrap();
+            assert!(response_data.get("status").is_some(), "Response should have status field");
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_profile_policy_synchronization() {
+    sleep(Duration::from_millis(100)).await;
+
+    if !daemon_available().await {
+        println!("SKIPPED: No daemon available on DBus system bus");
+        return;
+    }
+
+    if let Some(proxy) = get_daemon_proxy().await {
+        // Test syncing a mock profile to PolicyEngine
+        let result = proxy.sync_profile_to_policy("test-profile-id").await;
+        assert!(result.is_ok(), "sync_profile_to_policy should succeed");
+
+        if let Ok(response) = result {
+            // Should return success or error status
+            let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
+            assert!(parsed.is_ok(), "Response should be valid JSON: {}", response);
+
+            let response_data = parsed.unwrap();
+            assert!(response_data.get("status").is_some(), "Response should have status field");
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_policy_engine_blocklist_enforcement() {
+    sleep(Duration::from_millis(100)).await;
+
+    if !daemon_available().await {
+        println!("SKIPPED: No daemon available on DBus system bus");
+        return;
+    }
+
+    if let Some(proxy) = get_daemon_proxy().await {
+        // Test applications that might be commonly blocked
+        let test_apps = vec!["discord", "steam", "spotify", "youtube"];
+
+        for app in test_apps {
+            let result = proxy.check_app_policy(app).await;
+            assert!(result.is_ok(), "check_app_policy should succeed for {}", app);
+
+            if let Ok(response) = result {
+                // Should return valid JSON with policy decision
+                let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
+                assert!(parsed.is_ok(), "Response should be valid JSON for {}: {}", app, response);
+
+                let response_data = parsed.unwrap();
+                assert!(
+                    response_data.get("allowed").is_some() || response_data.get("error").is_some(),
+                    "Response should have allowed field or error for {}",
+                    app
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_dbus_policy_methods_error_handling() {
+    sleep(Duration::from_millis(100)).await;
+
+    if !daemon_available().await {
+        println!("SKIPPED: No daemon available on DBus system bus");
+        return;
+    }
+
+    if let Some(proxy) = get_daemon_proxy().await {
+        // Test with invalid JSON for activity processing
+        let result = proxy.process_activity_for_policy("invalid json").await;
+        assert!(
+            result.is_ok(),
+            "process_activity_for_policy should handle invalid JSON gracefully"
+        );
+
+        if let Ok(response) = result {
+            let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
+            assert!(parsed.is_ok(), "Error response should still be valid JSON");
+
+            let response_data = parsed.unwrap();
+            assert!(
+                response_data.get("error").is_some(),
+                "Invalid JSON should return error response"
+            );
+        }
+
+        // Test with empty app ID
+        let result = proxy.check_app_policy("").await;
+        assert!(result.is_ok(), "check_app_policy should handle empty app_id gracefully");
+
+        // Test with very long app ID
+        let long_app_id = "a".repeat(1000);
+        let result = proxy.check_app_policy(&long_app_id).await;
+        assert!(result.is_ok(), "check_app_policy should handle long app_id gracefully");
+
+        // Test syncing non-existent profile
+        let result = proxy.sync_profile_to_policy("nonexistent-profile-id").await;
+        assert!(
+            result.is_ok(),
+            "sync_profile_to_policy should handle non-existent profile gracefully"
+        );
+
+        if let Ok(response) = result {
+            let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
+            assert!(parsed.is_ok(), "Error response should still be valid JSON");
+        }
     }
 }

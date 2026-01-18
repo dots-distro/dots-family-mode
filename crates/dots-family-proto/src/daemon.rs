@@ -44,6 +44,12 @@ pub trait FamilyDaemon {
         reasons: &str,
     ) -> zbus::Result<String>;
 
+    async fn check_app_policy(&self, app_id: &str) -> zbus::Result<String>;
+
+    async fn process_activity_for_policy(&self, activity_json: &str) -> zbus::Result<String>;
+
+    async fn sync_profile_to_policy(&self, profile_id: &str) -> zbus::Result<String>;
+
     #[zbus(signal)]
     async fn policy_updated(&self, profile_id: &str) -> zbus::Result<()>;
 
