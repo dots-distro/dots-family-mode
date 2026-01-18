@@ -3,7 +3,7 @@ use dots_family_proto::daemon::FamilyDaemonProxy;
 use zbus::Connection;
 
 pub async fn show() -> Result<()> {
-    let conn = Connection::session().await?;
+    let conn = Connection::system().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     let profile_json = proxy.get_active_profile().await?;

@@ -117,14 +117,15 @@ impl Default for TerminalConfig {
         protected_paths.insert("/root".to_string());
         protected_paths.insert("/var/log".to_string());
 
-        let mut high_risk_patterns = Vec::new();
-        high_risk_patterns.push(r"rm\s+-rf\s+/".to_string());
-        high_risk_patterns.push(r"dd\s+if=/dev/".to_string());
-        high_risk_patterns.push(r"mkfs\s+".to_string());
-        high_risk_patterns.push(r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\};\s*:".to_string()); // Fork bomb
-        high_risk_patterns.push(r"curl.*\|\s*sh".to_string()); // Pipe to shell
-        high_risk_patterns.push(r"wget.*-O.*-".to_string()); // Wget pipe
-        high_risk_patterns.push(r"sudo\s+chmod\s+777".to_string());
+        let high_risk_patterns = vec![
+            r"rm\s+-rf\s+/".to_string(),
+            r"dd\s+if=/dev/".to_string(),
+            r"mkfs\s+".to_string(),
+            r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\};\s*:".to_string(), // Fork bomb
+            r"curl.*\|\s*sh".to_string(),                         // Pipe to shell
+            r"wget.*-O.*-".to_string(),                           // Wget pipe
+            r"sudo\s+chmod\s+777".to_string(),
+        ];
 
         Self {
             enabled: true,
@@ -169,6 +170,7 @@ impl TerminalConfig {
     }
 
     /// Check if a command requires approval
+    #[allow(dead_code)]
     pub fn is_restricted_command(&self, command: &str) -> bool {
         self.restricted_commands
             .iter()
@@ -178,11 +180,12 @@ impl TerminalConfig {
     /// Check if a command is explicitly allowed
     pub fn is_allowed_command(&self, command: &str) -> bool {
         // Extract the first word (the actual command)
-        let cmd = command.trim().split_whitespace().next().unwrap_or("");
+        let cmd = command.split_whitespace().next().unwrap_or("");
         self.allowed_commands.contains(cmd)
     }
 
     /// Check if a path is protected
+    #[allow(dead_code)]
     pub fn is_protected_path(&self, path: &str) -> bool {
         self.protected_paths.iter().any(|protected| path.starts_with(protected))
     }

@@ -16,17 +16,22 @@ pub struct FamilyDaemonService {
 }
 
 impl FamilyDaemonService {
-    pub async fn new(config: &DaemonConfig, monitoring_service: MonitoringService) -> Result<Self> {
-        let profile_manager = ProfileManager::new(config).await?;
+    #[allow(dead_code)]
+    pub async fn new(
+        config: &DaemonConfig,
+        monitoring_service: MonitoringService,
+        database: dots_family_db::Database,
+    ) -> Result<Self> {
+        let profile_manager = ProfileManager::new(config, database).await?;
         Ok(Self { profile_manager, monitoring_service, daemon: None })
     }
 
     pub async fn new_with_daemon(
-        config: &DaemonConfig,
+        _config: &DaemonConfig,
         monitoring_service: MonitoringService,
         daemon: Arc<Daemon>,
+        profile_manager: ProfileManager,
     ) -> Result<Self> {
-        let profile_manager = ProfileManager::new(config).await?;
         Ok(Self { profile_manager, monitoring_service, daemon: Some(daemon) })
     }
 }
@@ -167,6 +172,21 @@ impl FamilyDaemonService {
     async fn set_active_profile(&self, profile_id: &str) {
         if let Err(e) = self.profile_manager._set_active_profile(profile_id).await {
             warn!("Failed to set active profile: {}", e);
+            return;
+        }
+
+        if let Some(ref daemon) = self.daemon {
+            match self.profile_manager._load_profile(profile_id).await {
+                Ok(profile) => {
+                    let mut policy_engine = daemon.get_policy_engine_mut().await;
+                    if let Err(e) = policy_engine.set_active_profile(profile).await {
+                        warn!("Failed to sync profile to policy engine: {}", e);
+                    } else {
+                        info!("Profile {} synced to policy engine", profile_id);
+                    }
+                }
+                Err(e) => warn!("Failed to load profile for policy sync: {}", e),
+            }
         }
     }
 
@@ -351,6 +371,76 @@ impl FamilyDaemonService {
             }
         } else {
             (0, false, "eBPF status not yet connected".to_string())
+        }
+    }
+
+    async fn check_app_policy(&self, app_id: &str) -> String {
+        if let Some(ref daemon) = self.daemon {
+            let policy_engine = daemon.get_policy_engine().await;
+
+            let activity = ActivityEvent::WindowFocused {
+                pid: 0,
+                app_id: app_id.to_string(),
+                window_title: "Policy Check".to_string(),
+                timestamp: std::time::SystemTime::now(),
+            };
+
+            match policy_engine.process_activity(activity).await {
+                Ok(decision) => serde_json::json!({
+                    "action": decision.action,
+                    "reason": decision.reason,
+                    "blocked": decision.blocked
+                })
+                .to_string(),
+                Err(e) => {
+                    format!(r#"{{"error":"{}","blocked":false}}"#, e)
+                }
+            }
+        } else {
+            r#"{"error":"Policy engine not available","blocked":false}"#.to_string()
+        }
+    }
+
+    async fn process_activity_for_policy(&self, activity_json: &str) -> String {
+        if let Some(ref daemon) = self.daemon {
+            match serde_json::from_str::<ActivityEvent>(activity_json) {
+                Ok(activity) => {
+                    let policy_engine = daemon.get_policy_engine().await;
+                    match policy_engine.process_activity(activity).await {
+                        Ok(decision) => serde_json::json!({
+                            "action": decision.action,
+                            "reason": decision.reason,
+                            "blocked": decision.blocked
+                        })
+                        .to_string(),
+                        Err(e) => {
+                            format!(r#"{{"error":"{}","blocked":false}}"#, e)
+                        }
+                    }
+                }
+                Err(e) => {
+                    format!(r#"{{"error":"Invalid activity JSON: {}","blocked":false}}"#, e)
+                }
+            }
+        } else {
+            r#"{"error":"Policy engine not available","blocked":false}"#.to_string()
+        }
+    }
+
+    async fn sync_profile_to_policy(&self, profile_id: &str) -> String {
+        if let Some(ref daemon) = self.daemon {
+            match self.profile_manager._load_profile(profile_id).await {
+                Ok(profile) => {
+                    let mut policy_engine = daemon.get_policy_engine_mut().await;
+                    match policy_engine.set_active_profile(profile).await {
+                        Ok(()) => r#"{"status":"success"}"#.to_string(),
+                        Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+                    }
+                }
+                Err(e) => format!(r#"{{"error":"Failed to load profile: {}"}}"#, e),
+            }
+        } else {
+            r#"{"error":"Policy engine not available"}"#.to_string()
         }
     }
 

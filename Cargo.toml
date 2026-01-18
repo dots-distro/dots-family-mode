@@ -8,7 +8,7 @@ members = [
     "crates/dots-family-monitor",
     "crates/dots-family-filter",
     "crates/dots-family-ctl",
-    "crates/dots-family-gui",
+    # "crates/dots-family-gui",  # Temporarily excluded due to relm4 compilation issues
     "crates/dots-terminal-filter",
     "crates/dots-wm-bridge",
 ]

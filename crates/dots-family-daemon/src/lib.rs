@@ -10,4 +10,7 @@ pub mod policy_engine;
 pub mod profile_manager;
 pub mod session_manager;
 
+#[cfg(test)]
+pub mod dbus_communication_test;
+
 pub use ebpf::{EbpfHealth, EbpfManager};

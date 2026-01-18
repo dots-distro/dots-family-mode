@@ -3,6 +3,9 @@ name = "dots-family-ebpf"
 version = "0.1.0"
 edition = "2021"
 
+# eBPF workspace is separate from main workspace
+[workspace]
+
 [[bin]]
 name = "process-monitor"
 path = "src/process-monitor.rs"

@@ -10,7 +10,7 @@ pub struct AuthHelper {
 impl AuthHelper {
     /// Create a new authentication helper
     pub async fn new() -> Result<Self> {
-        let connection = Connection::session().await.context("Failed to connect to session bus")?;
+        let connection = Connection::system().await.context("Failed to connect to system bus")?;
 
         let proxy =
             FamilyDaemonProxy::new(&connection).await.context("Failed to create daemon proxy")?;

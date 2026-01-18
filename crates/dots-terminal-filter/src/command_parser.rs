@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum ParseError {
     #[error("Unmatched quote character: {0}")]
     UnmatchedQuote(char),
@@ -16,6 +17,7 @@ pub enum ParseError {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum CommandElement {
     /// Simple command name or argument
     Word(String),
@@ -40,6 +42,7 @@ pub enum CommandElement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum CommandConnector {
     /// Sequential execution (;)
     Sequential,
@@ -52,6 +55,7 @@ pub enum CommandConnector {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub struct ParsedCommand {
     /// Main command and arguments
     pub elements: Vec<CommandElement>,
@@ -61,11 +65,13 @@ pub struct ParsedCommand {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CommandParser {
-    /// Enable strict mode for safer parsing
+    #[allow(dead_code)]
     strict_mode: bool,
 }
 
+#[allow(dead_code)]
 impl CommandParser {
     pub fn new(strict_mode: bool) -> Self {
         Self { strict_mode }
@@ -262,34 +268,34 @@ impl CommandParser {
         }
 
         // Check for variable expansion
-        if word.starts_with('$') {
+        if let Some(stripped) = word.strip_prefix('$') {
             if word.starts_with("${") && word.ends_with('}') {
                 let var_name = word[2..word.len() - 1].to_string();
                 return Ok(CommandElement::Variable(var_name));
             } else if word.len() > 1 {
-                let var_name = word[1..].to_string();
+                let var_name = stripped.to_string();
                 return Ok(CommandElement::Variable(var_name));
             }
         }
 
         // Check for redirections
-        if word.starts_with('<') {
-            let file = word[1..].to_string();
+        if let Some(stripped) = word.strip_prefix('<') {
+            let file = stripped.to_string();
             return Ok(CommandElement::InputRedirect(file));
         }
 
-        if word.starts_with(">>") {
-            let file = word[2..].to_string();
+        if let Some(stripped) = word.strip_prefix(">>") {
+            let file = stripped.to_string();
             return Ok(CommandElement::OutputRedirect { file, append: true });
         }
 
-        if word.starts_with('>') {
-            let file = word[1..].to_string();
+        if let Some(stripped) = word.strip_prefix('>') {
+            let file = stripped.to_string();
             return Ok(CommandElement::OutputRedirect { file, append: false });
         }
 
-        if word.starts_with("2>") {
-            let file = word[2..].to_string();
+        if let Some(stripped) = word.strip_prefix("2>") {
+            let file = stripped.to_string();
             return Ok(CommandElement::ErrorRedirect(file));
         }
 
@@ -417,6 +423,7 @@ impl CommandParser {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum RiskPattern {
     /// Command pipes output to shell for execution
     PipeToShell,

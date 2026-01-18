@@ -11,6 +11,7 @@ use tracing::{error, info, warn};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub struct NetworkEvent {
     pub event_type: u32,
     pub pid: u32,
@@ -30,6 +31,7 @@ pub struct NetworkMonitorEbpf {
     interface: Option<String>,
 }
 
+#[allow(dead_code)]
 impl NetworkMonitorEbpf {
     pub fn new() -> Self {
         Self { ebpf: None, loaded: false, interface: None }

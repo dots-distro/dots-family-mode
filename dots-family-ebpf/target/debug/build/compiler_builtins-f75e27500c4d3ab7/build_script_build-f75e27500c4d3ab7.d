@@ -1,0 +1,6 @@
+/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/debug/build/compiler_builtins-f75e27500c4d3ab7/build_script_build-f75e27500c4d3ab7.d: /nix/store/22sb8x3j3j8rwc2a5ss3h9wsfqb2aiml-rust-default-1.94.0-nightly-2026-01-12/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins/build.rs /nix/store/22sb8x3j3j8rwc2a5ss3h9wsfqb2aiml-rust-default-1.94.0-nightly-2026-01-12/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins/configure.rs
+
+/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/debug/build/compiler_builtins-f75e27500c4d3ab7/build_script_build-f75e27500c4d3ab7: /nix/store/22sb8x3j3j8rwc2a5ss3h9wsfqb2aiml-rust-default-1.94.0-nightly-2026-01-12/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins/build.rs /nix/store/22sb8x3j3j8rwc2a5ss3h9wsfqb2aiml-rust-default-1.94.0-nightly-2026-01-12/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins/configure.rs
+
+/nix/store/22sb8x3j3j8rwc2a5ss3h9wsfqb2aiml-rust-default-1.94.0-nightly-2026-01-12/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins/build.rs:
+/nix/store/22sb8x3j3j8rwc2a5ss3h9wsfqb2aiml-rust-default-1.94.0-nightly-2026-01-12/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins/configure.rs:

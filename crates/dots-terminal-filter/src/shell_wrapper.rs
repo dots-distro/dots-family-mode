@@ -213,16 +213,16 @@ impl ShellWrapper {
 
     async fn show_help(&self) {
         println!("DOTS Family Mode Terminal Filter Help");
-        println!("");
+        println!();
         println!("Available commands:");
         println!("  help    - Show this help message");
         println!("  exit    - Exit the terminal filter");
-        println!("");
+        println!();
         println!("All other commands are filtered based on:");
         println!("  - Risk analysis");
         println!("  - Profile restrictions");
         println!("  - Parent approval requirements");
-        println!("");
+        println!();
         println!("If a command is blocked, contact your parent or guardian.");
     }
 
@@ -239,7 +239,7 @@ impl ShellWrapper {
             for reason in &assessment.reasons {
                 eprintln!("     • {}", reason);
             }
-            eprintln!("");
+            eprintln!();
         }
     }
 

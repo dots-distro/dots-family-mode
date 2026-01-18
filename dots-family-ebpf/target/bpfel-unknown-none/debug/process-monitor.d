@@ -1,0 +1,1 @@
+/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/bpfel-unknown-none/debug/process-monitor: /home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/process-monitor.rs

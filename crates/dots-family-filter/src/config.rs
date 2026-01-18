@@ -117,6 +117,7 @@ impl FilterConfig {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn validate(&self) -> Result<()> {
         if self.proxy.port == 0 {
             return Err(anyhow::anyhow!("Proxy port cannot be 0"));

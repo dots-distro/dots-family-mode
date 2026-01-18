@@ -6,11 +6,14 @@ use std::collections::HashMap;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+#[allow(dead_code)]
 pub struct BehaviorAnalyzer {
     db: Database,
+    #[allow(dead_code)]
     pattern_cache: HashMap<String, ActivityPattern>,
 }
 
+#[allow(dead_code)]
 impl BehaviorAnalyzer {
     pub fn new(db: Database) -> Self {
         Self { db, pattern_cache: HashMap::new() }

@@ -17,6 +17,7 @@ impl Default for DatabaseConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct Database {
     pub pool: Option<Pool<Sqlite>>,
 }

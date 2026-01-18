@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use std::process::Command;
 use tracing::debug;
 
+#[derive(Default)]
 pub struct HyprlandAdapter;
 
 impl HyprlandAdapter {

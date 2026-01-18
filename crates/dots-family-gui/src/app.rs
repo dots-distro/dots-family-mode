@@ -1,7 +1,10 @@
 use crate::components::sidebar_row::{SidebarRow, SidebarRowMsg};
 use crate::state::profile_store::ProfileStore;
 use crate::views::child_interface::{ChildInterface, ChildInterfaceMsg};
+use crate::views::child_lockscreen::{ChildLockscreen, ChildLockscreenMsg, LockscreenReason};
+use crate::views::content_filtering::{ContentFiltering, ContentFilteringMsg};
 use crate::views::dashboard::{Dashboard, DashboardMsg};
+use crate::views::policy_config::{PolicyConfig, PolicyConfigMsg};
 use crate::views::profile_editor::{ProfileEditor, ProfileEditorMsg};
 use crate::views::reports::{Reports, ReportsMsg};
 use dots_family_common::types::Profile;
@@ -14,8 +17,11 @@ use relm4::prelude::*;
 pub enum AppMode {
     Welcome,
     Dashboard,
+    PolicyConfig,
+    ContentFiltering,
     Reports,
     ChildView,
+    Lockscreen,
     Edit,
 }
 
@@ -23,8 +29,11 @@ pub struct AppModel {
     store: ProfileStore,
     sidebar_rows: FactoryVecDeque<SidebarRow>,
     dashboard: Controller<Dashboard>,
+    policy_config: Controller<PolicyConfig>,
+    content_filtering: Controller<ContentFiltering>,
     reports: Controller<Reports>,
     child_interface: Controller<ChildInterface>,
+    child_lockscreen: Controller<ChildLockscreen>,
     profile_editor: Controller<ProfileEditor>,
     mode: AppMode,
     is_parent_mode: bool,
@@ -38,9 +47,14 @@ pub enum AppMsg {
     SaveProfile(Profile),
     CancelEdit,
     ShowDashboard,
+    ShowPolicyConfig,
+    ShowContentFiltering,
     ShowReports,
     ShowChildView,
+    ShowLockscreen(LockscreenReason),
+    LockscreenUnlocked,
     ToggleMode,
+    ShowToast(String),
 }
 
 #[relm4::component(pub)]
@@ -99,6 +113,7 @@ impl SimpleComponent for AppModel {
                                 set_visible: model.is_parent_mode,
 
                                 #[local_ref]
+                                #[allow(unused_assignments)] // Used by relm4 macro
                                 sidebar_list -> gtk4::ListBox {
                                     set_selection_mode: gtk4::SelectionMode::Single,
                                     set_css_classes: &["navigation-sidebar"],
@@ -129,6 +144,35 @@ impl SimpleComponent for AppModel {
                                     set_label: "Reports",
                                     set_icon_name: "document-open-symbolic",
                                     connect_clicked => AppMsg::ShowReports,
+                                },
+
+                                gtk4::Button {
+                                    set_label: "Policy Config",
+                                    set_icon_name: "preferences-system-symbolic",
+                                    connect_clicked => AppMsg::ShowPolicyConfig,
+                                },
+
+                                gtk4::Button {
+                                    set_label: "Content Filtering",
+                                    set_icon_name: "applications-internet",
+                                    connect_clicked => AppMsg::ShowContentFiltering,
+                                },
+
+                                gtk4::Separator {
+                                    set_margin_top: 8,
+                                    set_margin_bottom: 8,
+                                },
+
+                                gtk4::Label {
+                                    set_label: "Testing",
+                                    add_css_class: "title-3",
+                                    set_halign: gtk4::Align::Start,
+                                },
+
+                                gtk4::Button {
+                                    set_label: "Test Lockscreen",
+                                    set_icon_name: "changes-prevent-symbolic",
+                                    connect_clicked => AppMsg::ShowLockscreen(LockscreenReason::ScreenTimeLimitExceeded),
                                 }
                             }
                         }
@@ -140,6 +184,8 @@ impl SimpleComponent for AppModel {
                     #[watch]
                     set_title: match (&model.mode, model.is_parent_mode) {
                         (AppMode::Dashboard, true) => "Dashboard",
+                        (AppMode::PolicyConfig, true) => "Policy Configuration",
+                        (AppMode::ContentFiltering, true) => "Content Filtering",
                         (AppMode::Reports, true) => "Reports",
                         (AppMode::ChildView, false) => "My Screen Time",
                         (AppMode::Edit, _) => "Edit Profile",
@@ -166,8 +212,11 @@ impl SimpleComponent for AppModel {
                             set_visible_child_name: match (&model.mode, model.is_parent_mode) {
                                 (AppMode::Welcome, _) => "welcome",
                                 (AppMode::Dashboard, true) => "dashboard",
+                                (AppMode::PolicyConfig, true) => "policy_config",
+                                (AppMode::ContentFiltering, true) => "content_filtering",
                                 (AppMode::Reports, true) => "reports",
                                 (AppMode::ChildView, false) => "child",
+                                (AppMode::Lockscreen, _) => "lockscreen",
                                 (AppMode::Edit, _) => "edit",
                                 (_, false) => "child",
                                 _ => "welcome",
@@ -180,8 +229,11 @@ impl SimpleComponent for AppModel {
                             },
 
                             add_named[Some("dashboard")] = model.dashboard.widget(),
+                            add_named[Some("policy_config")] = model.policy_config.widget(),
+                            add_named[Some("content_filtering")] = model.content_filtering.widget(),
                             add_named[Some("reports")] = model.reports.widget(),
                             add_named[Some("child")] = model.child_interface.widget(),
+                            add_named[Some("lockscreen")] = model.child_lockscreen.widget(),
                             add_named[Some("edit")] = model.profile_editor.widget(),
                         }
                     }
@@ -217,6 +269,22 @@ impl SimpleComponent for AppModel {
 
         let child_interface = ChildInterface::builder().launch(default_profile.clone()).detach();
 
+        let child_lockscreen = ChildLockscreen::builder()
+            .launch((default_profile.clone(), LockscreenReason::ParentalLock))
+            .forward(sender.input_sender(), |unlocked| {
+                if unlocked {
+                    AppMsg::LockscreenUnlocked
+                } else {
+                    AppMsg::ShowLockscreen(LockscreenReason::ParentalLock)
+                }
+            });
+
+        let policy_config = PolicyConfig::builder().launch(default_profile.clone()).detach();
+
+        let content_filtering = ContentFiltering::builder()
+            .launch(None)
+            .forward(sender.input_sender(), |toast_msg| AppMsg::ShowToast(toast_msg));
+
         let profile_editor = ProfileEditor::builder().launch((Profile::default(), true)).forward(
             sender.input_sender(),
             |output| match output {
@@ -229,8 +297,11 @@ impl SimpleComponent for AppModel {
             store,
             sidebar_rows,
             dashboard,
+            policy_config,
+            content_filtering,
             reports,
             child_interface,
+            child_lockscreen,
             profile_editor,
             mode: AppMode::Welcome,
             is_parent_mode: true,
@@ -300,8 +371,29 @@ impl SimpleComponent for AppModel {
             AppMsg::ShowReports => {
                 self.mode = AppMode::Reports;
             }
+            AppMsg::ShowPolicyConfig => {
+                self.mode = AppMode::PolicyConfig;
+            }
+            AppMsg::ShowContentFiltering => {
+                self.mode = AppMode::ContentFiltering;
+            }
             AppMsg::ShowChildView => {
                 self.mode = AppMode::ChildView;
+            }
+            AppMsg::ShowLockscreen(reason) => {
+                self.child_lockscreen.emit(ChildLockscreenMsg::SetReason(reason));
+                self.mode = AppMode::Lockscreen;
+            }
+            AppMsg::LockscreenUnlocked => {
+                self.mode = if self.is_parent_mode {
+                    if self.store.selected_profile_id.is_some() {
+                        AppMode::Dashboard
+                    } else {
+                        AppMode::Welcome
+                    }
+                } else {
+                    AppMode::ChildView
+                };
             }
             AppMsg::ToggleMode => {
                 self.is_parent_mode = !self.is_parent_mode;
@@ -314,6 +406,9 @@ impl SimpleComponent for AppModel {
                 } else {
                     AppMode::ChildView
                 };
+            }
+            AppMsg::ShowToast(message) => {
+                println!("Toast: {}", message);
             }
         }
     }

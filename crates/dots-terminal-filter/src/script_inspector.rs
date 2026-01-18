@@ -506,10 +506,8 @@ pub fn create_script_assessment(analysis: &ScriptAnalysis) -> RiskAssessment {
 
         for finding in &analysis.findings {
             reasons.push(format!(
-                "Line {}: {} ({})",
-                finding.line_number,
-                finding.description,
-                format!("{:?}", finding.risk_level)
+                "Line {}: {} ({:?})",
+                finding.line_number, finding.description, finding.risk_level
             ));
         }
     }

@@ -108,7 +108,7 @@ impl SimpleComponent for Overview {
     fn init(
         init: Self::Init,
         root: Self::Root,
-        sender: ComponentSender<Self>,
+        _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = Overview { profile: init };
 

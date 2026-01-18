@@ -114,6 +114,7 @@ impl FilterEngine {
         rule_engine.enforce_safe_search(url)
     }
 
+    #[allow(dead_code)]
     pub async fn get_block_page_content(&self, url: &str, reason: &str) -> String {
         let domain = Url::parse(url)
             .ok()
@@ -233,7 +234,7 @@ impl FilterEngine {
         )
     }
 
-    async fn log_activity(&self, url: &str, decision: &FilterDecision) {
+    async fn log_activity(&self, url: &str, _decision: &FilterDecision) {
         if let Some(ref proxy) = self.daemon_proxy {
             let activity = Activity {
                 id: uuid::Uuid::new_v4(),
@@ -254,6 +255,7 @@ impl FilterEngine {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn reload_rules(&self) -> Result<()> {
         info!("Reloading filter rules");
         let mut rule_engine = self.rule_engine.write().await;
@@ -263,6 +265,7 @@ impl FilterEngine {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn add_custom_rule(
         &self,
         pattern: &str,
@@ -275,6 +278,7 @@ impl FilterEngine {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn is_filtering_enabled(&self) -> bool {
         self.config.filtering.enabled
     }

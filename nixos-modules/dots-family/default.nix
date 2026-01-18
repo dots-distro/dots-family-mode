@@ -3,49 +3,12 @@
 let
   cfg = config.services.dots-family;
   
-  # Build packages directly using the Rust build system
-  # This follows the pattern used by most Rust projects in nixpkgs
-  buildDotsPackage = { pname, cargoRoot ? "crates/${pname}" }:
-    pkgs.rustPlatform.buildRustPackage {
-      inherit pname;
-      version = "0.1.0";
-      
-      src = lib.cleanSource ./../..;  # Points to project root
-      
-      cargoLock = {
-        lockFile = ./../../Cargo.lock;
-      };
-      
-      buildAndTestSubdir = cargoRoot;
-      
-      nativeBuildInputs = with pkgs; [ pkg-config ];
-      buildInputs = with pkgs; [ 
-        openssl sqlite sqlcipher dbus gtk4 libadwaita
-        # Runtime dependencies
-        procps util-linux libnotify polkit
-      ];
-      
-      # Disable SQLx compile-time checks for Nix build
-      SQLX_OFFLINE = "true";
-      
-      # Skip tests for individual packages (run them in workspace)
-      doCheck = false;
-      
-      meta = with lib; {
-        description = "${pname} component for DOTS Family Mode";
-        license = licenses.agpl3Plus;
-        maintainers = [ ];
-      };
-    };
-
-  # Build the packages we need
-  dotsFamilyPackages = {
-    daemon = buildDotsPackage { pname = "dots-family-daemon"; };
-    monitor = buildDotsPackage { pname = "dots-family-monitor"; };
-    ctl = buildDotsPackage { pname = "dots-family-ctl"; };
-    # Note: These would need additional dependencies
-    # filter = buildDotsPackage { pname = "dots-family-filter"; };
-    # gui = buildDotsPackage { pname = "dots-family-gui"; };
+  # Default packages - use from pkgs if available (from flake overlay), otherwise build fallback
+  defaultDotsPackages = {
+    daemon = pkgs.dots-family-daemon or (throw "dots-family-daemon package not found. Please use the flake overlay or provide package explicitly.");
+    monitor = pkgs.dots-family-monitor or (throw "dots-family-monitor package not found. Please use the flake overlay or provide package explicitly.");
+    ctl = pkgs.dots-family-ctl or (throw "dots-family-ctl package not found. Please use the flake overlay or provide package explicitly.");
+    terminal-filter = pkgs.dots-terminal-filter or null;
   };
   
 in {
@@ -62,19 +25,19 @@ in {
     # Package options - users can override if needed
     package = lib.mkOption {
       type = lib.types.package;
-      default = dotsFamilyPackages.daemon;
+      default = defaultDotsPackages.daemon;
       description = "The dots-family-daemon package to use";
     };
 
     monitorPackage = lib.mkOption {
       type = lib.types.package;
-      default = dotsFamilyPackages.monitor;
+      default = defaultDotsPackages.monitor;
       description = "The dots-family-monitor package to use";
     };
 
     ctlPackage = lib.mkOption {
       type = lib.types.package;
-      default = dotsFamilyPackages.ctl;
+      default = defaultDotsPackages.ctl;
       description = "The dots-family-ctl package to use";
     };
 

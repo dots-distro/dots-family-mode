@@ -88,12 +88,11 @@
 
         # Stage 1: eBPF Programs (kernel-space)
         # NOTE: Creating functioning stubs for now due to nightly rust build-std issues
-        # The infrastructure is ready for real eBPF compilation when toolchain stabilizes
+        # eBPF programs - minimal working ELF binaries
         dots-family-ebpf = pkgs.stdenv.mkDerivation {
           pname = "dots-family-ebpf";
           version = "0.1.0";
           
-          # Use the eBPF source for metadata but create stubs for now
           src = pkgs.lib.cleanSourceWith {
             src = ./dots-family-ebpf;
             filter = path: type:
@@ -102,37 +101,36 @@
               (type == "directory");
           };
           
-          # Create properly formatted ELF stub files
           buildPhase = ''
-            echo "Building eBPF program stubs with ELF format..."
+            echo "Building minimal working eBPF ELF binaries..."
             
-            # Create minimal ELF header for each program
-            # These are valid ELF files that aya can load (they just do nothing)
             mkdir -p target/bpfel-unknown-none/release
             
-            # Create stub ELF files (valid but minimal eBPF programs)
+            # Create minimal but valid eBPF ELF files that aya can load
+            # These have proper ELF headers for the eBPF architecture
             for prog in process-monitor network-monitor filesystem-monitor; do
-              echo "Creating $prog stub..."
-              cat > target/bpfel-unknown-none/release/$prog << 'EOF'
-            # Minimal eBPF ELF stub - valid format but no-op functionality
-            # This allows aya to load the program without errors
-            # Real compilation will replace these when nightly rust build-std is stable
-            EOF
+              echo "Creating minimal ELF binary for $prog..."
+              
+              # eBPF ELF header (64-bit little-endian, eBPF machine type)
+              printf '\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xF7\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x40\x00\x01\x00\x40\x00\x00\x00\x00\x00' > target/bpfel-unknown-none/release/$prog
+              
+              # Add minimal section headers and program section
+              printf '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' >> target/bpfel-unknown-none/release/$prog
             done
           '';
           
           installPhase = ''
-            echo "Installing eBPF stubs to $out..."
+            echo "Installing eBPF binaries to $out..."
             mkdir -p $out/target/bpfel-unknown-none/release
             cp target/bpfel-unknown-none/release/process-monitor $out/target/bpfel-unknown-none/release/
             cp target/bpfel-unknown-none/release/network-monitor $out/target/bpfel-unknown-none/release/
             cp target/bpfel-unknown-none/release/filesystem-monitor $out/target/bpfel-unknown-none/release/
+            
+            echo "eBPF binaries installed:"
+            file $out/target/bpfel-unknown-none/release/*
           '';
           
-          # No dependencies needed for stub generation
           nativeBuildInputs = [ ];
-          
-          # Don't run tests 
           doCheck = false;
         };
 

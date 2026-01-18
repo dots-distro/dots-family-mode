@@ -1,5 +1,392 @@
-   0.327598584s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="database_integration_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "database_integration_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/database_integration_test.rs", Edition2021) }
-   0.327622918s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="database_integration_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-4760eebf7a48ddbe/test-integration-test-database_integration_test`
+   0.516642903s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="dots_family_daemon"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("dots_family_daemon", ["lib"], "/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/src/lib.rs", Edition2021) }
+   0.516690268s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="dots_family_daemon"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-aa7ef3146bd9c1cb/test-lib-dots_family_daemon`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.535935009s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="dots-family-daemon"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { name: "dots-family-daemon", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/src/main.rs", Edition2021) }
+   0.535963277s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="dots-family-daemon"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-34f5ecd5bb8085f6/test-bin-dots-family-daemon`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.539433640s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="activity_reporting_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "activity_reporting_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/activity_reporting_test.rs", Edition2021) }
+   0.539473751s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="activity_reporting_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-797e08ea26167c63/test-integration-test-activity_reporting_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.543639742s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="database_integration_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "database_integration_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/database_integration_test.rs", Edition2021) }
+   0.543682209s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="database_integration_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-16f1288ab5abd0c6/test-integration-test-database_integration_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.547341776s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="dbus_methods_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "dbus_methods_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/dbus_methods_test.rs", Edition2021) }
+   0.547385131s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="dbus_methods_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-47a1d5a35d20cf4e/test-integration-test-dbus_methods_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.550626151s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="ebpf_integration_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "ebpf_integration_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/ebpf_integration_test.rs", Edition2021) }
+   0.550655777s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="ebpf_integration_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-4a094767eea1a001/test-integration-test-ebpf_integration_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.554665464s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="filesystem_monitor_ebpf_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "filesystem_monitor_ebpf_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/filesystem_monitor_ebpf_test.rs", Edition2021) }
+   0.554704646s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="filesystem_monitor_ebpf_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-13ab7957ffee2ca8/test-integration-test-filesystem_monitor_ebpf_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.558249040s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="integration_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "integration_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/integration_test.rs", Edition2021) }
+   0.558280753s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="integration_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-0b60e3de91bc6df6/test-integration-test-integration_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.561833201s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="network_monitor_ebpf_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "network_monitor_ebpf_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/network_monitor_ebpf_test.rs", Edition2021) }
+   0.561872105s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="network_monitor_ebpf_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-f46747e43c279d52/test-integration-test-network_monitor_ebpf_test`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.565637560s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="process_monitor_ebpf_test"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)/Check { test: true }/TargetInner { kind: "test", name: "process_monitor_ebpf_test", benched: false, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon/tests/process_monitor_ebpf_test.rs", Edition2021) }
+   0.565674345s  INFO prepare_target{force=false package_id=dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon) target="process_monitor_ebpf_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-daemon-9bc3acee935fbc47/test-integration-test-process_monitor_ebpf_test`
 
 Caused by:
     No such file or directory (os error 2)
@@ -44,4 +431,13 @@ Stack backtrace:
 warning: dots-family-daemon@0.1.0: Failed to build eBPF programs locally: eBPF crate not found
 warning: dots-family-daemon@0.1.0: eBPF monitors will use simulation mode
     Checking dots-family-daemon v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/crates/dots-family-daemon)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.56s
+warning: dots-family-daemon@0.1.0: Failed to build eBPF programs locally: eBPF crate not found
+warning: dots-family-daemon@0.1.0: eBPF monitors will use simulation mode
+error: could not compile `dots-family-daemon` (test "integration_test") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+warning: dots-family-daemon@0.1.0: Failed to build eBPF programs locally: eBPF crate not found
+warning: dots-family-daemon@0.1.0: eBPF monitors will use simulation mode
+error: could not compile `dots-family-daemon` (test "process_monitor_ebpf_test") due to 18 previous errors
+warning: dots-family-daemon@0.1.0: Failed to build eBPF programs locally: eBPF crate not found
+warning: dots-family-daemon@0.1.0: eBPF monitors will use simulation mode
+error: could not compile `dots-family-daemon` (test "filesystem_monitor_ebpf_test") due to 24 previous errors

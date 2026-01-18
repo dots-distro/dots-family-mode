@@ -3,7 +3,6 @@ use dots_family_common::types::{
     AgeGroup, ApplicationConfig, ApplicationMode, Profile, ProfileConfig, ScreenTimeConfig,
     TerminalFilteringConfig, TimeWindows, WebFilteringConfig,
 };
-use relm4::prelude::*;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]

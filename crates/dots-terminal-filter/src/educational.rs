@@ -144,7 +144,7 @@ impl EducationalSystem {
     fn format_educational_message(&self, message: &EducationalMessage) -> String {
         let mut output = String::new();
 
-        output.push_str(&format!("🎓 LEARNING OPPORTUNITY\n"));
+        output.push_str("🎓 LEARNING OPPORTUNITY\n");
         output.push_str(&format!("Command: {}\n", message.command));
         output.push_str(&format!("Risk Level: {}\n\n", message.risk_level.to_uppercase()));
 
@@ -156,7 +156,7 @@ impl EducationalSystem {
             for alternative in &message.safer_alternatives {
                 output.push_str(&format!("  • {}\n", alternative));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         if !message.learning_resources.is_empty() {
@@ -164,7 +164,7 @@ impl EducationalSystem {
             for resource in &message.learning_resources {
                 output.push_str(&format!("  • {}\n", resource));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         output.push_str("💬 Remember: It's always okay to ask for help when you're unsure!\n");
@@ -208,7 +208,7 @@ impl EducationalSystem {
     }
 
     pub fn get_command_blocked_message(&self, command: &str, reasons: &[String]) -> String {
-        let mut message = format!("🛑 COMMAND BLOCKED FOR SAFETY\n\n");
+        let mut message = "🛑 COMMAND BLOCKED FOR SAFETY\n\n".to_string();
         message.push_str(&format!("Command: {}\n\n", command));
 
         if !reasons.is_empty() {
@@ -216,7 +216,7 @@ impl EducationalSystem {
             for reason in reasons {
                 message.push_str(&format!("  • {}\n", reason));
             }
-            message.push_str("\n");
+            message.push('\n');
         }
 
         if let Some(educational) = self.get_educational_message(command, "high") {
@@ -231,14 +231,14 @@ impl EducationalSystem {
     }
 
     pub fn get_approval_required_message(&self, command: &str, reasons: &[String]) -> String {
-        let mut message = format!("🔐 PARENT APPROVAL REQUIRED\n\n");
+        let mut message = "🔐 PARENT APPROVAL REQUIRED\n\n".to_string();
         message.push_str(&format!("Command: {}\n\n", command));
 
         message.push_str("This command requires permission because:\n");
         for reason in reasons {
             message.push_str(&format!("  • {}\n", reason));
         }
-        message.push_str("\n");
+        message.push('\n');
 
         if let Some(educational) = self.get_educational_message(command, "medium") {
             message.push_str(&educational);

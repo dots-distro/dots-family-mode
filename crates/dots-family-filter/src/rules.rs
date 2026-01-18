@@ -11,6 +11,7 @@ pub enum FilterAction {
     Warn,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FilterRuleType {
     Domain,
@@ -19,6 +20,7 @@ pub enum FilterRuleType {
     Pattern,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterRule {
     pub id: String,
@@ -34,6 +36,7 @@ pub struct FilterRule {
 pub struct FilterDecision {
     pub action: FilterAction,
     pub reason: String,
+    #[allow(dead_code)]
     pub rule_id: Option<String>,
     pub category: Option<String>,
 }
@@ -93,6 +96,7 @@ impl RuleEngine {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn add_domain_rule(&mut self, domain: &str, action: FilterAction) {
         match action {
             FilterAction::Block => {
@@ -119,6 +123,7 @@ impl RuleEngine {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn add_category_rule(&mut self, category: &str, action: FilterAction) {
         match action {
             FilterAction::Block => {

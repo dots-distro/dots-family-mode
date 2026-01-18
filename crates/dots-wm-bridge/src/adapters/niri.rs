@@ -6,6 +6,7 @@ use tracing::debug;
 use crate::types::{WMCapabilities, WindowInfo, WindowState};
 use crate::WindowManagerAdapter;
 
+#[derive(Default)]
 pub struct NiriAdapter;
 
 impl NiriAdapter {

@@ -5,6 +5,7 @@ use tracing::{info, warn};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub struct ProcessEvent {
     pub pid: u32,
     pub ppid: u32,
@@ -117,6 +118,7 @@ impl ProcessMonitorEbpf {
         }))
     }
 
+    #[allow(dead_code)]
     pub fn is_loaded(&self) -> bool {
         self.loaded
     }

@@ -22,14 +22,24 @@ pub struct ProcessEvent {
 static PROCESS_EVENTS: RingBuf = RingBuf::with_byte_size(1024 * 1024, 0);
 
 #[tracepoint]
-pub fn sched_process_exec(_ctx: TracePointContext) -> u32 {
+pub fn sched_process_exec(ctx: TracePointContext) -> u32 {
+    match try_sched_process_exec(ctx) {
+        Ok(ret) => ret,
+        Err(_) => 1,
+    }
+}
+
+fn try_sched_process_exec(_ctx: TracePointContext) -> Result<u32, u32> {
+    let current_pid = unsafe { aya_ebpf::helpers::bpf_get_current_pid_tgid() as u32 };
+    let uid_gid = unsafe { aya_ebpf::helpers::bpf_get_current_uid_gid() };
+
     let event = ProcessEvent {
-        pid: 0,  // Simplified for compatibility
-        ppid: 0, // Simplified for compatibility
-        uid: 0,  // Simplified for compatibility
-        gid: 0,  // Simplified for compatibility
+        pid: current_pid,
+        ppid: 0,
+        uid: uid_gid as u32,
+        gid: (uid_gid >> 32) as u32,
         comm: [0; 16],
-        event_type: 0, // exec event
+        event_type: 0,
     };
 
     if let Some(mut buf) = PROCESS_EVENTS.reserve::<ProcessEvent>(0) {
@@ -37,7 +47,7 @@ pub fn sched_process_exec(_ctx: TracePointContext) -> u32 {
         buf.submit(0);
     }
 
-    0
+    Ok(0)
 }
 
 #[tracepoint]

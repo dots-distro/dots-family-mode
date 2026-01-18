@@ -26,6 +26,7 @@ struct MonitorHeartbeat {
     last_seen: Instant,
 }
 
+#[derive(Clone)]
 pub struct ProfileManager {
     _db: Database,
     config: DaemonConfig,
@@ -40,19 +41,11 @@ pub struct ProfileManager {
 }
 
 impl ProfileManager {
-    pub async fn new(config: &DaemonConfig) -> Result<Self> {
-        info!("Initializing ProfileManager");
-
-        let db_config = dots_family_db::DatabaseConfig {
-            path: config.database.path.clone(),
-            encryption_key: config.database.encryption_key.clone(),
-        };
-
-        let db = Database::new(db_config).await?;
-        db.run_migrations().await?;
+    pub async fn new(config: &DaemonConfig, database: Database) -> Result<Self> {
+        info!("Initializing ProfileManager with existing database instance");
 
         let manager = Self {
-            _db: db,
+            _db: database,
             config: config.clone(),
             active_profile: Arc::new(RwLock::new(None)),
             active_session_id: Arc::new(RwLock::new(None)),
@@ -1047,7 +1040,7 @@ mod tests {
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
 
         // When: Checking if firefox is allowed
@@ -1063,7 +1056,7 @@ mod tests {
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
 
         // When: Checking if steam is allowed
@@ -1079,7 +1072,7 @@ mod tests {
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
 
         // When: Getting remaining time
@@ -1092,8 +1085,8 @@ mod tests {
     #[tokio::test]
     async fn test_bdd_given_no_profile_when_check_app_then_returns_true() {
         // Given: No active profile
-        let (_db, _dir, config) = setup_test_db().await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _dir, config) = setup_test_db().await;
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         // When: Checking if any app is allowed
         let allowed = manager.check_application_allowed("any-app").await.unwrap();
@@ -1105,8 +1098,8 @@ mod tests {
     #[tokio::test]
     async fn test_bdd_given_activity_json_when_reported_then_succeeds() {
         // Given: A profile manager with no active session (should fail gracefully or we update to minimal requirements)
-        let (_db, _dir, config) = setup_test_db().await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _dir, config) = setup_test_db().await;
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         // When: Reporting incomplete activity JSON (missing required fields)
         let activity_json = r#"{"app_id":"firefox","duration":60}"#;
@@ -1123,7 +1116,7 @@ mod tests {
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
 
         let active_session_id = manager.get_active_session_id().await.unwrap();
@@ -1155,8 +1148,8 @@ mod tests {
     #[tokio::test]
     async fn test_bdd_given_monitor_when_heartbeat_sent_then_health_check_passes() {
         // Given: A profile manager
-        let (_db, _dir, config) = setup_test_db().await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _dir, config) = setup_test_db().await;
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         // When: Monitor sends heartbeat
         manager.send_heartbeat("monitor-1").await.unwrap();
@@ -1170,8 +1163,8 @@ mod tests {
     #[tokio::test]
     async fn test_bdd_given_monitor_when_heartbeat_timeout_then_tamper_detected() {
         // Given: A profile manager with an old heartbeat
-        let (_db, _dir, config) = setup_test_db().await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _dir, config) = setup_test_db().await;
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         // Send initial heartbeat
         manager.send_heartbeat("monitor-1").await.unwrap();
@@ -1196,8 +1189,8 @@ mod tests {
     #[tokio::test]
     async fn test_bdd_given_tamper_when_heartbeat_reconnects_then_tamper_cleared() {
         // Given: A tampered state
-        let (_db, _dir, config) = setup_test_db().await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _dir, config) = setup_test_db().await;
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         manager.send_heartbeat("monitor-1").await.unwrap();
         {
@@ -1223,11 +1216,16 @@ mod tests {
         let (db, dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        let manager1 = ProfileManager::new(&config).await.unwrap();
+        let manager1 = ProfileManager::new(&config, db).await.unwrap();
         manager1._set_active_profile(&profile_id).await.unwrap();
 
         // When: Creating a new manager (simulating daemon restart)
-        let manager2 = ProfileManager::new(&config).await.unwrap();
+        let db2_config = dots_family_db::DatabaseConfig {
+            path: config.database.path.clone(),
+            encryption_key: config.database.encryption_key.clone(),
+        };
+        let db2 = Database::new(db2_config).await.unwrap();
+        let manager2 = ProfileManager::new(&config, db2).await.unwrap();
         let loaded_profile = manager2.get_active_profile().await.unwrap();
 
         // Then: Profile should be loaded automatically
@@ -1244,7 +1242,7 @@ mod tests {
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
 
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         // When: Profile is activated
         manager._set_active_profile(&profile_id).await.unwrap();
@@ -1265,7 +1263,7 @@ mod tests {
         // Given: An active profile with a session
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
         let session_id = manager.get_active_session_id().await.unwrap();
 
@@ -1290,7 +1288,7 @@ mod tests {
 
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
         let session_id = manager.get_active_session_id().await.unwrap();
 
@@ -1328,7 +1326,7 @@ mod tests {
 
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
         let session_id = manager.get_active_session_id().await.unwrap();
 
@@ -1355,7 +1353,7 @@ mod tests {
 
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
         manager._set_active_profile(&profile_id).await.unwrap();
         let session_id = manager.get_active_session_id().await.unwrap();
 
@@ -1377,8 +1375,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_bdd_given_password_configured_when_authenticate_then_returns_token() {
-        let (_db, _temp_dir, config) = setup_test_db().await;
-        let mut manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config, db).await.unwrap();
 
         // Given a parent password is set
         manager.set_parent_password("test_password_123").await.unwrap();
@@ -1401,8 +1399,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_bdd_given_session_token_when_validated_then_returns_correct_status() {
-        let (_db, _temp_dir, config) = setup_test_db().await;
-        let mut manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config, db).await.unwrap();
 
         // Given a parent password is set and authentication succeeds
         manager.set_parent_password("test_password_123").await.unwrap();
@@ -1424,8 +1422,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_bdd_given_session_token_when_revoked_then_no_longer_valid() {
-        let (_db, _temp_dir, config) = setup_test_db().await;
-        let mut manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config, db).await.unwrap();
 
         // Given a parent password is set and authentication succeeds
         manager.set_parent_password("test_password_123").await.unwrap();
@@ -1446,8 +1444,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_bdd_given_password_configured_when_wrong_password_then_authentication_fails() {
-        let (_db, _temp_dir, config) = setup_test_db().await;
-        let mut manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config, db).await.unwrap();
 
         // Given a parent password is set
         manager.set_parent_password("correct_password").await.unwrap();
@@ -1463,8 +1461,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_bdd_given_no_password_configured_when_authenticate_then_fails() {
-        let (_db, _temp_dir, config) = setup_test_db().await;
-        let manager = ProfileManager::new(&config).await.unwrap();
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let manager = ProfileManager::new(&config, db.clone()).await.unwrap();
 
         // Given no parent password is configured
 

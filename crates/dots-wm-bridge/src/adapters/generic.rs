@@ -4,6 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use tracing::debug;
 
+#[derive(Default)]
 pub struct GenericAdapter;
 
 impl GenericAdapter {

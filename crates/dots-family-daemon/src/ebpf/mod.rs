@@ -40,6 +40,7 @@ impl EbpfManager {
         Ok(instance)
     }
 
+    #[allow(dead_code)]
     pub fn set_health_status_for_test(&mut self, health: EbpfHealth) {
         self.health_status = health;
     }

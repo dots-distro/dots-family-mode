@@ -99,14 +99,29 @@ async fn test_dbus_service_with_daemon_integration() -> Result<()> {
     use dots_family_daemon::daemon::Daemon;
     use dots_family_daemon::dbus_impl::FamilyDaemonService;
     use dots_family_daemon::monitoring_service::MonitoringService;
+    use dots_family_daemon::profile_manager::ProfileManager;
+    use dots_family_db::{Database, DatabaseConfig};
     use std::sync::Arc;
+    use tempfile::tempdir;
 
     let daemon = Arc::new(Daemon::new().await?);
     let config = DaemonConfig::load()?;
     let monitoring_service = MonitoringService::new();
 
+    // Create temporary database for test
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+    let db_config =
+        DatabaseConfig { path: db_path.to_str().unwrap().to_string(), encryption_key: None };
+    let database = Database::new(db_config).await.unwrap();
+    database.run_migrations().await.unwrap();
+
+    // Create ProfileManager with database
+    let profile_manager = ProfileManager::new(&config, database).await?;
+
     let _service =
-        FamilyDaemonService::new_with_daemon(&config, monitoring_service, daemon).await?;
+        FamilyDaemonService::new_with_daemon(&config, monitoring_service, daemon, profile_manager)
+            .await?;
 
     Ok(())
 }

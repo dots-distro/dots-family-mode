@@ -42,7 +42,7 @@ pub struct CategoryUsage {
     pub percentage: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DaemonClient {
     connected: Arc<Mutex<bool>>,
 }
@@ -83,7 +83,7 @@ impl DaemonClient {
 
     pub async fn get_daily_report(
         &self,
-        profile_id: &str,
+        _profile_id: &str,
         date: NaiveDate,
     ) -> Result<ActivityReport> {
         // TODO: Connect to actual daemon/database
@@ -131,7 +131,7 @@ impl DaemonClient {
 
     pub async fn get_weekly_report(
         &self,
-        profile_id: &str,
+        _profile_id: &str,
         week_start: NaiveDate,
     ) -> Result<WeeklyReport> {
         // TODO: Connect to actual daemon/database

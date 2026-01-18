@@ -4,7 +4,7 @@ use dots_family_proto::daemon::FamilyDaemonProxy;
 use zbus::Connection;
 
 pub async fn list() -> Result<()> {
-    let conn = Connection::session().await?;
+    let conn = Connection::system().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     let profiles_json = proxy.list_profiles().await?;
@@ -23,7 +23,7 @@ pub async fn list() -> Result<()> {
 }
 
 pub async fn show(_name: &str) -> Result<()> {
-    let conn = Connection::session().await?;
+    let conn = Connection::system().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     let profile_json = proxy.get_active_profile().await?;
@@ -33,7 +33,7 @@ pub async fn show(_name: &str) -> Result<()> {
 }
 
 pub async fn create(name: &str, age_group: &str) -> Result<()> {
-    let conn = Connection::session().await?;
+    let conn = Connection::system().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     // Try to create profile directly first (for initial setup when no parent password exists)
@@ -51,7 +51,7 @@ pub async fn create(name: &str, age_group: &str) -> Result<()> {
 
             auth::require_auth_simple(|| {
                 Box::pin(async move {
-                    let conn = Connection::session().await?;
+                    let conn = Connection::system().await?;
                     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
                     let profile_id = proxy.create_profile(&name, &age_group).await?;
@@ -84,7 +84,7 @@ pub async fn set_active(profile_id: &str) -> Result<()> {
 
     auth::require_auth_simple(|| {
         Box::pin(async move {
-            let conn = Connection::session().await?;
+            let conn = Connection::system().await?;
             let proxy = FamilyDaemonProxy::new(&conn).await?;
 
             proxy.set_active_profile(&profile_id).await?;

@@ -48,7 +48,7 @@ impl PolicyEngine {
             }
             ActivityEvent::ProcessStarted { executable, .. } => {
                 // For process started, use the executable name as app_id
-                let app_id = executable.split('/').last().unwrap_or(&executable);
+                let app_id = executable.split('/').next_back().unwrap_or(&executable);
                 self.check_app_policy(profile, app_id).await
             }
             ActivityEvent::NetworkConnection { .. } => {
@@ -110,6 +110,7 @@ impl PolicyEngine {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn get_active_profile(&self) -> Option<&Profile> {
         self.active_profile.as_ref()
     }

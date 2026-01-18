@@ -5,14 +5,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
+#[allow(dead_code)]
 const EVENT_OPEN: u32 = 1;
+#[allow(dead_code)]
 const EVENT_READ: u32 = 2;
+#[allow(dead_code)]
 const EVENT_WRITE: u32 = 3;
+#[allow(dead_code)]
 const EVENT_DELETE: u32 = 4;
+#[allow(dead_code)]
 const EVENT_CHMOD: u32 = 5;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub struct FilesystemEvent {
     pub event_type: u32,
     pub pid: u32,
@@ -23,7 +29,9 @@ pub struct FilesystemEvent {
 
 unsafe impl aya::Pod for FilesystemEvent {}
 
+#[allow(dead_code)]
 impl FilesystemEvent {
+    #[allow(clippy::wrong_self_convention)]
     fn to_json(&self) -> Value {
         let end_pos = self.filename.iter().position(|&b| b == 0).unwrap_or(256);
         let filename_bytes = &self.filename[..end_pos];
@@ -56,6 +64,7 @@ pub struct FilesystemMonitorEbpf {
     path_filters: Vec<String>,
 }
 
+#[allow(dead_code)]
 impl FilesystemMonitorEbpf {
     pub fn new() -> Self {
         Self {
@@ -169,7 +178,7 @@ impl FilesystemMonitorEbpf {
 
     async fn setup_path_filters(
         &self,
-        bpf: &mut Bpf,
+        _bpf: &mut Bpf,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("Setting up filesystem path filters...");
         warn!("Path filter setup not implemented for this aya version");

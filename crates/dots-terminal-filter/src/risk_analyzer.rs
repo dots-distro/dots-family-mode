@@ -228,7 +228,7 @@ impl RiskAnalyzer {
         }
 
         // Analyze individual command components
-        let parts: Vec<&str> = command.trim().split_whitespace().collect();
+        let parts: Vec<&str> = command.split_whitespace().collect();
         if !parts.is_empty() {
             let main_command = parts[0];
 
@@ -339,15 +339,15 @@ impl RiskAnalyzer {
         }
 
         // Check for dangerous find -exec patterns
-        if command.contains("find") && command.contains("-exec") {
-            if command.contains("rm")
+        if command.contains("find")
+            && command.contains("-exec")
+            && (command.contains("rm")
                 || command.contains("mv")
                 || command.contains("chmod")
-                || command.contains("chown")
-            {
-                *risk_level = std::cmp::max(*risk_level, RiskLevel::High);
-                reasons.push("Dangerous find -exec pattern with destructive command".to_string());
-            }
+                || command.contains("chown"))
+        {
+            *risk_level = std::cmp::max(*risk_level, RiskLevel::High);
+            reasons.push("Dangerous find -exec pattern with destructive command".to_string());
         }
 
         // Check for download and execute patterns

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::signal;
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use zbus::ConnectionBuilder;
 
 use crate::config::DaemonConfig;
@@ -17,6 +17,7 @@ use dots_family_db::{migrations, Database, DatabaseConfig};
 
 pub struct Daemon {
     ebpf_manager: RwLock<Option<EbpfManager>>,
+    policy_engine: RwLock<PolicyEngine>,
     config: DaemonConfig,
 }
 
@@ -25,13 +26,27 @@ impl Daemon {
         info!("Initializing daemon");
 
         let config = DaemonConfig::load()?;
+        let policy_engine =
+            PolicyEngine::new().await.context("Failed to initialize policy engine")?;
 
-        Ok(Self { ebpf_manager: RwLock::new(None), config })
+        Ok(Self {
+            ebpf_manager: RwLock::new(None),
+            policy_engine: RwLock::new(policy_engine),
+            config,
+        })
     }
 
     pub async fn set_ebpf_manager(&self, manager: EbpfManager) {
         let mut ebpf_manager = self.ebpf_manager.write().await;
         *ebpf_manager = Some(manager);
+    }
+
+    pub async fn get_policy_engine(&self) -> tokio::sync::RwLockReadGuard<'_, PolicyEngine> {
+        self.policy_engine.read().await
+    }
+
+    pub async fn get_policy_engine_mut(&self) -> tokio::sync::RwLockWriteGuard<'_, PolicyEngine> {
+        self.policy_engine.write().await
     }
 
     pub async fn get_ebpf_health(&self) -> Option<EbpfHealth> {
@@ -67,13 +82,10 @@ pub async fn run() -> Result<()> {
     info!("Initializing daemon");
 
     // Initialize database first
-    let _database = initialize_database().await?;
-
-    // Initialize policy engine
-    let _policy_engine = PolicyEngine::new().await.context("Failed to initialize policy engine")?;
-    info!("Policy engine initialized successfully");
+    let database = initialize_database().await?;
 
     let daemon = Arc::new(Daemon::new().await?);
+    info!("Daemon with policy engine initialized successfully");
 
     let ebpf_manager = match EbpfManager::new().await {
         Ok(mut manager) => {
@@ -103,13 +115,16 @@ pub async fn run() -> Result<()> {
 
     let monitoring_service = MonitoringService::new();
 
+    // Create ProfileManager with shared database instance
+    let profile_manager = ProfileManager::new(&daemon.config, database).await?;
+
     let service = FamilyDaemonService::new_with_daemon(
         &daemon.config,
         monitoring_service.clone(),
         daemon.clone(),
+        profile_manager.clone(),
     )
     .await?;
-    let profile_manager = ProfileManager::new(&daemon.config).await?;
 
     let mut edge_case_handler = EdgeCaseHandler::new();
     edge_case_handler.start_monitoring().await?;
@@ -141,6 +156,22 @@ pub async fn run() -> Result<()> {
                 enforce_time_limits(&profile_manager, &conn_clone, &mut last_warning_time).await
             {
                 warn!("Policy enforcement error: {}", e);
+            }
+        }
+    });
+
+    let daemon_clone_policy = daemon.clone();
+    let monitoring_service_clone = monitoring_service.clone();
+    tokio::spawn(async move {
+        let mut interval_timer = interval(Duration::from_secs(5));
+
+        loop {
+            interval_timer.tick().await;
+
+            if let Err(e) =
+                process_activity_enforcement(&daemon_clone_policy, &monitoring_service_clone).await
+            {
+                warn!("Activity processing error: {}", e);
             }
         }
     });
@@ -225,5 +256,35 @@ async fn emit_time_warning(conn: &zbus::Connection, minutes_remaining: u32) -> R
     .await?;
 
     info!("Emitted TimeLimitWarning signal: {} minutes", minutes_remaining);
+    Ok(())
+}
+
+async fn process_activity_enforcement(
+    daemon: &Arc<Daemon>,
+    monitoring_service: &MonitoringService,
+) -> Result<()> {
+    let activities = monitoring_service.get_recent_activities().await?;
+
+    if activities.is_empty() {
+        return Ok(());
+    }
+
+    let policy_engine = daemon.get_policy_engine().await;
+
+    for activity in activities {
+        match policy_engine.process_activity(activity).await {
+            Ok(decision) => {
+                if decision.blocked {
+                    warn!("Blocked activity: {} - {}", decision.action, decision.reason);
+                } else {
+                    debug!("Allowed activity: {} - {}", decision.action, decision.reason);
+                }
+            }
+            Err(e) => {
+                error!("Policy processing error: {}", e);
+            }
+        }
+    }
+
     Ok(())
 }

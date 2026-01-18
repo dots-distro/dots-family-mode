@@ -6,6 +6,8 @@ use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
 
 use crate::ebpf::{FilesystemMonitorEbpf, NetworkMonitorEbpf, ProcessMonitorEbpf};
+use dots_family_proto::events::ActivityEvent;
+use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct MonitoringService {
@@ -13,6 +15,12 @@ pub struct MonitoringService {
     network_monitor: Arc<Mutex<NetworkMonitorEbpf>>,
     filesystem_monitor: Arc<Mutex<FilesystemMonitorEbpf>>,
     running: Arc<Mutex<bool>>,
+}
+
+impl Default for MonitoringService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MonitoringService {
@@ -132,8 +140,67 @@ impl MonitoringService {
         }))
     }
 
+    pub async fn get_recent_activities(&self) -> Result<Vec<ActivityEvent>> {
+        let mut activities = Vec::new();
+
+        let process_data = {
+            let monitor = self.process_monitor.lock().await;
+            monitor
+                .collect_snapshot()
+                .await
+                .map_err(|e| anyhow::anyhow!("Process monitor error: {}", e))?
+        };
+
+        if let Some(recent_processes) = process_data["recent_processes"].as_array() {
+            for process in recent_processes {
+                if let (Some(pid), Some(executable), Some(args)) = (
+                    process["pid"].as_u64(),
+                    process["executable"].as_str(),
+                    process["args"].as_array(),
+                ) {
+                    let args_vec: Vec<String> =
+                        args.iter().filter_map(|arg| arg.as_str().map(|s| s.to_string())).collect();
+
+                    activities.push(ActivityEvent::ProcessStarted {
+                        pid: pid as u32,
+                        executable: executable.to_string(),
+                        args: args_vec,
+                        timestamp: SystemTime::now(),
+                    });
+                }
+            }
+        }
+
+        let network_data = {
+            let monitor = self.network_monitor.lock().await;
+            monitor
+                .collect_snapshot()
+                .await
+                .map_err(|e| anyhow::anyhow!("Network monitor error: {}", e))?
+        };
+
+        if let Some(connections) = network_data["connections"].as_array() {
+            for conn in connections {
+                if let (Some(pid), Some(local_addr), Some(remote_addr)) = (
+                    conn["pid"].as_u64(),
+                    conn["local_addr"].as_str(),
+                    conn["remote_addr"].as_str(),
+                ) {
+                    activities.push(ActivityEvent::NetworkConnection {
+                        pid: pid as u32,
+                        local_addr: local_addr.to_string(),
+                        remote_addr: remote_addr.to_string(),
+                        timestamp: SystemTime::now(),
+                    });
+                }
+            }
+        }
+
+        Ok(activities)
+    }
+
+    #[allow(dead_code)]
     pub async fn health_check(&self) -> Result<bool> {
-        // Simple health check - verify all monitors are accessible
         let process_healthy = {
             let monitor = self.process_monitor.lock().await;
             monitor.collect_snapshot().await.is_ok()

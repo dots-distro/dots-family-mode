@@ -394,94 +394,507 @@ If starting Phase 1:
 2. **Authentication priority**: Implement early or defer?
 3. **GUI work**: Start GTK4 dashboard or keep CLI-only for now?
 
-## Task Management Integration - ENGRAM CLI TRACKING
+# Engram Workflow Integration - COMPREHENSIVE GUIDE
 
-### ✅ Engram Integration Complete
+## What is Engram?
 
-The project now uses **Engram CLI** for comprehensive task tracking and agent coordination:
+**Engram** is a **Task-driven Memory System for LLM Coding Agents** built in Rust that maintains project state, tasks, and reasoning across coding sessions. It enforces disciplined development via Git commit validation requiring task references.
 
-**Location:** `/home/shift/bin/engram` (AI Agent Collective Memory System)
-**Agent Profile:** "sisyphus" (coder, rust-systems-programming)
+**Location:** `/home/shift/.nix-profile/bin/engram` (Available as `engram` command)
+**Purpose:** Maintains project state, tasks, and reasoning across coding sessions
+**Git Integration:** Commits must reference task UUIDs: `"feat: implement auth [<uuid>]"`
 
-### Current Task Status in Engram
+## Core Architecture
 
-**✅ Completed Tasks (5 backfilled):**
-1. **System Detection Tool** - dots-detect CLI with 8 collectors fully functional
-2. **eBPF Monitoring System** - Process, network, and filesystem monitoring complete  
-3. **Test Suite** - 25 passing tests covering all dots-detect functionality
-4. **Architecture Documentation** - Complete design for 8-component parental control system
-5. **Foundation Crates** - dots-family-common and dots-family-proto with shared types
+### Entity System
+- **Tasks**: Core work units with UUID identifiers, returns UUIDs for commit references
+- **Context**: Background information and documentation 
+- **Reasoning**: Decision chains and rationale (REQUIRED for task validation)
+- **Relationships**: Link entities (REQUIRED: task↔reasoning, task↔context for validation)
+- **Workflows**: State machines and process flows
 
-**⏳ Pending Tasks (5 remaining):**
-1. **Fix Database Compilation** - Resolve DbAuditLog model issues and type annotations
-2. **Complete Daemon** - Finish policy engine and session management integration
-3. **CLI Administration Tool** - Complete the 80% finished dots-family-ctl
-4. **Application Monitor** - Build Wayland integration and process monitoring  
-5. **Content Filter** - Implement web filtering and threat detection
-
-### Quick Engram Commands
-
+### Core Workflow (Essential Steps)
 ```bash
-# Check project status
-engram task list
-engram task list --status completed
-engram task list --agent sisyphus
-
-# View specific task details  
-engram task get <task-id>
-
-# Update task status
-engram task update <task-id> --status in_progress
-engram task update <task-id> --status completed
-
-# Create new tasks for additional work
-engram task create --title "Task Title" --agent sisyphus --description "Details" --priority high
+1. engram setup workspace              # Initialize project
+2. engram task create --title "..."    # Create work items (returns UUIDs)
+3. engram context create --title "..." # Add background info
+4. engram reasoning create --task-id <uuid> # Document decisions
+5. engram relationship create ...       # Link entities (REQUIRED for validation)
+6. engram validate hook install        # Enable Git integration
 ```
 
-### Documentation Tasks Available
+### Storage Architecture
+- **Git Integration**: All commits must reference valid task UUIDs
+- **JSON I/O**: Most commands support --json input/output for programmatic access
+- **Entity Storage**: `.engram/` directory (separate from main project)
+- **Validation**: Pre-commit hooks enforce task references
 
-The `docs/` directory contains **289 uncompleted tasks** marked with `[ ]` checkboxes:
+## Session Startup Protocol (MANDATORY)
+
+Every session MUST begin with this protocol:
+
+### 1. Check Engram Availability
+```bash
+# Verify engram is available
+engram help 2>/dev/null || echo "Engram not found in PATH"
+```
+
+### 2. Review Current Tasks
+```bash
+# List all pending tasks
+engram task list
+
+# Find your active/assigned tasks  
+engram task list --agent default
+
+# Check tasks in JSON format for programmatic access
+engram task list --agent default | jq '.[].id'
+```
+
+### 3. Check Validation Status
+```bash
+# Check validation setup
+engram validate hook status
+
+# Install hook if missing
+engram validate hook install
+
+# Test commit validation (dry-run)
+engram validate commit --message "test commit [<uuid>]" --dry-run
+```
+
+### 4. Check Workspace Status
+```bash
+# Verify workspace is initialized
+ls .engram/ 2>/dev/null || engram setup workspace
+```
+
+## Complete Command Reference
+
+### Setup Commands
+```bash
+# Initialize workspace (do this once per project)
+engram setup workspace
+
+# Check current workspace status
+ls .engram/
+```
+
+### Task Management (Core Entity)
+```bash
+# Create new task (saves UUID for commit references)
+TASK_ID=$(engram task create --title "Implement feature X" --json | jq -r '.id')
+engram task create --title "Fix database issues" --priority high
+
+# List tasks with filtering
+engram task list
+engram task list --agent default
+engram task list --json  # JSON output for programmatic access
+
+# Get task details
+engram task get <task-id>
+
+# Update task (status changes, metadata)
+engram task update <task-id> --status completed
+engram task update <task-id> --priority high
+
+# Create task from JSON input
+echo '{"title": "Database migration", "priority": "high"}' | engram task create --json
+```
+
+### Context Management (Background Info)
+```bash
+# Create context entities
+CTX_ID=$(engram context create --title "Feature requirements" --source "requirements.md" --json | jq -r '.id')
+engram context create --title "Technical constraints" --description "System limitations"
+
+# List contexts
+engram context list
+```
+
+### Reasoning Management (Decision Documentation)
+```bash
+# Create reasoning (REQUIRED - links to tasks for validation)
+REASON_ID=$(engram reasoning create --task-id <task-id> --title "Implementation approach" --json | jq -r '.id')
+engram reasoning create --task-id <task-id> --title "Alternative evaluation" --description "Why we chose X over Y"
+
+# List reasoning
+engram reasoning list
+```
+
+### Relationship Management (CRITICAL for Validation)
+```bash
+# Create task → context relationship (REQUIRED)
+engram relationship create \
+  --source-id <task-id> --source-type task \
+  --target-id <context-id> --target-type context \
+  --relationship-type references --agent default
+
+# Create task → reasoning relationship (REQUIRED)  
+engram relationship create \
+  --source-id <task-id> --source-type task \
+  --target-id <reasoning-id> --target-type reasoning \
+  --relationship-type references --agent default
+
+# Create task hierarchies (parent → subtask)
+engram relationship create \
+  --source-id <parent-task> --source-type task \
+  --target-id <subtask> --target-type task \
+  --relationship-type contains --agent default
+
+# Create task dependencies
+engram relationship create \
+  --source-id <task2> --source-type task \
+  --target-id <task1> --target-type task \
+  --relationship-type depends_on --agent default
+
+# Query relationships
+engram relationship connected --entity-id <task-id> --relationship-type references
+engram relationship find-path --source-id <task-id> --target-id <context-id>
+```
+
+### Validation System (Git Integration)
+```bash
+# Install validation hooks (required for commit enforcement)
+engram validate hook install
+
+# Check hook status
+engram validate hook status
+
+# Test commit validation (dry-run)
+engram validate commit --message "feat: implement auth [<task-id>]" --dry-run
+
+# Check validation issues
+engram validate check
+```
+
+### Workflow Management
+```bash
+# Create workflows (state machines)
+engram workflow create --title "Feature development workflow" --description "Multi-stage development process"
+
+# List workflows
+engram workflow list
+
+# Check workflow status
+engram workflow status --task-id <task-id>
+```
+
+## Task Execution Workflow (MANDATORY PROCESS)
+
+### Complete Example Workflow
+```bash
+# 1. SETUP (once per project)
+engram setup workspace
+
+# 2. CREATE ENTITIES WITH UUIDs
+TASK_ID=$(engram task create --title "Add OAuth support" --json | jq -r '.id')
+CTX_ID=$(engram context create --title "OAuth 2.0 specification" --source "RFC 6749" --json | jq -r '.id')
+REASON_ID=$(engram reasoning create --task-id $TASK_ID --title "Why OAuth over custom auth" --json | jq -r '.id')
+
+# 3. CREATE REQUIRED RELATIONSHIPS (VALIDATION REQUIREMENT)
+engram relationship create \
+  --source-id $TASK_ID --source-type task \
+  --target-id $CTX_ID --target-type context \
+  --relationship-type references --agent default
+
+engram relationship create \
+  --source-id $TASK_ID --source-type task \
+  --target-id $REASON_ID --target-type reasoning \
+  --relationship-type references --agent default
+
+# 4. ENABLE VALIDATION
+engram validate hook install
+
+# 5. WORK ON TASK
+# ... do development work ...
+
+# 6. COMMIT WITH TASK REFERENCE
+git commit -m "feat: add OAuth endpoint [$TASK_ID]"
+
+# 7. UPDATE TASK STATUS
+engram task update $TASK_ID --status completed
+```
+
+### Before Starting Any Work
+
+1. **Initialize if needed**:
+```bash
+# Check if workspace exists
+ls .engram/ 2>/dev/null || engram setup workspace
+```
+
+2. **Check existing tasks**:
+```bash
+# List all tasks
+engram task list
+
+# Find specific tasks
+engram task list --json | jq '.[] | select(.status != "completed")'
+```
+
+3. **Verify validation setup**:
+```bash
+engram validate hook status
+```
+
+### During Development
+
+1. **Create proper entity structure for any new work**:
+```bash
+# Every task MUST have context and reasoning for validation
+TASK_ID=$(engram task create --title "Your task" --json | jq -r '.id')
+CTX_ID=$(engram context create --title "Task context" --json | jq -r '.id') 
+REASON_ID=$(engram reasoning create --task-id $TASK_ID --title "Approach" --json | jq -r '.id')
+
+# Link them (REQUIRED)
+engram relationship create --source-id $TASK_ID --source-type task --target-id $CTX_ID --target-type context --relationship-type references --agent default
+engram relationship create --source-id $TASK_ID --source-type task --target-id $REASON_ID --target-type reasoning --relationship-type references --agent default
+```
+
+2. **Follow commit validation**:
+   - All commits MUST reference valid task UUIDs: `"feat: implement auth [<uuid>]"`
+   - Test with: `engram validate commit --message "your message [<uuid>]" --dry-run`
+
+### Task Completion
+
+1. **Verify relationships exist**:
+```bash
+engram relationship connected --entity-id <task-id> --relationship-type references
+```
+
+2. **Update task status**:
+```bash
+engram task update <task-id> --status completed
+```
+
+## Complex Task Structure Patterns
+
+### Creating Task Hierarchies
+```bash
+# Create parent task
+PARENT_TASK=$(engram task create --title "Implement authentication system" --json | jq -r '.id')
+
+# Create subtasks  
+TASK1=$(engram task create --title "Design auth schema" --json | jq -r '.id')
+TASK2=$(engram task create --title "Implement JWT handling" --json | jq -r '.id')
+TASK3=$(engram task create --title "Add auth middleware" --json | jq -r '.id')
+
+# Create containment relationships
+engram relationship create --source-id $PARENT_TASK --source-type task --target-id $TASK1 --target-type task --relationship-type contains --agent default
+engram relationship create --source-id $PARENT_TASK --source-type task --target-id $TASK2 --target-type task --relationship-type contains --agent default
+engram relationship create --source-id $PARENT_TASK --source-type task --target-id $TASK3 --target-type task --relationship-type contains --agent default
+
+# Create dependencies (logical order)
+engram relationship create --source-id $TASK2 --source-type task --target-id $TASK1 --target-type task --relationship-type depends_on --agent default
+engram relationship create --source-id $TASK3 --source-type task --target-id $TASK2 --target-type task --relationship-type depends_on --agent default
+```
+
+## Finding and Resuming Work
+
+### When Starting a Session:
+
+1. **Check recent activity**:
+```bash
+# See all current tasks
+engram task list
+
+# Get tasks in JSON for programmatic filtering
+engram task list --json | jq '.[] | select(.status != "completed") | .id'
+```
+
+2. **Find incomplete work**:
+```bash
+# Find tasks by status
+engram task list --json | jq '.[] | select(.status == "in_progress")'
+
+# Find tasks by priority  
+engram task list --json | jq '.[] | select(.priority == "high")'
+```
+
+3. **Review relationships**:
+```bash
+# Check what entities are connected to a task
+engram relationship connected --entity-id <task-id>
+
+# Find path between entities
+engram relationship find-path --source-id <task1> --target-id <task2>
+```
+
+## Current Project Integration
+
+### Project Configuration
+The project has basic engram structure in `.engram/config.yaml`:
+```yaml
+agents:
+  coder:
+    agent_type: implementation
+  planner:
+    agent_type: architecture  
+  reviewer:
+    agent_type: quality_assurance
+```
+
+### Current Task Status
+**ENGRAM IS THE SOURCE OF TRUTH**: Check engram for current task status:
+
+```bash
+# Check current state
+engram task list
+
+# Find active work
+engram task list | grep -E "(inprogress|todo)"
+
+# Get task details
+engram task get <task-id>
+```
+
+**Setup Required**: Validation hooks must be installed before starting work:
+```bash
+engram validate hook install
+engram validate check
+```
+
+### Current Validation Status
+```bash
+$ engram validate check
+⚠️  Issues found:
+  • Pre-commit hook not installed
+  • Validation not working
+
+Run 'engram validation hook install' to fix setup issues.
+```
+
+**Setup Required**: Validation hooks must be installed before starting work.
+
+### Documentation Integration
+The `../dots-detection/docs/` directory contains 289 uncompleted tasks marked with `[ ]` checkboxes:
 - **IMPLEMENTATION_ROADMAP.md**: 10 phases with detailed task breakdowns
-- **SECURITY_ARCHITECTURE.md**: Security implementation tasks
-- **IMPLEMENTATION_ANALYSIS.md**: Phase analysis tasks  
+- **SECURITY_ARCHITECTURE.md**: Security implementation tasks  
+- **IMPLEMENTATION_ANALYSIS.md**: Phase analysis tasks
 - **REVIEW_AND_PRIORITIES.md**: Architecture and system service tasks
 
-**Creating tasks from docs:** Use `grep -r "\[ \]" docs/` to find specific tasks to add to engram.
+**Creating tasks from docs**: Use `grep -r "\[ \]" docs/` to find specific tasks to add to engram.
 
-### Agent Handoff Protocol
+## Troubleshooting
 
-**For next agent working on this project:**
+### Common Issues and Solutions
 
-1. **Check Environment:**
-   ```bash
-   cd /home/shift/code/endpoint-agent/dots-detection
-   echo $IN_NIX_SHELL  # Should be set
-   engram task list --agent sisyphus  # Check current task status
-   ```
+**Hook Not Working**:
+```bash
+engram validate hook status
+engram validate hook install
+```
 
-2. **Review Context:**
-   - Main project: `dots-detect` (functional CLI tool)
-   - Family mode: `dots-familt-mode/` (80% complete, some compilation issues)
-   - Documentation: `docs/` (comprehensive specs and roadmap)
+**Task Missing Relationships** (Validation will catch this):
+```bash
+# Check existing relationships
+engram relationship connected --entity-id <task-id>
 
-3. **Pick Up Work:**
-   ```bash
-   # Mark next task in progress
-   engram task update <task-id> --status in_progress
-   
-   # Work on the task...
-   
-   # Mark complete when done
-   engram task update <task-id> --status completed
-   ```
+# Create missing relationships (REQUIRED for validation)
+engram relationship create --source-id <task-id> --source-type task --target-id <context-id> --target-type context --relationship-type references --agent default
+```
 
-4. **Track Progress:**
-   - Update task status in engram immediately after completion
-   - Create new tasks for any additional work discovered  
-   - Use `engram sync` to share changes with team
+**Workspace Not Initialized**:
+```bash
+# Initialize workspace if missing
+ls .engram/ 2>/dev/null || engram setup workspace
+```
 
----
+**Commit Validation Failing**:
+```bash
+# Test your commit message format
+engram validate commit --message "feat: your change [<valid-task-uuid>]" --dry-run
 
-**Last Updated:** 2026-01-14 (after engram integration and task backfill)
-**Next Milestone:** Phase 0 completion (fix tests, add migrations, documentation)  
-**Task Tracking:** Engram CLI with "sisyphus" agent profile
+# Ensure task has required relationships
+engram relationship connected --entity-id <task-id>
+```
+
+## Agent Handoff Protocol
+
+### For Next Agent Working on This Project:
+
+1. **Environment Check**:
+```bash
+cd /home/shift/code/endpoint-agent/dots-detection/dots-familt-mode
+echo $IN_NIX_SHELL  # Should be set
+engram task list  # Check current tasks
+```
+
+2. **Setup Validation** (if not done):
+```bash
+# Install hooks if not present
+engram validate hook install
+
+# Verify setup
+engram validate hook status
+```
+
+3. **Review Context**:
+- Main project: Phase 0 mostly complete (85%), needs integration tests fixed
+- Family mode: `dots-familt-mode/` codebase with compilation issues
+- Documentation: `docs/` comprehensive specs and roadmap  
+- Current priority: Fix failing integration tests, database migrations
+
+4. **Create Tasks for Immediate Work**:
+```bash
+# Create task for next priority work
+TASK_ID=$(engram task create --title "Fix failing integration tests" --priority high --json | jq -r '.id')
+
+# Create context and reasoning
+CTX_ID=$(engram context create --title "Integration test context" --description "Tests expect daemon running or better mocks" --json | jq -r '.id')
+REASON_ID=$(engram reasoning create --task-id $TASK_ID --title "Test fix approach" --description "Either improve mocks or conditional execution" --json | jq -r '.id')
+
+# Create required relationships
+engram relationship create --source-id $TASK_ID --source-type task --target-id $CTX_ID --target-type context --relationship-type references --agent default
+engram relationship create --source-id $TASK_ID --source-type task --target-id $REASON_ID --target-type reasoning --relationship-type references --agent default
+
+# Start work
+engram task update $TASK_ID --status in_progress
+```
+
+5. **Track Progress**:
+- Update task status immediately when status changes
+- Create new tasks for any additional work discovered
+- Maintain proper entity relationships throughout development  
+- Follow commit validation with task ID references
+
+## Critical Rules (NON-NEGOTIABLE)
+
+1. **ALWAYS use engram for task tracking** - If it's not in engram, it doesn't exist
+2. **Every task MUST have context and reasoning relationships** for validation to pass
+3. **All commits must reference valid task UUIDs** with format: `"feat: your change [uuid]"`  
+4. **Install validation hooks** before starting any development work
+5. **Use JSON output for programmatic access** when creating entities that need UUID capture
+6. **Create proper entity structures** before starting work, not after
+7. **Test commit messages** with `--dry-run` before actual commits
+
+## Quick Reference
+
+### Essential Commands
+```bash
+# Session startup
+engram task list
+engram validate hook status
+
+# Create work with proper structure
+TASK_ID=$(engram task create --title "..." --json | jq -r '.id')
+CTX_ID=$(engram context create --title "..." --json | jq -r '.id')
+REASON_ID=$(engram reasoning create --task-id $TASK_ID --title "..." --json | jq -r '.id')
+
+# Create required relationships
+engram relationship create --source-id $TASK_ID --source-type task --target-id $CTX_ID --target-type context --relationship-type references --agent default
+engram relationship create --source-id $TASK_ID --source-type task --target-id $REASON_ID --target-type reasoning --relationship-type references --agent default
+
+# Validate and commit
+engram validate commit --message "feat: your change [$TASK_ID]" --dry-run
+git commit -m "feat: your change [$TASK_ID]"
+```
+
+### Storage Locations
+- **Engram Binary**: `/home/shift/.nix-profile/bin/engram` (available as `engram` command)
+- **Project Config**: `.engram/config.yaml`
+- **Entity Storage**: `.engram/` directory
+- **Validation**: Pre-commit hooks in `.git/hooks/`
+
+Remember: Engram enforces disciplined development. Always use engram commands to discover current state, create proper task structures with relationships, and reference task UUIDs in commits. The system ensures nothing falls through the cracks.

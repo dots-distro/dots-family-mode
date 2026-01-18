@@ -10,6 +10,7 @@ pub struct EdgeCaseHandler {
     daemon_recovery_enabled: bool,
 }
 
+#[allow(dead_code)]
 impl EdgeCaseHandler {
     pub fn new() -> Self {
         Self {
@@ -192,7 +193,7 @@ impl EdgeCaseHandler {
 
     async fn check_dbus_responsiveness(&self) -> Result<()> {
         // Attempt to connect to DBus interface
-        match zbus::Connection::session().await {
+        match zbus::Connection::system().await {
             Ok(_conn) => {
                 // Could make a test call to daemon
                 Ok(())
@@ -328,7 +329,9 @@ impl Default for EdgeCaseHandler {
     }
 }
 
+#[allow(dead_code)]
 struct DiskUsage {
+    #[allow(dead_code)]
     total_bytes: u64,
     available_bytes: u64,
 }

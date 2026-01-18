@@ -18,20 +18,15 @@ pub struct WindowGeometry {
     pub height: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub enum WindowState {
+    #[default]
     Normal,
     Maximized,
     Minimized,
     Fullscreen,
     Floating,
     Tiled,
-}
-
-impl Default for WindowState {
-    fn default() -> Self {
-        WindowState::Normal
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

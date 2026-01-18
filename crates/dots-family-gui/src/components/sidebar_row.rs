@@ -20,6 +20,7 @@ impl FactoryComponent for SidebarRow {
     type CommandOutput = ();
     type ParentWidget = gtk4::ListBox;
 
+    #[allow(unused_assignments)] // Used by relm4 macro
     view! {
         root = gtk4::ListBoxRow {
             set_activatable: true,

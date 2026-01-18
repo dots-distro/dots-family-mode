@@ -6,6 +6,7 @@ use notify_rust::{Notification as SystemNotification, Urgency};
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+#[derive(Clone)]
 pub struct NotificationManager {
     sender: mpsc::UnboundedSender<NotificationRequest>,
 }
@@ -14,6 +15,7 @@ struct NotificationRequest {
     notification: Notification,
 }
 
+#[allow(dead_code)]
 impl NotificationManager {
     pub fn new() -> Self {
         let (sender, mut receiver) = mpsc::unbounded_channel::<NotificationRequest>();
