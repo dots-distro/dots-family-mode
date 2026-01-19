@@ -62,11 +62,16 @@ impl FamilyDaemonService {
     }
 
     async fn get_remaining_time(&self) -> u32 {
-        match self.profile_manager.get_remaining_time().await {
-            Ok(minutes) => minutes,
-            Err(e) => {
-                warn!("Failed to get remaining time: {}", e);
-                0
+        if let Some(ref daemon) = self.daemon {
+            let policy_engine = daemon.get_policy_engine().await;
+            policy_engine.get_remaining_screen_time().unwrap_or(0)
+        } else {
+            match self.profile_manager.get_remaining_time().await {
+                Ok(minutes) => minutes,
+                Err(e) => {
+                    warn!("Failed to get remaining time: {}", e);
+                    0
+                }
             }
         }
     }
@@ -112,6 +117,15 @@ impl FamilyDaemonService {
                     match policy_engine.process_activity(event.clone()).await {
                         Ok(decision) => {
                             info!("Policy decision: {:?}", decision);
+
+                            if !decision.blocked {
+                                if let ActivityEvent::WindowFocused { .. } = event {
+                                    drop(policy_engine);
+                                    let mut policy_engine_mut =
+                                        daemon.get_policy_engine_mut().await;
+                                    policy_engine_mut.update_activity();
+                                }
+                            }
 
                             if decision.blocked {
                                 warn!("Activity blocked by policy: {}", decision.reason);

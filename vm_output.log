@@ -1,0 +1,17 @@
+c[?7l[2J[0mSeaBIOS (version rel-1.17.0-0-gb52ca86e094d-prebuilt.qemu.org)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+3EFD1940+3EF31940 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from ROM...
+Probing EDD (edd=off to disable)... ok
+c[?7l[2J[    0.383601] sgx: There are zero EPC sections.
+[!p]104[?7h[1G[0J[6n[32766;32766H[6n[!p]104[?7h[1G[0J[6n[32766;32766H[6n]3008;start=902b90a295e846919deea1fb910a01f7;user=root;hostname=dots-family-test;machineid=e90420eafa79428a899ebc6c28216813;bootid=40eb84ecdd12483185e2e2f0bf4305d2;pid=686;pidfdid=986;comm=(agetty);servicename=serial-getty@ttyS0.service;invocationid=e8f830566c55450c96542f6697dffb55;type=service\P+q6E616D65\
+
+[1;32m<<< Welcome to NixOS 26.05.20260111.ffbc9f8 (x86_64) - ttyS0 >>>[0m
+
+Run 'nixos-help' for the NixOS manual.
+
+dots-family-test login: qemu-system-x86_64: terminating on signal 15 from pid 986715 (bash)
