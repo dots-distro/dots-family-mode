@@ -7,6 +7,7 @@ mod daemon;
 mod dbus_impl;
 mod ebpf;
 mod edge_case_handler;
+mod enforcement;
 mod monitoring_service;
 mod notification_manager;
 mod policy_engine;

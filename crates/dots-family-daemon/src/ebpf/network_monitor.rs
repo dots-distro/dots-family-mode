@@ -92,7 +92,7 @@ impl NetworkMonitorEbpf {
     }
 
     pub fn cleanup(&mut self) {
-        if let Some(ref mut ebpf) = self.ebpf {
+        if let Some(ref mut _ebpf) = self.ebpf {
             info!("Cleaning up network monitor eBPF programs");
             // In simulation mode, just mark as unloaded
         }

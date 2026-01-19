@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde_json::Value;
 use std::collections::HashMap;
-use tracing::{error, info, warn};
+use tracing::info;
 
 /// Simple process monitor for testing (no eBPF dependency)
 pub struct ProcessMonitorSimple {

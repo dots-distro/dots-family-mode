@@ -14,6 +14,9 @@ pub struct DaemonConfig {
 
     #[serde(default)]
     pub dbus: DbusConfig,
+
+    #[serde(default)]
+    pub dry_run: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

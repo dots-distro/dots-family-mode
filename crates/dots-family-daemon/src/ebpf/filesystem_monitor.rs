@@ -104,7 +104,7 @@ impl FilesystemMonitorEbpf {
     }
 
     pub fn cleanup(&mut self) {
-        if let Some(ref mut ebpf) = self.ebpf {
+        if let Some(ref mut _ebpf) = self.ebpf {
             info!("Cleaning up filesystem monitor eBPF programs");
             // In simulation mode, just mark as unloaded
         }

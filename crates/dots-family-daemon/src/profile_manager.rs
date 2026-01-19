@@ -1205,7 +1205,11 @@ mod tests {
                 encryption_key: None,
             },
             auth: crate::config::AuthConfig { parent_password_hash: None },
-            dbus: crate::config::DbusConfig::default(),
+            dbus: crate::config::DbusConfig {
+                service_name: "org.dots.FamilyDaemon.test".to_string(),
+                use_session_bus: true,
+            },
+            dry_run: Some(false),
         };
 
         let db_config = dots_family_db::DatabaseConfig {

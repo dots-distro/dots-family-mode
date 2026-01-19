@@ -10,6 +10,7 @@ use crate::config::DaemonConfig;
 use crate::dbus_impl::FamilyDaemonService;
 use crate::ebpf::{EbpfHealth, EbpfManager};
 use crate::edge_case_handler::EdgeCaseHandler;
+use crate::enforcement::EnforcementEngine;
 use crate::monitoring_service::MonitoringService;
 use crate::policy_engine::PolicyEngine;
 use crate::profile_manager::ProfileManager;
@@ -18,6 +19,7 @@ use dots_family_db::{migrations, Database, DatabaseConfig};
 pub struct Daemon {
     ebpf_manager: RwLock<Option<EbpfManager>>,
     policy_engine: RwLock<PolicyEngine>,
+    enforcement_engine: RwLock<EnforcementEngine>,
     config: DaemonConfig,
 }
 
@@ -28,10 +30,12 @@ impl Daemon {
         let config = DaemonConfig::load()?;
         let policy_engine =
             PolicyEngine::new().await.context("Failed to initialize policy engine")?;
+        let enforcement_engine = EnforcementEngine::new(config.dry_run.unwrap_or(false));
 
         Ok(Self {
             ebpf_manager: RwLock::new(None),
             policy_engine: RwLock::new(policy_engine),
+            enforcement_engine: RwLock::new(enforcement_engine),
             config,
         })
     }
@@ -47,6 +51,18 @@ impl Daemon {
 
     pub async fn get_policy_engine_mut(&self) -> tokio::sync::RwLockWriteGuard<'_, PolicyEngine> {
         self.policy_engine.write().await
+    }
+
+    pub async fn get_enforcement_engine(
+        &self,
+    ) -> tokio::sync::RwLockReadGuard<'_, EnforcementEngine> {
+        self.enforcement_engine.read().await
+    }
+
+    pub async fn get_enforcement_engine_mut(
+        &self,
+    ) -> tokio::sync::RwLockWriteGuard<'_, EnforcementEngine> {
+        self.enforcement_engine.write().await
     }
 
     pub async fn get_ebpf_health(&self) -> Option<EbpfHealth> {

@@ -5,6 +5,7 @@ use zbus::interface;
 
 use crate::config::DaemonConfig;
 use crate::daemon::Daemon;
+use crate::enforcement::EnforcementEngine;
 use crate::monitoring_service::MonitoringService;
 use crate::profile_manager::ProfileManager;
 use dots_family_proto::events::ActivityEvent;
@@ -130,26 +131,99 @@ impl FamilyDaemonService {
                             if decision.blocked {
                                 warn!("Activity blocked by policy: {}", decision.reason);
 
-                                match &event {
-                                    ActivityEvent::WindowFocused { app_id, pid, .. } => {
-                                        warn!(
-                                            "Should terminate or hide window for app {} (PID: {})",
-                                            app_id, pid
-                                        );
+                                if let Some(ref daemon) = self.daemon {
+                                    let enforcement_engine: tokio::sync::RwLockReadGuard<
+                                        '_,
+                                        EnforcementEngine,
+                                    > = daemon.get_enforcement_engine().await;
+
+                                    match &event {
+                                        ActivityEvent::WindowFocused { app_id, pid, .. } => {
+                                            warn!(
+                                                "Enforcing policy: closing window for app {} (PID: {})",
+                                                app_id, pid
+                                            );
+                                            if let Err(e) =
+                                                enforcement_engine.close_window(app_id, *pid).await
+                                            {
+                                                error!("Failed to close window: {}", e);
+                                            }
+                                            if let Err(e) = enforcement_engine.notify_user(
+                                                "Application Blocked",
+                                                &format!("Access to {} has been restricted by parental controls", app_id)
+                                            ).await {
+                                                error!("Failed to send notification: {}", e);
+                                            }
+                                        }
+                                        ActivityEvent::ProcessStarted {
+                                            executable, pid, ..
+                                        } => {
+                                            warn!(
+                                                "Enforcing policy: terminating process {} (PID: {})",
+                                                executable, pid
+                                            );
+                                            if let Err(e) = enforcement_engine
+                                                .terminate_process(*pid, &decision.reason)
+                                                .await
+                                            {
+                                                error!("Failed to terminate process: {}", e);
+                                            }
+                                            if let Err(e) = enforcement_engine.notify_user(
+                                                "Application Blocked", 
+                                                &format!("Starting {} has been blocked by parental controls", executable.split('/').last().unwrap_or("application"))
+                                            ).await {
+                                                error!("Failed to send notification: {}", e);
+                                            }
+                                        }
+                                        ActivityEvent::NetworkConnection {
+                                            remote_addr,
+                                            pid,
+                                            ..
+                                        } => {
+                                            warn!(
+                                                "Enforcing policy: blocking network connection to {} from PID {}",
+                                                remote_addr, pid
+                                            );
+                                            if let Err(e) = enforcement_engine
+                                                .block_network_connection(*pid, remote_addr)
+                                                .await
+                                            {
+                                                error!("Failed to block network connection: {}", e);
+                                            }
+                                            if let Err(e) = enforcement_engine.notify_user(
+                                                "Network Access Blocked",
+                                                &format!("Connection to {} has been blocked by parental controls", remote_addr)
+                                            ).await {
+                                                error!("Failed to send notification: {}", e);
+                                            }
+                                        }
                                     }
-                                    ActivityEvent::ProcessStarted { executable, pid, .. } => {
-                                        warn!(
-                                            "Should terminate process {} (PID: {})",
-                                            executable, pid
-                                        );
-                                    }
-                                    ActivityEvent::NetworkConnection {
-                                        remote_addr, pid, ..
-                                    } => {
-                                        warn!(
-                                            "Should block network connection to {} from PID {}",
-                                            remote_addr, pid
-                                        );
+                                } else {
+                                    match &event {
+                                        ActivityEvent::WindowFocused { app_id, pid, .. } => {
+                                            warn!(
+                                                "Should terminate or hide window for app {} (PID: {})",
+                                                app_id, pid
+                                            );
+                                        }
+                                        ActivityEvent::ProcessStarted {
+                                            executable, pid, ..
+                                        } => {
+                                            warn!(
+                                                "Should terminate process {} (PID: {})",
+                                                executable, pid
+                                            );
+                                        }
+                                        ActivityEvent::NetworkConnection {
+                                            remote_addr,
+                                            pid,
+                                            ..
+                                        } => {
+                                            warn!(
+                                                "Should block network connection to {} from PID {}",
+                                                remote_addr, pid
+                                            );
+                                        }
                                     }
                                 }
 
