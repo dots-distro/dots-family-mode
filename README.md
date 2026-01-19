@@ -50,6 +50,32 @@ nix build .#default
 ./result/bin/dots-family-ctl status
 ```
 
+## Development
+
+### Building with eBPF Support
+
+For development work that requires eBPF programs (daemon development):
+
+```bash
+# Option 1: Use the cargo wrapper script (recommended)
+./scripts/cargo-with-ebpf.sh build --package dots-family-daemon
+./scripts/cargo-with-ebpf.sh test --package dots-family-daemon
+
+# Option 2: Set up environment manually
+source scripts/setup-dev-env.sh
+cargo build --package dots-family-daemon
+```
+
+### Production Build
+
+```bash
+# Full Nix build (includes proper eBPF integration)
+nix build .#dots-family-daemon
+nix build .#default
+```
+
+**Note**: In development, you may see "Permission denied" warnings when copying eBPF programs. This is normal in the Nix environment - the daemon will use runtime paths instead.
+
 ## Architecture Overview
 
 Family Mode consists of eight Rust applications working together:
