@@ -444,6 +444,50 @@ impl FamilyDaemonService {
         }
     }
 
+    async fn get_daily_report(&self, profile_id: &str, date: &str) -> String {
+        match self.profile_manager.get_daily_report(profile_id, date).await {
+            Ok(report) => serde_json::to_string(&report)
+                .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
+            Err(e) => {
+                warn!("Failed to get daily report for {} on {}: {}", profile_id, date, e);
+                format!(r#"{{"error":"{}"}}"#, e)
+            }
+        }
+    }
+
+    async fn get_weekly_report(&self, profile_id: &str, week_start: &str) -> String {
+        match self.profile_manager.get_weekly_report(profile_id, week_start).await {
+            Ok(report) => serde_json::to_string(&report)
+                .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
+            Err(e) => {
+                warn!(
+                    "Failed to get weekly report for {} starting {}: {}",
+                    profile_id, week_start, e
+                );
+                format!(r#"{{"error":"{}"}}"#, e)
+            }
+        }
+    }
+
+    async fn export_reports(
+        &self,
+        profile_id: &str,
+        format: &str,
+        start_date: &str,
+        end_date: &str,
+    ) -> String {
+        match self.profile_manager.export_reports(profile_id, format, start_date, end_date).await {
+            Ok(exported_data) => exported_data,
+            Err(e) => {
+                warn!(
+                    "Failed to export reports for {} from {} to {}: {}",
+                    profile_id, start_date, end_date, e
+                );
+                format!(r#"{{"error":"{}"}}"#, e)
+            }
+        }
+    }
+
     #[zbus(signal)]
     async fn policy_updated(
         signal_ctxt: &zbus::SignalContext<'_>,

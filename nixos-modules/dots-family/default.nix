@@ -3,12 +3,76 @@
 let
   cfg = config.services.dots-family;
   
-  # Default packages - use from pkgs if available (from flake overlay), otherwise build fallback
+  # Fallback package builder when packages aren't available in pkgs
+  buildDotsPackage = pname: args:
+    pkgs.rustPlatform.buildRustPackage ({
+      inherit pname;
+      version = "0.1.0";
+      
+      src = ../../.;  # Project root
+      
+      cargoLock = {
+        lockFile = ../../Cargo.lock;
+      };
+      
+      # Common native build inputs
+      nativeBuildInputs = with pkgs; [
+        pkg-config
+        makeWrapper
+      ];
+      
+      # Common build inputs for all packages
+      buildInputs = with pkgs; [
+        openssl
+        sqlite
+        sqlx-cli
+      ] ++ lib.optionals stdenv.isLinux [
+        systemd  # For systemd integration
+      ];
+      
+      # Disable tests for production builds (run in CI instead)
+      doCheck = false;
+      
+      # Common meta
+      meta = {
+        description = "DOTS Family Mode ${pname}";
+        homepage = "https://github.com/dots-distro/dots-family-mode";
+        license = lib.licenses.mit;
+        platforms = lib.platforms.linux;
+      };
+    } // args);
+  
+  # Package definitions with fallbacks
   defaultDotsPackages = {
-    daemon = pkgs.dots-family-daemon or (throw "dots-family-daemon package not found. Please use the flake overlay or provide package explicitly.");
-    monitor = pkgs.dots-family-monitor or (throw "dots-family-monitor package not found. Please use the flake overlay or provide package explicitly.");
-    ctl = pkgs.dots-family-ctl or (throw "dots-family-ctl package not found. Please use the flake overlay or provide package explicitly.");
-    terminal-filter = pkgs.dots-terminal-filter or null;
+    daemon = pkgs.dots-family-daemon or (buildDotsPackage "dots-family-daemon" {
+      # eBPF dependencies for daemon
+      buildInputs = (buildDotsPackage "dummy" {}).buildInputs ++ (with pkgs; [
+        libbpf
+        llvm
+        clang
+      ]);
+      
+      # Enable eBPF features
+      cargoBuildFlags = [ "--features ebpf" ];
+      
+      postInstall = ''
+        # Install eBPF programs
+        mkdir -p $out/lib/dots-family
+        cp target/bpfel-unknown-none/release/*.o $out/lib/dots-family/ || true
+      '';
+    });
+    
+    monitor = pkgs.dots-family-monitor or (buildDotsPackage "dots-family-monitor" {
+      # Wayland dependencies for monitoring
+      buildInputs = (buildDotsPackage "dummy" {}).buildInputs ++ (with pkgs; [
+        wayland
+        wayland-protocols
+      ]);
+    });
+    
+    ctl = pkgs.dots-family-ctl or (buildDotsPackage "dots-family-ctl" {});
+    
+    terminal-filter = pkgs.dots-terminal-filter or (buildDotsPackage "dots-terminal-filter" {});
   };
   
 in {

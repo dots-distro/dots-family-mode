@@ -1,8 +1,10 @@
-use anyhow::Result;
-use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc, Weekday};
+use anyhow::{anyhow, Result};
+use chrono::{Datelike, Duration, NaiveDate, Weekday};
+use dots_family_proto::daemon::FamilyDaemonProxy;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use zbus::Connection;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ActivityReport {
@@ -44,131 +46,128 @@ pub struct CategoryUsage {
 
 #[derive(Clone, Debug)]
 pub struct DaemonClient {
+    proxy: Arc<Mutex<Option<FamilyDaemonProxy<'static>>>>,
     connected: Arc<Mutex<bool>>,
 }
 
 impl DaemonClient {
     pub async fn new() -> Self {
-        Self { connected: Arc::new(Mutex::new(false)) }
+        Self { proxy: Arc::new(Mutex::new(None)), connected: Arc::new(Mutex::new(false)) }
     }
 
     pub async fn connect(&self) -> Result<()> {
-        *self.connected.lock().await = true;
-        Ok(())
+        let connection = Connection::session()
+            .await
+            .map_err(|e| anyhow!("Failed to connect to session bus: {}", e))?;
+
+        let proxy = FamilyDaemonProxy::new(&connection)
+            .await
+            .map_err(|e| anyhow!("Failed to create daemon proxy: {}", e))?;
+
+        match proxy.ping().await {
+            Ok(_) => {
+                *self.proxy.lock().await = Some(proxy);
+                *self.connected.lock().await = true;
+                Ok(())
+            }
+            Err(e) => Err(anyhow!("Failed to ping daemon: {}", e)),
+        }
     }
 
     pub async fn get_active_profile(&self) -> Result<String> {
-        Ok("Alice".to_string())
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.get_active_profile().await.map_err(|e| anyhow!("D-Bus error: {}", e))
     }
 
     pub async fn get_remaining_time(&self) -> Result<u32> {
-        Ok(85)
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.get_remaining_time().await.map_err(|e| anyhow!("D-Bus error: {}", e))
     }
 
-    pub async fn check_application_allowed(&self, _app_id: &str) -> Result<bool> {
-        Ok(true)
+    pub async fn check_application_allowed(&self, app_id: &str) -> Result<bool> {
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.check_application_allowed(app_id).await.map_err(|e| anyhow!("D-Bus error: {}", e))
     }
 
     pub async fn list_profiles(&self) -> Result<String> {
-        Ok(r#"[{"id": "1", "name": "Alice"}]"#.to_string())
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.list_profiles().await.map_err(|e| anyhow!("D-Bus error: {}", e))
     }
 
-    pub async fn set_active_profile(&self, _profile_id: &str) -> Result<()> {
-        Ok(())
+    pub async fn set_active_profile(&self, profile_id: &str) -> Result<()> {
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.set_active_profile(profile_id).await.map_err(|e| anyhow!("D-Bus error: {}", e))
     }
 
-    pub async fn authenticate_parent(&self, _password: &str) -> Result<String> {
-        Ok("token123".to_string())
+    pub async fn authenticate_parent(&self, password: &str) -> Result<String> {
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.authenticate_parent(password).await.map_err(|e| anyhow!("D-Bus error: {}", e))
+    }
+
+    pub async fn is_connected(&self) -> bool {
+        *self.connected.lock().await
     }
 
     pub async fn get_daily_report(
         &self,
-        _profile_id: &str,
+        profile_id: &str,
         date: NaiveDate,
     ) -> Result<ActivityReport> {
-        // TODO: Connect to actual daemon/database
-        // For now, generate realistic mock data based on the date
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
 
-        let screen_time = match date.weekday() {
-            Weekday::Mon | Weekday::Tue | Weekday::Wed | Weekday::Thu | Weekday::Fri => {
-                90 + (date.day() % 3) * 20
+        let date_str = date.format("%Y-%m-%d").to_string();
+
+        match proxy.get_daily_report(profile_id, &date_str).await {
+            Ok(response_json) => {
+                if response_json.starts_with(r#"{"error""#) {
+                    return Err(anyhow!("Daemon error: {}", response_json));
+                }
+
+                let report: ActivityReport = serde_json::from_str(&response_json)
+                    .map_err(|e| anyhow!("Failed to parse daily report: {}", e))?;
+
+                Ok(report)
             }
-            _ => 150 + (date.day() % 4) * 25,
-        };
-
-        Ok(ActivityReport {
-            date,
-            screen_time_minutes: screen_time,
-            top_activity: "Educational Apps".to_string(),
-            top_category: "Education".to_string(),
-            violations: if date.day() % 7 == 0 { 1 } else { 0 },
-            blocked_attempts: if date.day() % 5 == 0 { 2 } else { 0 },
-            apps_used: vec![
-                AppUsage {
-                    app_id: "org.gnome.Calculator".to_string(),
-                    app_name: "Calculator".to_string(),
-                    category: "Education".to_string(),
-                    duration_minutes: screen_time * 40 / 100,
-                    percentage: 40.0,
-                },
-                AppUsage {
-                    app_id: "firefox".to_string(),
-                    app_name: "Firefox".to_string(),
-                    category: "Web Browser".to_string(),
-                    duration_minutes: screen_time * 35 / 100,
-                    percentage: 35.0,
-                },
-                AppUsage {
-                    app_id: "org.gnome.TextEditor".to_string(),
-                    app_name: "Text Editor".to_string(),
-                    category: "Productivity".to_string(),
-                    duration_minutes: screen_time * 25 / 100,
-                    percentage: 25.0,
-                },
-            ],
-        })
+            Err(e) => Err(anyhow!("D-Bus error getting daily report: {}", e)),
+        }
     }
 
     pub async fn get_weekly_report(
         &self,
-        _profile_id: &str,
+        profile_id: &str,
         week_start: NaiveDate,
     ) -> Result<WeeklyReport> {
-        // TODO: Connect to actual daemon/database
-        // Generate realistic aggregated weekly data
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
 
-        let total_minutes = 980; // About 2.3 hours per day average
+        let week_start_str = week_start.format("%Y-%m-%d").to_string();
 
-        Ok(WeeklyReport {
-            week_start,
-            total_screen_time_minutes: total_minutes,
-            average_daily_minutes: total_minutes / 7,
-            most_active_day: "Saturday".to_string(),
-            top_categories: vec![
-                CategoryUsage {
-                    category: "Education".to_string(),
-                    duration_minutes: 392, // 40%
-                    percentage: 40.0,
-                },
-                CategoryUsage {
-                    category: "Web Browser".to_string(),
-                    duration_minutes: 294, // 30%
-                    percentage: 30.0,
-                },
-                CategoryUsage {
-                    category: "Productivity".to_string(),
-                    duration_minutes: 196, // 20%
-                    percentage: 20.0,
-                },
-                CategoryUsage {
-                    category: "Games".to_string(),
-                    duration_minutes: 98, // 10%
-                    percentage: 10.0,
-                },
-            ],
-            policy_violations: 2,
-            educational_percentage: 40.0,
-        })
+        match proxy.get_weekly_report(profile_id, &week_start_str).await {
+            Ok(response_json) => {
+                if response_json.starts_with(r#"{"error""#) {
+                    return Err(anyhow!("Daemon error: {}", response_json));
+                }
+
+                let report: WeeklyReport = serde_json::from_str(&response_json)
+                    .map_err(|e| anyhow!("Failed to parse weekly report: {}", e))?;
+
+                Ok(report)
+            }
+            Err(e) => Err(anyhow!("D-Bus error getting weekly report: {}", e)),
+        }
     }
 
     pub async fn export_reports(
@@ -178,45 +177,20 @@ impl DaemonClient {
         start_date: NaiveDate,
         end_date: NaiveDate,
     ) -> Result<String> {
-        // TODO: Connect to actual daemon/database
-        match format {
-            "json" => {
-                let mut reports = Vec::new();
-                let mut current_date = start_date;
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
 
-                while current_date <= end_date {
-                    let report = self.get_daily_report(profile_id, current_date).await?;
-                    reports.push(report);
-                    current_date = current_date + Duration::days(1);
+        let start_date_str = start_date.format("%Y-%m-%d").to_string();
+        let end_date_str = end_date.format("%Y-%m-%d").to_string();
+
+        match proxy.export_reports(profile_id, format, &start_date_str, &end_date_str).await {
+            Ok(response) => {
+                if response.starts_with(r#"{"error""#) {
+                    return Err(anyhow!("Daemon error: {}", response));
                 }
-
-                Ok(serde_json::to_string_pretty(&reports)?)
+                Ok(response)
             }
-            "csv" => {
-                let mut csv_content = String::from("Date,Screen Time (minutes),Top Activity,Top Category,Violations,Blocked Attempts\n");
-                let mut current_date = start_date;
-
-                while current_date <= end_date {
-                    let report = self.get_daily_report(profile_id, current_date).await?;
-                    csv_content.push_str(&format!(
-                        "{},{},{},{},{},{}\n",
-                        report.date,
-                        report.screen_time_minutes,
-                        report.top_activity,
-                        report.top_category,
-                        report.violations,
-                        report.blocked_attempts
-                    ));
-                    current_date = current_date + Duration::days(1);
-                }
-
-                Ok(csv_content)
-            }
-            _ => Err(anyhow::anyhow!("Unsupported export format: {}", format)),
+            Err(e) => Err(anyhow!("D-Bus error exporting reports: {}", e)),
         }
-    }
-
-    pub async fn is_connected(&self) -> bool {
-        *self.connected.lock().await
     }
 }

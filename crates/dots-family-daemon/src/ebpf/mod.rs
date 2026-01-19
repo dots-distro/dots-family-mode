@@ -1,6 +1,7 @@
 pub mod filesystem_monitor;
 pub mod network_monitor;
 pub mod process_monitor;
+pub mod process_monitor_simple;
 
 use anyhow::Result;
 use aya::Bpf;
@@ -10,6 +11,7 @@ use tracing::{error, info, warn};
 pub use filesystem_monitor::FilesystemMonitorEbpf;
 pub use network_monitor::NetworkMonitorEbpf;
 pub use process_monitor::ProcessMonitorEbpf;
+pub use process_monitor_simple::ProcessMonitorSimple;
 
 /// Health status for eBPF programs
 #[derive(Debug, Clone)]
@@ -78,15 +80,14 @@ impl EbpfManager {
             ("filesystem_monitor", "BPF_FILESYSTEM_MONITOR_PATH"),
         ];
 
+        // Use simple fallback monitor when eBPF is not available (to avoid compilation issues)
+
         for (program_name, env_var) in &env_vars {
             match std::env::var(env_var) {
                 Ok(path) if !path.is_empty() => {
                     match self.load_program(program_name, &path).await {
                         Ok(_) => {
-                            info!(
-                                "Successfully loaded {} eBPF program from {}",
-                                program_name, path
-                            );
+                            info!("Successfully loaded {} eBPF program", program_name);
                         }
                         Err(e) => {
                             warn!(
@@ -108,6 +109,15 @@ impl EbpfManager {
                         env_var, program_name
                     );
                 }
+            }
+        }
+
+        // Fallback: use simple monitor when eBPF is not available
+        if !ebpf_available() {
+            info!("eBPF not available, using simple monitor fallback");
+            let mut simple_monitor = process_monitor_simple::FallbackManager::new();
+            if let Err(e) = simple_monitor.load_monitor("process_monitor").await {
+                warn!("Failed to load fallback monitor: {}", e);
             }
         }
 

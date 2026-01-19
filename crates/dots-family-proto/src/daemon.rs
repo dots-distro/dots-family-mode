@@ -50,6 +50,19 @@ pub trait FamilyDaemon {
 
     async fn sync_profile_to_policy(&self, profile_id: &str) -> zbus::Result<String>;
 
+    // Report generation methods
+    async fn get_daily_report(&self, profile_id: &str, date: &str) -> zbus::Result<String>;
+
+    async fn get_weekly_report(&self, profile_id: &str, week_start: &str) -> zbus::Result<String>;
+
+    async fn export_reports(
+        &self,
+        profile_id: &str,
+        format: &str,
+        start_date: &str,
+        end_date: &str,
+    ) -> zbus::Result<String>;
+
     #[zbus(signal)]
     async fn policy_updated(&self, profile_id: &str) -> zbus::Result<()>;
 

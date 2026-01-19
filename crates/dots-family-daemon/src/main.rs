@@ -11,6 +11,7 @@ mod monitoring_service;
 mod notification_manager;
 mod policy_engine;
 mod profile_manager;
+mod reports;
 mod session_manager;
 
 #[tokio::main]

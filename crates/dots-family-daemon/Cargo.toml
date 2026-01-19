@@ -30,6 +30,7 @@ aya.workspace = true
 aya-log.workspace = true
 bytes.workspace = true
 rand.workspace = true
+nix = "0.29"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

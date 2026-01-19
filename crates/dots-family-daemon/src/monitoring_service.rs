@@ -17,20 +17,14 @@ pub struct MonitoringService {
     running: Arc<Mutex<bool>>,
 }
 
-impl Default for MonitoringService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl MonitoringService {
-    pub fn new() -> Self {
-        Self {
-            process_monitor: Arc::new(Mutex::new(ProcessMonitorEbpf::new())),
+    pub async fn new() -> Result<Self> {
+        Ok(Self {
+            process_monitor: Arc::new(Mutex::new(ProcessMonitorEbpf::new().await?)),
             network_monitor: Arc::new(Mutex::new(NetworkMonitorEbpf::new())),
             filesystem_monitor: Arc::new(Mutex::new(FilesystemMonitorEbpf::new())),
             running: Arc::new(Mutex::new(false)),
-        }
+        })
     }
 
     pub async fn start(&self) -> Result<()> {
@@ -51,14 +45,14 @@ impl MonitoringService {
 
         {
             let mut network_monitor = self.network_monitor.lock().await;
-            if let Err(e) = network_monitor.load("eth0").await {
+            if let Err(e) = network_monitor.load(std::path::Path::new("/dev/null")).await {
                 warn!("Failed to load eBPF network monitor: {}, using fallback", e);
             }
         }
 
         {
             let mut filesystem_monitor = self.filesystem_monitor.lock().await;
-            if let Err(e) = filesystem_monitor.load().await {
+            if let Err(e) = filesystem_monitor.load(std::path::Path::new("/dev/null")).await {
                 warn!("Failed to load eBPF filesystem monitor: {}, using fallback", e);
             }
         }

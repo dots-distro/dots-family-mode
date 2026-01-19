@@ -96,6 +96,67 @@ users.users = {
 };
 ```
 
+## Package Management
+
+The DOTS Family Mode module uses **standard NixOS package building** - no overlays required:
+
+### Automatic Package Building
+- Packages are built automatically using `rustPlatform.buildRustPackage`
+- All dependencies are handled automatically
+- No external overlay dependencies
+- Standard NixOS approach
+
+### Optional Package Overrides
+You can still override packages if needed:
+```nix
+services.dots-family = {
+  enable = true;
+  package = your-custom-daemon-package;
+  monitorPackage = your-custom-monitor-package;
+  ctlPackage = your-custom-ctl-package;
+  # ... other config
+};
+```
+
+```nix
+{ config, pkgs, ... }: {
+  services.dots-family = {
+    enable = true;
+    parentUsers = [ "parent1" "parent2" ];
+    childUsers = [ "child1" "child2" ];
+    
+    profiles.child1 = {
+      name = "Alice";
+      ageGroup = "8-12";
+      dailyScreenTimeLimit = "2h30m";
+      timeWindows = [{
+        start = "15:00";
+        end = "18:00";
+        days = [ "mon" "tue" "wed" "thu" "fri" ];
+      }];
+      allowedApplications = [ "firefox" "tuxmath" ];
+      webFilteringLevel = "strict";
+    };
+  };
+}
+```
+
+### 3. Create user accounts
+
+```nix
+users.users = {
+  parent1 = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" ];
+    hashedPassword = "...";
+  };
+  child1 = {
+    isNormalUser = true;
+    hashedPassword = "...";
+  };
+};
+```
+
 ## Configuration Options
 
 ### Main Configuration

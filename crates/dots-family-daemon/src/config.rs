@@ -11,6 +11,9 @@ pub struct DaemonConfig {
 
     #[serde(default)]
     pub auth: AuthConfig,
+
+    #[serde(default)]
+    pub dbus: DbusConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -34,6 +37,23 @@ impl Default for DatabaseConfig {
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct AuthConfig {
     pub parent_password_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct DbusConfig {
+    pub service_name: String,
+    pub use_session_bus: bool,
+}
+
+impl Default for DbusConfig {
+    fn default() -> Self {
+        // SECURITY: Daemon must always run on system bus for security
+        // User services connect to system bus daemon for privileged operations
+        Self {
+            service_name: "org.dots.FamilyDaemon".to_string(),
+            use_session_bus: false, // Always use system bus for security
+        }
+    }
 }
 
 impl DaemonConfig {

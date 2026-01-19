@@ -963,6 +963,225 @@ impl ProfileManager {
 
         Ok(())
     }
+
+    pub async fn get_daily_report(
+        &self,
+        profile_id: &str,
+        date_str: &str,
+    ) -> Result<crate::reports::ActivityReport> {
+        use chrono::NaiveDate;
+        use dots_family_db::queries::daily_summaries::DailySummaryQueries;
+
+        let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+            .map_err(|e| anyhow!("Invalid date format: {}. Expected YYYY-MM-DD", e))?;
+
+        match DailySummaryQueries::get_by_profile_and_date(&self._db, profile_id, date).await {
+            Ok(summary) => {
+                let top_apps: Vec<serde_json::Value> =
+                    serde_json::from_str(&summary.top_apps).unwrap_or_else(|_| vec![]);
+
+                let apps_used: Vec<crate::reports::AppUsage> = top_apps
+                    .into_iter()
+                    .filter_map(|app| {
+                        if let (Some(app_id), Some(duration)) = (
+                            app.get("app_id").and_then(|v| v.as_str()),
+                            app.get("duration").and_then(|v| v.as_i64()),
+                        ) {
+                            let duration_minutes = (duration / 60) as u32;
+                            let total_seconds = summary.screen_time_seconds as f32;
+                            let percentage = if total_seconds > 0.0 {
+                                (duration as f32 / total_seconds * 100.0).min(100.0)
+                            } else {
+                                0.0
+                            };
+
+                            Some(crate::reports::AppUsage {
+                                app_id: app_id.to_string(),
+                                app_name: app
+                                    .get("app_name")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or(app_id)
+                                    .to_string(),
+                                category: app
+                                    .get("category")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("Unknown")
+                                    .to_string(),
+                                duration_minutes,
+                                percentage,
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let top_categories: Vec<serde_json::Value> =
+                    serde_json::from_str(&summary.top_categories).unwrap_or_else(|_| vec![]);
+
+                let (top_activity, top_category) = if let Some(first_app) = apps_used.first() {
+                    (first_app.app_name.clone(), first_app.category.clone())
+                } else if let Some(first_cat) = top_categories.first() {
+                    (
+                        "Unknown".to_string(),
+                        first_cat
+                            .get("category")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown")
+                            .to_string(),
+                    )
+                } else {
+                    ("No Activity".to_string(), "None".to_string())
+                };
+
+                Ok(crate::reports::ActivityReport {
+                    date,
+                    screen_time_minutes: (summary.screen_time_seconds / 60) as u32,
+                    top_activity,
+                    top_category,
+                    violations: summary.violations_count as u32,
+                    blocked_attempts: summary.blocks_count as u32,
+                    apps_used,
+                })
+            }
+            Err(_) => Ok(crate::reports::ActivityReport {
+                date,
+                screen_time_minutes: 0,
+                top_activity: "No Activity".to_string(),
+                top_category: "None".to_string(),
+                violations: 0,
+                blocked_attempts: 0,
+                apps_used: vec![],
+            }),
+        }
+    }
+
+    pub async fn get_weekly_report(
+        &self,
+        profile_id: &str,
+        week_start_str: &str,
+    ) -> Result<crate::reports::WeeklyReport> {
+        use chrono::NaiveDate;
+        use dots_family_db::queries::weekly_summaries::WeeklySummaryQueries;
+
+        let week_start = NaiveDate::parse_from_str(week_start_str, "%Y-%m-%d")
+            .map_err(|e| anyhow!("Invalid date format: {}. Expected YYYY-MM-DD", e))?;
+
+        match WeeklySummaryQueries::get_by_profile_and_week(&self._db, profile_id, week_start).await
+        {
+            Ok(summary) => {
+                let top_categories: Vec<serde_json::Value> =
+                    serde_json::from_str(&summary.top_categories).unwrap_or_else(|_| vec![]);
+
+                let category_usage: Vec<crate::reports::CategoryUsage> = top_categories
+                    .into_iter()
+                    .filter_map(|cat| {
+                        if let (Some(category), Some(duration)) = (
+                            cat.get("category").and_then(|v| v.as_str()),
+                            cat.get("duration").and_then(|v| v.as_i64()),
+                        ) {
+                            let duration_minutes = (duration / 60) as u32;
+                            let total_seconds = summary.total_screen_time_seconds as f32;
+                            let percentage = if total_seconds > 0.0 {
+                                (duration as f32 / total_seconds * 100.0).min(100.0)
+                            } else {
+                                0.0
+                            };
+
+                            Some(crate::reports::CategoryUsage {
+                                category: category.to_string(),
+                                duration_minutes,
+                                percentage,
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let educational_percentage = category_usage
+                    .iter()
+                    .find(|c| c.category.to_lowercase().contains("education"))
+                    .map(|c| c.percentage)
+                    .unwrap_or(0.0);
+
+                Ok(crate::reports::WeeklyReport {
+                    week_start,
+                    total_screen_time_minutes: (summary.total_screen_time_seconds / 60) as u32,
+                    average_daily_minutes: (summary.daily_average_seconds / 60) as u32,
+                    most_active_day: "Saturday".to_string(),
+                    top_categories: category_usage,
+                    policy_violations: summary.violations_count as u32,
+                    educational_percentage,
+                })
+            }
+            Err(_) => Ok(crate::reports::WeeklyReport {
+                week_start,
+                total_screen_time_minutes: 0,
+                average_daily_minutes: 0,
+                most_active_day: "No Activity".to_string(),
+                top_categories: vec![],
+                policy_violations: 0,
+                educational_percentage: 0.0,
+            }),
+        }
+    }
+
+    pub async fn export_reports(
+        &self,
+        profile_id: &str,
+        format: &str,
+        start_date_str: &str,
+        end_date_str: &str,
+    ) -> Result<String> {
+        use chrono::{Duration, NaiveDate};
+
+        let start_date = NaiveDate::parse_from_str(start_date_str, "%Y-%m-%d")
+            .map_err(|e| anyhow!("Invalid start date format: {}. Expected YYYY-MM-DD", e))?;
+
+        let end_date = NaiveDate::parse_from_str(end_date_str, "%Y-%m-%d")
+            .map_err(|e| anyhow!("Invalid end date format: {}. Expected YYYY-MM-DD", e))?;
+
+        match format {
+            "json" => {
+                let mut reports: Vec<crate::reports::ActivityReport> = Vec::new();
+                let mut current_date = start_date;
+
+                while current_date <= end_date {
+                    let report = self
+                        .get_daily_report(profile_id, &current_date.format("%Y-%m-%d").to_string())
+                        .await?;
+                    reports.push(report);
+                    current_date = current_date + Duration::days(1);
+                }
+
+                Ok(serde_json::to_string_pretty(&reports)?)
+            }
+            "csv" => {
+                let mut csv_content = String::from("Date,Screen Time (minutes),Top Activity,Top Category,Violations,Blocked Attempts\n");
+                let mut current_date = start_date;
+
+                while current_date <= end_date {
+                    let report = self
+                        .get_daily_report(profile_id, &current_date.format("%Y-%m-%d").to_string())
+                        .await?;
+                    csv_content.push_str(&format!(
+                        "{},{},{},{},{},{}\n",
+                        report.date,
+                        report.screen_time_minutes,
+                        report.top_activity,
+                        report.top_category,
+                        report.violations,
+                        report.blocked_attempts
+                    ));
+                    current_date = current_date + Duration::days(1);
+                }
+
+                Ok(csv_content)
+            }
+            _ => Err(anyhow!("Unsupported export format: {}", format)),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -986,6 +1205,7 @@ mod tests {
                 encryption_key: None,
             },
             auth: crate::config::AuthConfig { parent_password_hash: None },
+            dbus: crate::config::DbusConfig::default(),
         };
 
         let db_config = dots_family_db::DatabaseConfig {

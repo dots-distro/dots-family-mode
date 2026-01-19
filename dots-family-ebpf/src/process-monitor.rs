@@ -2,6 +2,7 @@
 #![no_main]
 
 use aya_ebpf::{
+    helpers::bpf_probe_read_user_str,
     macros::{map, tracepoint},
     maps::RingBuf,
     programs::TracePointContext,
@@ -15,7 +16,22 @@ pub struct ProcessEvent {
     pub uid: u32,
     pub gid: u32,
     pub comm: [u8; 16],
-    pub event_type: u32, // 0 = exec, 1 = exit
+    pub cmdline: [u8; 512], // Command line arguments
+    pub event_type: u32,    // 0 = exec, 1 = exit
+}
+
+// Kernel task structure for accessing task fields
+#[repr(C)]
+struct task_struct {
+    _ptr: *mut core::ffi::c_void,
+    real_parent: task_parent,
+    argv: [*mut core::ffi::c_char; 64],
+    envp: [*mut core::ffi::c_char; 64],
+}
+
+#[repr(C)]
+struct task_parent {
+    pid: u32,
 }
 
 #[map]
@@ -29,17 +45,33 @@ pub fn sched_process_exec(ctx: TracePointContext) -> u32 {
     }
 }
 
-fn try_sched_process_exec(_ctx: TracePointContext) -> Result<u32, u32> {
-    let current_pid = unsafe { aya_ebpf::helpers::bpf_get_current_pid_tgid() as u32 };
-    let uid_gid = unsafe { aya_ebpf::helpers::bpf_get_current_uid_gid() };
+fn try_sched_process_exec(ctx: TracePointContext) -> Result<u32, u32> {
+    let task = unsafe { ctx.task as *const task_struct };
+    let mut cmdline = [0u8; 512];
 
+    unsafe {
+        let mut i = 0;
+        while i < 511 && i < task.argv.len() {
+            let arg_ptr = *task.argv.add(i);
+            if !arg_ptr.is_null() {
+                let arg_len = bpf_probe_read_user_str(arg_ptr, &mut cmdline[i as usize]);
+                if arg_len > 0 && i + arg_len < 511 {
+                    i += arg_len + 1; // +1 for null terminator
+                }
+            }
+            i += 1;
+        }
+    }
+
+    let uid_gid = unsafe { bpf_get_current_uid_gid() };
     let event = ProcessEvent {
-        pid: current_pid,
-        ppid: 0,
+        pid: unsafe { bpf_get_current_pid_tgid() as u32 },
+        ppid: unsafe { task.real_parent.pid },
         uid: uid_gid as u32,
         gid: (uid_gid >> 32) as u32,
         comm: [0; 16],
-        event_type: 0,
+        cmdline,
+        event_type: 0, // exec
     };
 
     if let Some(mut buf) = PROCESS_EVENTS.reserve::<ProcessEvent>(0) {
@@ -67,9 +99,4 @@ pub fn sched_process_exit(_ctx: TracePointContext) -> u32 {
     }
 
     0
-}
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    unsafe { core::hint::unreachable_unchecked() }
 }

@@ -113,7 +113,7 @@ pub async fn run() -> Result<()> {
         }
     };
 
-    let monitoring_service = MonitoringService::new();
+    let monitoring_service = MonitoringService::new().await?;
 
     // Create ProfileManager with shared database instance
     let profile_manager = ProfileManager::new(&daemon.config, database).await?;
@@ -131,13 +131,17 @@ pub async fn run() -> Result<()> {
 
     monitoring_service.start().await?;
 
-    let conn = ConnectionBuilder::system()?
-        .name("org.dots.FamilyDaemon")?
+    // SECURITY: Always use system bus for privileged operations
+    // Daemon runs with elevated privileges on system bus
+    let conn_builder = ConnectionBuilder::system()?;
+
+    let conn = conn_builder
+        .name(daemon.config.dbus.service_name.as_str())?
         .serve_at("/org/dots/FamilyDaemon", service)?
         .build()
         .await?;
 
-    info!("DBus service registered at org.dots.FamilyDaemon");
+    info!("DBus service registered at {}", daemon.config.dbus.service_name);
     if ebpf_manager {
         info!("eBPF monitoring service started");
     } else {
@@ -145,6 +149,7 @@ pub async fn run() -> Result<()> {
     }
 
     let conn_clone = conn.clone();
+    let daemon_clone_enforcement = daemon.clone();
     tokio::spawn(async move {
         let mut interval_timer = interval(Duration::from_secs(30));
         let mut last_warning_time: Option<u32> = None;
@@ -152,8 +157,13 @@ pub async fn run() -> Result<()> {
         loop {
             interval_timer.tick().await;
 
-            if let Err(e) =
-                enforce_time_limits(&profile_manager, &conn_clone, &mut last_warning_time).await
+            if let Err(e) = enforce_time_limits(
+                &profile_manager,
+                &conn_clone,
+                &daemon_clone_enforcement.config.dbus.service_name,
+                &mut last_warning_time,
+            )
+            .await
             {
                 warn!("Policy enforcement error: {}", e);
             }
@@ -213,6 +223,7 @@ pub async fn run() -> Result<()> {
 async fn enforce_time_limits(
     profile_manager: &ProfileManager,
     conn: &zbus::Connection,
+    service_name: &str,
     last_warning_time: &mut Option<u32>,
 ) -> Result<()> {
     if let Ok(Some(profile)) = profile_manager.get_active_profile().await {
@@ -224,7 +235,7 @@ async fn enforce_time_limits(
                         remaining, profile.name
                     );
 
-                    if let Err(e) = emit_time_warning(conn, remaining).await {
+                    if let Err(e) = emit_time_warning(conn, service_name, remaining).await {
                         warn!("Failed to emit time warning signal: {}", e);
                     } else {
                         *last_warning_time = Some(remaining);
@@ -232,7 +243,7 @@ async fn enforce_time_limits(
                 } else if remaining == 0 && *last_warning_time != Some(0) {
                     warn!("Time limit exceeded for profile: {}", profile.name);
 
-                    if let Err(e) = emit_time_warning(conn, 0).await {
+                    if let Err(e) = emit_time_warning(conn, service_name, 0).await {
                         warn!("Failed to emit time exceeded signal: {}", e);
                     } else {
                         *last_warning_time = Some(0);
@@ -245,11 +256,15 @@ async fn enforce_time_limits(
     Ok(())
 }
 
-async fn emit_time_warning(conn: &zbus::Connection, minutes_remaining: u32) -> Result<()> {
+async fn emit_time_warning(
+    conn: &zbus::Connection,
+    service_name: &str,
+    minutes_remaining: u32,
+) -> Result<()> {
     conn.emit_signal(
         None::<()>,
         "/org/dots/FamilyDaemon",
-        "org.dots.FamilyDaemon",
+        service_name,
         "TimeLimitWarning",
         &minutes_remaining,
     )

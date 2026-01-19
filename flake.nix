@@ -156,6 +156,9 @@
             LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
             BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
 
+            # Rust compiler flags to disable Rust 2024 compatibility warnings
+            RUSTFLAGS = "-A rust_2024_compatibility";
+
             # Inject eBPF ELF paths for daemon
             BPF_PROCESS_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/target/bpfel-unknown-none/release/process-monitor" else "";
             BPF_NETWORK_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/target/bpfel-unknown-none/release/network-monitor" else "";
