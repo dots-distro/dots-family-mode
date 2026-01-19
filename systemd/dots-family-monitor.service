@@ -1,0 +1,82 @@
+[Unit]
+Description=DOTS Family Mode Monitor
+Documentation=https://github.com/dots-distro/dots-family-mode
+After=dots-family-daemon.service graphical-session.target
+Wants=dots-family-daemon.service
+PartOf=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/dots-family-monitor
+ExecReload=/bin/kill -SIGHUP $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=15
+WatchdogSec=60
+
+# Environment configuration
+Environment="RUST_LOG=info"
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_RUNTIME_DIR=/run/user/%i"
+EnvironmentFile=-/etc/dots-family/monitor.conf
+
+# Run as user for Wayland access
+User=%i
+Group=users
+
+# System directories
+RuntimeDirectory=dots-family-monitor
+RuntimeDirectoryMode=0755
+CacheDirectory=dots-family-monitor
+CacheDirectoryMode=0750
+LogsDirectory=dots-family-monitor
+LogsDirectoryMode=0750
+
+# Security hardening
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+SecureBits=noroot
+
+# Filesystem isolation
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+
+# Network restrictions
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+
+# System call restrictions  
+SystemCallFilter=@system-service ~@debug ~@mount ~@reboot ~@swap ~@privileged
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+# Memory protection
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+# Wayland access
+ReadWritePaths=/run/user/%i/wayland-0
+ReadOnlyPaths=/proc/self/fd
+ReadOnlyPaths=/run/user/%i
+
+# Process limits
+TasksMax=128
+LimitNOFILE=2048
+LimitNPROC=64
+
+[Install]
+WantedBy=default.target
