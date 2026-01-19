@@ -86,7 +86,7 @@ impl FamilyDaemonService {
             Ok(event) => {
                 info!("Received activity event: {:?}", event);
 
-                match event {
+                match &event {
                     ActivityEvent::WindowFocused { pid, app_id, window_title, .. } => {
                         info!(
                             "Window focused - PID: {}, App: {}, Title: {}",
@@ -107,7 +107,75 @@ impl FamilyDaemonService {
                     }
                 }
 
-                "success".to_string()
+                if let Some(ref daemon) = self.daemon {
+                    let policy_engine = daemon.get_policy_engine().await;
+                    match policy_engine.process_activity(event.clone()).await {
+                        Ok(decision) => {
+                            info!("Policy decision: {:?}", decision);
+
+                            if decision.blocked {
+                                warn!("Activity blocked by policy: {}", decision.reason);
+
+                                match &event {
+                                    ActivityEvent::WindowFocused { app_id, pid, .. } => {
+                                        warn!(
+                                            "Should terminate or hide window for app {} (PID: {})",
+                                            app_id, pid
+                                        );
+                                    }
+                                    ActivityEvent::ProcessStarted { executable, pid, .. } => {
+                                        warn!(
+                                            "Should terminate process {} (PID: {})",
+                                            executable, pid
+                                        );
+                                    }
+                                    ActivityEvent::NetworkConnection {
+                                        remote_addr, pid, ..
+                                    } => {
+                                        warn!(
+                                            "Should block network connection to {} from PID {}",
+                                            remote_addr, pid
+                                        );
+                                    }
+                                }
+
+                                serde_json::json!({
+                                    "status": "policy_blocked",
+                                    "action": decision.action,
+                                    "reason": decision.reason,
+                                    "blocked": decision.blocked
+                                })
+                                .to_string()
+                            } else {
+                                debug!("Activity allowed: {}", decision.reason);
+                                serde_json::json!({
+                                    "status": "success",
+                                    "action": decision.action,
+                                    "reason": decision.reason,
+                                    "blocked": decision.blocked
+                                })
+                                .to_string()
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to process activity through policy engine: {}", e);
+                            serde_json::json!({
+                                "status": "policy_error",
+                                "error": e.to_string(),
+                                "blocked": false
+                            })
+                            .to_string()
+                        }
+                    }
+                } else {
+                    warn!("Policy engine not available - allowing activity by default");
+                    serde_json::json!({
+                        "status": "success",
+                        "blocked": false,
+                        "reason": "Policy engine not available"
+                    })
+                    .to_string()
+                }
             }
             Err(e) => {
                 error!("Failed to parse activity event JSON: {}", e);
@@ -115,7 +183,6 @@ impl FamilyDaemonService {
             }
         }
     }
-
     async fn ping(&self) -> bool {
         debug!("Received ping from monitor");
         true
