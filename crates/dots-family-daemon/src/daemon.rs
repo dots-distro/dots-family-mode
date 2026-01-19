@@ -147,9 +147,13 @@ pub async fn run() -> Result<()> {
 
     monitoring_service.start().await?;
 
-    // SECURITY: Always use system bus for privileged operations
-    // Daemon runs with elevated privileges on system bus
-    let conn_builder = ConnectionBuilder::system()?;
+    let conn_builder = if daemon.config.dbus.use_session_bus {
+        info!("Using session bus for development mode");
+        ConnectionBuilder::session()?
+    } else {
+        info!("Using system bus for production mode");
+        ConnectionBuilder::system()?
+    };
 
     let conn = conn_builder
         .name(daemon.config.dbus.service_name.as_str())?
@@ -300,15 +304,35 @@ async fn process_activity_enforcement(
         return Ok(());
     }
 
-    let policy_engine = daemon.get_policy_engine().await;
+    let mut policy_engine = daemon.get_policy_engine_mut().await;
+    let enforcement_engine = daemon.get_enforcement_engine().await;
 
     for activity in activities {
+        policy_engine.update_activity();
+
+        let activity_clone = activity.clone();
+        let (app_id, pid) = match &activity_clone {
+            dots_family_proto::events::ActivityEvent::WindowFocused { app_id, pid, .. } => {
+                (Some(app_id.as_str()), Some(*pid))
+            }
+            dots_family_proto::events::ActivityEvent::ProcessStarted {
+                executable, pid, ..
+            } => (Some(executable.split('/').last().unwrap_or(executable)), Some(*pid)),
+            _ => (None, None),
+        };
+
         match policy_engine.process_activity(activity).await {
             Ok(decision) => {
                 if decision.blocked {
-                    warn!("Blocked activity: {} - {}", decision.action, decision.reason);
+                    warn!("Blocking activity: {} - {}", decision.action, decision.reason);
+
+                    if let Err(e) =
+                        enforcement_engine.enforce_policy_decision(&decision, app_id, pid).await
+                    {
+                        error!("Failed to enforce policy decision: {}", e);
+                    }
                 } else {
-                    debug!("Allowed activity: {} - {}", decision.action, decision.reason);
+                    debug!("Allowing activity: {} - {}", decision.action, decision.reason);
                 }
             }
             Err(e) => {

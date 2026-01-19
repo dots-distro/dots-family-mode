@@ -112,13 +112,10 @@ impl EbpfManager {
             }
         }
 
-        // Fallback: use simple monitor when eBPF is not available
         if !ebpf_available() {
-            info!("eBPF not available, using simple monitor fallback");
-            let mut simple_monitor = process_monitor_simple::FallbackManager::new();
-            if let Err(e) = simple_monitor.load_monitor("process_monitor").await {
-                warn!("Failed to load fallback monitor: {}", e);
-            }
+            return Err(anyhow::anyhow!(
+                "eBPF not available on this system - monitoring requires eBPF capabilities"
+            ));
         }
 
         self.update_health_status();

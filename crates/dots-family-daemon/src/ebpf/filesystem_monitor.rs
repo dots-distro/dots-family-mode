@@ -38,14 +38,32 @@ impl FilesystemMonitorEbpf {
         Self { ebpf: None, loaded: false, event_receiver: None }
     }
 
-    pub async fn load(&mut self, _bpf_path: &Path) -> anyhow::Result<()> {
-        info!("Loading filesystem monitor eBPF program from {:?}", _bpf_path);
+    pub async fn load(&mut self, bpf_path: &Path) -> anyhow::Result<()> {
+        info!("Loading filesystem monitor eBPF program from {:?}", bpf_path);
 
-        // For now, simulate loading without actual eBPF code
-        self.loaded = true;
+        let elf_bytes = match std::fs::read(bpf_path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Failed to read eBPF program file {:?}: {}",
+                    bpf_path,
+                    e
+                ));
+            }
+        };
 
-        info!("Filesystem monitor loaded successfully (simulation mode)");
-        Ok(())
+        match Bpf::load(&elf_bytes) {
+            Ok(bpf) => {
+                info!(
+                    "Successfully loaded filesystem monitor eBPF program ({} bytes)",
+                    elf_bytes.len()
+                );
+                self.ebpf = Some(bpf);
+                self.loaded = true;
+                Ok(())
+            }
+            Err(e) => Err(anyhow::anyhow!("Failed to load filesystem monitor eBPF program: {}", e)),
+        }
     }
 
     pub fn is_loaded(&self) -> bool {

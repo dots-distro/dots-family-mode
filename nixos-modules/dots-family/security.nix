@@ -5,6 +5,14 @@ let
   
 in {
   config = lib.mkIf cfg.enable {
+    # eBPF capabilities for daemon - proper NixOS approach using security.wrappers
+    security.wrappers.dots-family-daemon = {
+      owner = "root";
+      group = "dots-family";
+      capabilities = "cap_bpf+ep,cap_sys_admin+ep";
+      source = "${cfg.internal.packages.daemon}/bin/dots-family-daemon";
+    };
+
     # Polkit rules for parent authentication
     security.polkit.extraConfig = ''
       // DOTS Family Mode - Parent Authentication Rules

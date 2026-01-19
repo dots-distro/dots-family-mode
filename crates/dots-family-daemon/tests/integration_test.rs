@@ -1,15 +1,9 @@
-// Simple integration tests for DOTS Family Mode daemon
-// Tests basic functionality without requiring running daemon
-
 #[cfg(test)]
 mod integration_tests {
-    use super::*;
-
     #[tokio::test]
     async fn test_daemon_build() {
         println!("Testing daemon build...");
 
-        // Test that daemon builds successfully
         let output = std::process::Command::new("cargo")
             .args(&["build", "-p", "dots-family-daemon"])
             .output()
@@ -27,7 +21,6 @@ mod integration_tests {
     async fn test_monitor_build() {
         println!("Testing monitor build...");
 
-        // Test that monitor builds successfully
         let output = std::process::Command::new("cargo")
             .args(&["build", "-p", "dots-family-monitor"])
             .output()
@@ -45,7 +38,6 @@ mod integration_tests {
     async fn test_cli_build() {
         println!("Testing CLI build...");
 
-        // Test that CLI builds successfully
         let output = std::process::Command::new("cargo")
             .args(&["build", "-p", "dots-family-ctl"])
             .output()
@@ -63,7 +55,6 @@ mod integration_tests {
     async fn test_workspace_build() {
         println!("Testing workspace build...");
 
-        // Test that entire workspace builds successfully
         let output = std::process::Command::new("cargo")
             .args(&["build", "--workspace"])
             .output()
@@ -81,7 +72,6 @@ mod integration_tests {
     async fn test_system_bus_security() {
         println!("Testing system bus security enforcement...");
 
-        // Test basic build (ensures system bus config)
         let output = std::process::Command::new("cargo")
             .args(&["build", "-p", "dots-family-daemon"])
             .output()
@@ -89,7 +79,6 @@ mod integration_tests {
 
         if output.status.success() {
             println!("✅ Daemon builds with system bus enforcement");
-            // Give moment for async context
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             println!("✅ System bus security validation passed");
         } else {
@@ -102,7 +91,6 @@ mod integration_tests {
     async fn test_basic_functionality() {
         println!("Testing basic functionality...");
 
-        // Test that we can run basic cargo commands
         let version_output = std::process::Command::new("cargo")
             .args(&["--version"])
             .output()
@@ -112,6 +100,26 @@ mod integration_tests {
             println!("✅ Cargo is available and working");
         } else {
             panic!("Cargo not available");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_enforcement_integration_compilation() {
+        println!("Testing policy enforcement integration compilation...");
+
+        let output = std::process::Command::new("cargo")
+            .args(&["check", "-p", "dots-family-daemon"])
+            .output()
+            .expect("Failed to run cargo check");
+
+        if output.status.success() {
+            println!("✅ Policy enforcement integration compiles successfully");
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            println!("Compilation warnings/errors: {}", stderr);
+            if stderr.contains("error:") {
+                panic!("Compilation failed with errors");
+            }
         }
     }
 }

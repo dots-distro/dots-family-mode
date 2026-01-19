@@ -201,6 +201,46 @@ impl EnforcementEngine {
 
         Ok(())
     }
+
+    pub async fn enforce_policy_decision(
+        &self,
+        decision: &crate::policy_engine::PolicyDecision,
+        app_id: Option<&str>,
+        pid: Option<u32>,
+    ) -> Result<()> {
+        info!("Enforcing policy decision: {} - {}", decision.action, decision.reason);
+
+        match decision.action.as_str() {
+            "block" => {
+                // Send notification first
+                self.notify_user(
+                    "Access Blocked",
+                    &format!("Access restricted: {}", decision.reason),
+                )
+                .await?;
+
+                // Close window if we have app and pid info
+                if let (Some(app), Some(process_id)) = (app_id, pid) {
+                    self.close_window(app, process_id).await?;
+                } else if let Some(process_id) = pid {
+                    // If we only have PID, terminate the process
+                    self.terminate_process(process_id, &decision.reason).await?;
+                }
+            }
+            "allow" => {
+                debug!("Policy allows access: {}", decision.reason);
+            }
+            "warn" => {
+                // Send warning notification but don't block
+                self.notify_user("Warning", &format!("Warning: {}", decision.reason)).await?;
+            }
+            _ => {
+                warn!("Unknown policy action: {}", decision.action);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]

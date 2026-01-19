@@ -24,21 +24,42 @@ fn main() {
         let filesystem_dest = out_dir_path.join("filesystem-monitor");
 
         if fs::metadata(&process_path).is_ok() {
-            fs::copy(&process_path, &process_dest)
-                .unwrap_or_else(|e| panic!("Failed to copy process monitor eBPF: {}", e));
-            println!("cargo:rustc-env=BPF_PROCESS_MONITOR_FILE={}", process_dest.display());
+            match fs::copy(&process_path, &process_dest) {
+                Ok(_) => {
+                    println!("cargo:rustc-env=BPF_PROCESS_MONITOR_FILE={}", process_dest.display());
+                }
+                Err(e) => {
+                    println!("cargo:warning=Failed to copy process monitor eBPF ({}), using runtime path", e);
+                    println!("cargo:rustc-env=BPF_PROCESS_MONITOR_FILE={}", process_path);
+                }
+            }
         }
 
         if fs::metadata(&network_path).is_ok() {
-            fs::copy(&network_path, &network_dest)
-                .unwrap_or_else(|e| panic!("Failed to copy network monitor eBPF: {}", e));
-            println!("cargo:rustc-env=BPF_NETWORK_MONITOR_FILE={}", network_dest.display());
+            match fs::copy(&network_path, &network_dest) {
+                Ok(_) => {
+                    println!("cargo:rustc-env=BPF_NETWORK_MONITOR_FILE={}", network_dest.display());
+                }
+                Err(e) => {
+                    println!("cargo:warning=Failed to copy network monitor eBPF ({}), using runtime path", e);
+                    println!("cargo:rustc-env=BPF_NETWORK_MONITOR_FILE={}", network_path);
+                }
+            }
         }
 
         if fs::metadata(&filesystem_path).is_ok() {
-            fs::copy(&filesystem_path, &filesystem_dest)
-                .unwrap_or_else(|e| panic!("Failed to copy filesystem monitor eBPF: {}", e));
-            println!("cargo:rustc-env=BPF_FILESYSTEM_MONITOR_FILE={}", filesystem_dest.display());
+            match fs::copy(&filesystem_path, &filesystem_dest) {
+                Ok(_) => {
+                    println!(
+                        "cargo:rustc-env=BPF_FILESYSTEM_MONITOR_FILE={}",
+                        filesystem_dest.display()
+                    );
+                }
+                Err(e) => {
+                    println!("cargo:warning=Failed to copy filesystem monitor eBPF ({}), using runtime path", e);
+                    println!("cargo:rustc-env=BPF_FILESYSTEM_MONITOR_FILE={}", filesystem_path);
+                }
+            }
         }
 
         println!("cargo:info=Using Nix-provided eBPF programs");

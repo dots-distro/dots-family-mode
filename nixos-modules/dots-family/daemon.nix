@@ -25,7 +25,7 @@ in {
       serviceConfig = {
         Type = "dbus";
         BusName = "org.dots.FamilyDaemon";
-        ExecStart = "${packages.daemon}/bin/dots-family-daemon";
+        ExecStart = "/run/wrappers/bin/dots-family-daemon";
         
         # Security hardening
         DynamicUser = false;  # Need specific user for database access

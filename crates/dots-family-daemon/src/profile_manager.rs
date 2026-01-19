@@ -64,9 +64,16 @@ impl ProfileManager {
         let pool = self._db.pool()?;
 
         let result =
-            sqlx::query("SELECT value FROM daemon_settings WHERE key = 'active_profile_id'")
+            match sqlx::query("SELECT value FROM daemon_settings WHERE key = 'active_profile_id'")
                 .fetch_optional(pool)
-                .await?;
+                .await
+            {
+                Ok(result) => result,
+                Err(e) => {
+                    warn!("daemon_settings table not found, skipping active profile load: {}", e);
+                    return Ok(());
+                }
+            };
 
         if let Some(row) = result {
             let profile_id: String = row.try_get("value")?;

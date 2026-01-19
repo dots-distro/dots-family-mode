@@ -45,15 +45,41 @@ impl MonitoringService {
 
         {
             let mut network_monitor = self.network_monitor.lock().await;
-            if let Err(e) = network_monitor.load(std::path::Path::new("/dev/null")).await {
-                warn!("Failed to load eBPF network monitor: {}, using fallback", e);
+            if let Some(network_path) =
+                std::env::var("BPF_NETWORK_MONITOR_PATH").ok().filter(|p| !p.is_empty())
+            {
+                if let Err(e) = network_monitor.load(std::path::Path::new(&network_path)).await {
+                    return Err(anyhow::anyhow!(
+                        "Failed to load eBPF network monitor from {}: {}",
+                        network_path,
+                        e
+                    ));
+                }
+            } else {
+                return Err(anyhow::anyhow!(
+                    "BPF_NETWORK_MONITOR_PATH not set - eBPF network monitoring required"
+                ));
             }
         }
 
         {
             let mut filesystem_monitor = self.filesystem_monitor.lock().await;
-            if let Err(e) = filesystem_monitor.load(std::path::Path::new("/dev/null")).await {
-                warn!("Failed to load eBPF filesystem monitor: {}, using fallback", e);
+            if let Some(filesystem_path) =
+                std::env::var("BPF_FILESYSTEM_MONITOR_PATH").ok().filter(|p| !p.is_empty())
+            {
+                if let Err(e) =
+                    filesystem_monitor.load(std::path::Path::new(&filesystem_path)).await
+                {
+                    return Err(anyhow::anyhow!(
+                        "Failed to load eBPF filesystem monitor from {}: {}",
+                        filesystem_path,
+                        e
+                    ));
+                }
+            } else {
+                return Err(anyhow::anyhow!(
+                    "BPF_FILESYSTEM_MONITOR_PATH not set - eBPF filesystem monitoring required"
+                ));
             }
         }
 
