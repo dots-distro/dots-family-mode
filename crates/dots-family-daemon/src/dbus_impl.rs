@@ -170,7 +170,7 @@ impl FamilyDaemonService {
                                             }
                                             if let Err(e) = enforcement_engine.notify_user(
                                                 "Application Blocked", 
-                                                &format!("Starting {} has been blocked by parental controls", executable.split('/').last().unwrap_or("application"))
+                                                &format!("Starting {} has been blocked by parental controls", executable.split('/').next_back().unwrap_or("application"))
                                             ).await {
                                                 error!("Failed to send notification: {}", e);
                                             }

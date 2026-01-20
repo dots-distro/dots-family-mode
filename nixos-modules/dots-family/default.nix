@@ -150,6 +150,16 @@ in {
       description = "Enable desktop notifications for policy violations and alerts";
     };
 
+    runAsRoot = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        If true, daemon runs as root user with full privileges.
+        If false (default), daemon runs as dedicated 'dots-family' user with capabilities.
+        Set to true for manual systemd service installation to match root privileges.
+      '';
+    };
+
     profiles = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule {
         options = {
@@ -249,6 +259,7 @@ in {
         ctl = cfg.ctlPackage;
       };
       config = cfg;
+      inherit (cfg) runAsRoot;
     };
     
     # User groups for family mode

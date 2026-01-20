@@ -66,6 +66,17 @@ install_binaries() {
         cp "$SCRIPT_DIR/../result/bin/dots-family-monitor" "$INSTALL_PREFIX/bin/"
         cp "$SCRIPT_DIR/../result/bin/dots-family-ctl" "$INSTALL_PREFIX/bin/"
         
+        # Set capabilities on daemon binary for eBPF operations
+        # Required capabilities: CAP_SYS_ADMIN (eBPF), CAP_NET_ADMIN (network), 
+        # CAP_SYS_PTRACE (process), CAP_DAC_READ_SEARCH (filesystem)
+        if command -v setcap &> /dev/null; then
+            log_info "Setting capabilities on daemon binary..."
+            setcap cap_sys_admin,cap_net_admin,cap_sys_ptrace,cap_dac_read_search+ep "$INSTALL_PREFIX/bin/dots-family-daemon"
+            log_success "Capabilities set on daemon binary"
+        else
+            log_warning "setcap not found - capabilities not set. Install libcap2-bin package."
+        fi
+        
         # Install eBPF programs
         mkdir -p "$INSTALL_PREFIX/lib/dots-family/ebpf"
         if [[ -d "$SCRIPT_DIR/../result/target/bpfel-unknown-none/release" ]]; then
@@ -101,6 +112,22 @@ install_systemd_services() {
 install_configuration() {
     log_info "Installing configuration files..."
     
+    # Create dots-family group and user if they don't exist
+    if ! getent group dots-family > /dev/null 2>&1; then
+        log_info "Creating dots-family group..."
+        groupadd --system dots-family
+    fi
+    
+    if ! getent passwd dots-family > /dev/null 2>&1; then
+        log_info "Creating dots-family user..."
+        useradd --system \
+            --gid dots-family \
+            --home-dir /var/lib/dots-family \
+            --shell /usr/sbin/nologin \
+            --comment "DOTS Family Mode daemon user" \
+            dots-family
+    fi
+    
     # Create configuration directory
     mkdir -p "$CONFIG_DIR"
     
@@ -110,7 +137,7 @@ install_configuration() {
     
     # Create state directory with proper permissions
     mkdir -p "$STATE_DIR"
-    chown root:root "$STATE_DIR"
+    chown dots-family:dots-family "$STATE_DIR"
     chmod 750 "$STATE_DIR"
     
     log_success "Configuration files installed"
@@ -122,6 +149,17 @@ reload_systemd() {
     systemctl daemon-reload
     
     log_success "Systemd configuration reloaded"
+}
+
+configure_permissions() {
+    log_info "Configuring directory permissions..."
+    
+    # Ensure state directory has correct ownership
+    chown -R dots-family:dots-family /var/lib/dots-family
+    chown -R dots-family:dots-family /var/log/dots-family
+    chown -R dots-family:dots-family /etc/dots-family
+    
+    log_success "Directory permissions configured"
 }
 
 enable_services() {
@@ -187,6 +225,7 @@ main() {
             install_binaries
             install_systemd_services
             install_configuration
+            configure_permissions
             reload_systemd
             enable_services
             show_status

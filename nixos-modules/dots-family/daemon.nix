@@ -27,10 +27,15 @@ in {
         BusName = "org.dots.FamilyDaemon";
         ExecStart = "/run/wrappers/bin/dots-family-daemon";
         
-        # Security hardening
+        # User configuration - root or dedicated user
         DynamicUser = false;  # Need specific user for database access
+        ${if cfg.runAsRoot then ''
+        User = "root";
+        Group = "root";
+        '' else ''
         User = "dots-family";
         Group = "dots-family";
+        ''}
         
         # Filesystem protection
         ProtectSystem = "strict";
@@ -76,78 +81,16 @@ in {
         SyslogIdentifier = "dots-family-daemon";
       };
       
-      # Environment variables for daemon
-      environment = {
-        RUST_LOG = "info";
-        DOTS_FAMILY_DB_PATH = cfg.databasePath;
-        DOTS_FAMILY_REPORTING_ONLY = lib.boolToString cfg.reportingOnly;
-        DOTS_FAMILY_ENABLE_NOTIFICATIONS = lib.boolToString cfg.enableNotifications;
+      # Only create dedicated user if not running as root
+      ${lib.optionalString (!cfg.runAsRoot) ''
+      # Create system user for daemon
+      users.users.dots-family = {
+        description = "DOTS Family Mode daemon user";
+        isSystemUser = true;
+        group = "dots-family";
+        home = "/var/lib/dots-family";
+        createHome = true;
       };
       
-      # Configuration file setup
-      preStart = ''
-        # Ensure database directory exists
-        mkdir -p "$(dirname "${cfg.databasePath}")"
-        chown dots-family:dots-family "$(dirname "${cfg.databasePath}")"
-        
-        # Generate configuration file
-        ${pkgs.writeShellScript "generate-config" ''
-          cat > /var/lib/dots-family/daemon.toml << 'EOF'
-          [auth]
-          parent_password_hash = "$PARENT_PASSWORD_HASH"
-          session_timeout_minutes = 60
-          
-          [database]
-          path = "${cfg.databasePath}"
-          
-          ${lib.optionalString cfg.enableWebFiltering ''
-          [web_filtering]
-          enable = true
-          proxy_port = 8888
-          block_page_template = "/etc/dots-family/blocked.html"
-          ''}
-          
-          ${lib.optionalString cfg.enableTerminalFiltering ''
-          [terminal_filtering]
-          enable = true
-          educational_mode = true
-          ''}
-          
-          # User profiles
-          ${lib.concatMapStrings (profileName: 
-            let profile = cfg.profiles.${profileName}; in ''
-            [[profiles]]
-            name = "${profile.name}"
-            age_group = "${profile.ageGroup}"
-            ${lib.optionalString (profile.dailyScreenTimeLimit != null) ''
-            daily_screen_time_limit = "${profile.dailyScreenTimeLimit}"
-            ''}
-            allowed_applications = [${lib.concatMapStringsSep ", " (app: ''"${app}"'') profile.allowedApplications}]
-            blocked_applications = [${lib.concatMapStringsSep ", " (app: ''"${app}"'') profile.blockedApplications}]
-            web_filtering_level = "${profile.webFilteringLevel}"
-            
-            ${lib.concatMapStrings (window: ''
-            [[profiles.time_windows]]
-            start = "${window.start}"
-            end = "${window.end}"
-            days = [${lib.concatMapStringsSep ", " (day: ''"${day}"'') window.days}]
-            '') profile.timeWindows}
-            
-            '') (builtins.attrNames cfg.profiles)}
-          EOF
-        ''}
-      '';
-    };
-    
-    # Create system user for daemon
-    users.users.dots-family = {
-      description = "DOTS Family Mode daemon user";
-      isSystemUser = true;
-      group = "dots-family";
-      home = "/var/lib/dots-family";
-      createHome = true;
-    };
-    
-    users.groups.dots-family = { };
-  };
-}
+      users.groups.dots-family = { };
+      ''}

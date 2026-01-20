@@ -59,6 +59,7 @@ impl Daemon {
         self.enforcement_engine.read().await
     }
 
+    #[allow(dead_code)]
     pub async fn get_enforcement_engine_mut(
         &self,
     ) -> tokio::sync::RwLockWriteGuard<'_, EnforcementEngine> {
@@ -317,7 +318,7 @@ async fn process_activity_enforcement(
             }
             dots_family_proto::events::ActivityEvent::ProcessStarted {
                 executable, pid, ..
-            } => (Some(executable.split('/').last().unwrap_or(executable)), Some(*pid)),
+            } => (Some(executable.split('/').next_back().unwrap_or(executable)), Some(*pid)),
             _ => (None, None),
         };
 

@@ -21,11 +21,11 @@ Environment="RUST_LOG=info"
 Environment="DATABASE_URL=/var/lib/dots-family/family.db"
 EnvironmentFile=-/etc/dots-family/daemon.conf
 
-# Run as root for eBPF capabilities
-User=root
-Group=root
+# Run as dots-family user (capabilities set via setcap during installation)
+User=dots-family
+Group=dots-family
 
-# System directories
+# State directories
 StateDirectory=dots-family
 StateDirectoryMode=0750
 ConfigurationDirectory=dots-family
@@ -35,7 +35,7 @@ CacheDirectoryMode=0750
 LogsDirectory=dots-family
 LogsDirectoryMode=0750
 
-# Security hardening
+# Security hardening (capabilities already set on binary via setcap)
 CapabilityBoundingSet=CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_BPF
 AmbientCapabilities=CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_BPF
 SecureBits=keep-caps

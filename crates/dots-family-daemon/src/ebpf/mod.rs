@@ -1,7 +1,6 @@
 pub mod filesystem_monitor;
 pub mod network_monitor;
 pub mod process_monitor;
-pub mod process_monitor_simple;
 
 use anyhow::Result;
 use aya::Bpf;
@@ -11,7 +10,6 @@ use tracing::{error, info, warn};
 pub use filesystem_monitor::FilesystemMonitorEbpf;
 pub use network_monitor::NetworkMonitorEbpf;
 pub use process_monitor::ProcessMonitorEbpf;
-pub use process_monitor_simple::ProcessMonitorSimple;
 
 /// Health status for eBPF programs
 #[derive(Debug, Clone)]

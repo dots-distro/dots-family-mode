@@ -84,7 +84,7 @@ impl EnforcementEngine {
         debug!("Closing Niri window for app {} (PID: {})", app_id, pid);
 
         let output = Command::new("niri")
-            .args(&["msg", "action", "close-window"])
+            .args(["msg", "action", "close-window"])
             .output()
             .context("Failed to execute niri command")?;
 

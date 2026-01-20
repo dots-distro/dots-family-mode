@@ -57,6 +57,11 @@
         # Common source filter
         src = craneLib.cleanCargoSource (craneLib.path ./.);
 
+        cargoArtifacts = craneLib.buildDepsOnly {
+          inherit src nativeBuildInputs buildInputs;
+          SQLX_OFFLINE = "false";
+        };
+
         # Common build inputs
         nativeBuildInputs = with pkgs; [
           pkg-config
@@ -352,37 +357,29 @@ EOF
           build = self.packages.${system}.default;
           ebpf-build = self.packages.${system}.dots-family-ebpf;
           
-          test = pkgs.runCommand "test-dots-family-mode" {
-            nativeBuildInputs = nativeBuildInputs;
+test = craneLib.buildPackage {
+            inherit src cargoArtifacts;
+            nativeBuildInputs = nativeBuildInputs ++ [ rustToolchainStable ];
             buildInputs = buildInputs;
             KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
             LIBBPF_INCLUDE_PATH = "${pkgs.libbpf}/include";
             LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
             BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
-            SQLX_OFFLINE = "true";
-          } ''
-            cp -r ${src} source
-            chmod -R +w source
-            cd source
-            cargo test --workspace
-            touch $out
-          '';
+            SQLX_OFFLINE = "false"; # Allow tests to run migrations
+            doCheck = true;
+          };
 
-          clippy = pkgs.runCommand "clippy-dots-family-mode" {
-            nativeBuildInputs = nativeBuildInputs;
+clippy = craneLib.cargoClippy {
+            inherit src cargoArtifacts;
+            nativeBuildInputs = nativeBuildInputs ++ [ rustToolchainStable ];
             buildInputs = buildInputs;
             KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
             LIBBPF_INCLUDE_PATH = "${pkgs.libbpf}/include";
             LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
             BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
-            SQLX_OFFLINE = "true";
-          } ''
-            cp -r ${src} source
-            chmod -R +w source
-            cd source
-            cargo clippy --workspace --all-features -- -D warnings
-            touch $out
-          '';
+            SQLX_OFFLINE = "false"; # Also allow clippy to access DB for sqlx
+            cargoClippyExtraArgs = "--workspace --all-features -- -D warnings";
+          };
         };
       }
     ) // {
@@ -397,7 +394,7 @@ EOF
         dots-family-test-vm = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            ./vm-simple.nix
+            ./nix/vm-simple.nix
             nixosModules.dots-family
             {
               # Override the package set to include our DOTS Family packages
@@ -416,6 +413,48 @@ EOF
                 parentUsers = [ "parent" ];
                 childUsers = [ "child" ];
                 reportingOnly = true;  # Safe mode for testing
+                runAsRoot = false;  # Test dedicated user mode
+                
+                profiles.child = {
+                  name = "Test Child";
+                  ageGroup = "8-12";
+                  dailyScreenTimeLimit = "2h";
+                  timeWindows = [{
+                    start = "09:00";
+                    end = "17:00";
+                    days = [ "mon" "tue" "wed" "thu" "fri" ];
+                  }];
+                  allowedApplications = [ "firefox" "calculator" ];
+                  webFilteringLevel = "moderate";
+                };
+              };
+            }
+          ];
+        };
+        
+        dots-family-test-vm-root = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./nix/vm-simple.nix
+            nixosModules.dots-family
+            {
+              # Override the package set to include our DOTS Family packages
+              nixpkgs.overlays = [
+                (final: prev: {
+                  dots-family-daemon = self.packages.x86_64-linux.dots-family-daemon;
+                  dots-family-monitor = self.packages.x86_64-linux.dots-family-monitor;
+                  dots-family-ctl = self.packages.x86_64-linux.dots-family-ctl;
+                  dots-terminal-filter = self.packages.x86_64-linux.dots-terminal-filter;
+                })
+              ];
+
+              # Enable DOTS Family Mode with root privileges (matching manual install)
+              services.dots-family = {
+                enable = true;
+                parentUsers = [ "parent" ];
+                childUsers = [ "child" ];
+                reportingOnly = true;  # Safe mode for testing
+                runAsRoot = true;  # Test root mode (like manual systemd service)
                 
                 profiles.child = {
                   name = "Test Child";

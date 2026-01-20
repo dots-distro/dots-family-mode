@@ -144,6 +144,7 @@ impl ProcessMonitorEbpf {
     }
 
     /// Get health status of all eBPF programs
+    #[allow(dead_code)]
     pub async fn get_health_status(&self) -> EbpfHealth {
         self.health_status.clone()
     }

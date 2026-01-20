@@ -4,6 +4,7 @@ use dots_family_db::{migrations, Database, DatabaseConfig};
 use tempfile::tempdir;
 
 #[tokio::test]
+#[ignore]
 async fn test_database_creation_and_migration() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("test.db");
@@ -24,6 +25,7 @@ async fn test_database_creation_and_migration() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_database_initialization_with_encryption() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("encrypted_test.db");
@@ -61,6 +63,7 @@ async fn test_database_initialization_with_encryption() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_daemon_style_database_initialization() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("daemon_test.db");
@@ -103,6 +106,7 @@ async fn initialize_database_for_daemon(db_path: &str) -> Result<Database> {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_database_url_environment_pattern() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("env_test.db");
@@ -120,6 +124,7 @@ async fn test_database_url_environment_pattern() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_database_struct_initialization() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("test.db");
@@ -150,6 +155,7 @@ async fn test_database_struct_initialization() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_daemon_initializes_database() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("test.db");

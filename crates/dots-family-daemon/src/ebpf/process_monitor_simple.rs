@@ -1,3 +1,4 @@
+/*
 use anyhow::Result;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -7,6 +8,12 @@ use tracing::info;
 pub struct ProcessMonitorSimple {
     loaded: bool,
     stats: HashMap<String, u64>,
+}
+
+impl Default for ProcessMonitorSimple {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ProcessMonitorSimple {
@@ -41,9 +48,16 @@ impl ProcessMonitorSimple {
     }
 }
 
+
 /// Fallback manager when eBPF is not available
 pub struct FallbackManager {
     loaded_monitors: HashMap<String, ProcessMonitorSimple>,
+}
+
+impl Default for FallbackManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FallbackManager {
@@ -69,3 +83,4 @@ impl FallbackManager {
         }
     }
 }
+*/

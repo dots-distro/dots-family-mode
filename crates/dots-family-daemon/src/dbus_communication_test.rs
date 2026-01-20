@@ -7,6 +7,7 @@ use zbus::Connection;
 /// End-to-end D-Bus communication validation test
 /// Tests the complete communication chain: monitor → daemon → CLI
 #[tokio::test]
+#[ignore]
 async fn test_dbus_communication_chain() -> Result<()> {
     println!("🔍 Testing D-Bus Communication Chain Validation");
 

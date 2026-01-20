@@ -14,20 +14,15 @@ pub struct PolicyDecision {
 }
 
 /// Tracks screen time usage for a profile
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ScreenTimeTracker {
     pub daily_usage_minutes: u32,
     pub session_start: Option<SystemTime>,
     pub last_activity: Option<SystemTime>,
 }
 
-impl Default for ScreenTimeTracker {
-    fn default() -> Self {
-        Self { daily_usage_minutes: 0, session_start: None, last_activity: None }
-    }
-}
-
 impl ScreenTimeTracker {
+    #[allow(dead_code)]
     pub fn start_session(&mut self) {
         let now = SystemTime::now();
         self.session_start = Some(now);
@@ -39,6 +34,7 @@ impl ScreenTimeTracker {
         self.last_activity = Some(SystemTime::now());
     }
 
+    #[allow(dead_code)]
     pub fn end_session(&mut self) {
         if let (Some(start), Some(last)) = (self.session_start, self.last_activity) {
             if let Ok(duration) = last.duration_since(start) {
@@ -218,6 +214,7 @@ impl PolicyEngine {
         }
     }
 
+    #[allow(dead_code)]
     pub fn start_activity_session(&mut self) {
         self.screen_time_tracker.start_session();
     }
@@ -226,6 +223,7 @@ impl PolicyEngine {
         self.screen_time_tracker.update_activity();
     }
 
+    #[allow(dead_code)]
     pub fn end_activity_session(&mut self) {
         self.screen_time_tracker.end_session();
     }

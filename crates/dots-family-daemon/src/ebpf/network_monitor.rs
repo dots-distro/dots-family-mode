@@ -25,6 +25,12 @@ pub struct NetworkMonitorEbpf {
     event_receiver: Option<mpsc::Receiver<NetworkEvent>>,
 }
 
+impl Default for NetworkMonitorEbpf {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkMonitorEbpf {
     pub fn new() -> Self {
         Self { ebpf: None, loaded: false, event_receiver: None }
@@ -58,10 +64,12 @@ impl NetworkMonitorEbpf {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_loaded(&self) -> bool {
         self.loaded
     }
 
+    #[allow(dead_code)]
     pub async fn start_monitoring(&mut self) -> anyhow::Result<()> {
         if !self.loaded {
             return Err(anyhow::anyhow!("eBPF program not loaded"));
@@ -103,6 +111,7 @@ impl NetworkMonitorEbpf {
         }))
     }
 
+    #[allow(dead_code)]
     pub async fn attach_programs(&mut self) -> anyhow::Result<()> {
         // Simulate attaching eBPF programs without actual kernel interaction
         info!("Attaching network monitoring programs (simulation mode)");

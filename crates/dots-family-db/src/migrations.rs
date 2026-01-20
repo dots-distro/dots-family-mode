@@ -13,7 +13,7 @@ pub struct MigrationStatus {
 /// Run database migrations using embedded migration files
 pub async fn run_migrations(pool: &SqlitePool) -> Result<()> {
     info!("Running database migrations");
-    match sqlx::migrate!("../../migrations").run(pool).await {
+    match sqlx::migrate!("./migrations").run(pool).await {
         Ok(_) => {
             info!("Database migrations completed successfully");
             Ok(())
