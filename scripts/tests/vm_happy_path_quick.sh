@@ -64,7 +64,7 @@ test_result "Install script exists" "test -f systemd/install.sh"
 test_result "DBus service exists" "test -f dbus/org.dots.FamilyDaemon.service"
 test_result "Daemon module exists" "test -f nixos-modules/dots-family/daemon.nix"
 test_result "Default module exists" "test -f nixos-modules/dots-family/default.nix"
-test_result "VM config exists" "test -f nix/vm-simple.nix"
+test_result "VM config exists" "test -f tests/nix/vm-simple.nix"
 test_result "Migrations exist" "ls crates/dots-family-db/migrations/*.sql | wc -l | grep -q '^6'"
 
 echo ""
