@@ -133,31 +133,28 @@ Family Mode consists of eight Rust applications working together:
 - **DATA_SCHEMA.md**: Database schema and data structures
 - **IMPLEMENTATION_ROADMAP.md**: Phased development plan
 
-## Quick Start (Future)
+## Quick Start
 
-```nix
-# In Home Manager configuration
-features.family-mode = {
-  enable = true;
-  role = "parent"; # or "child"
+```bash
+# Enter development environment
+nix develop
 
-  profiles.child = {
-    name = "Alex";
-    ageGroup = "8-12";
-    screenTime.dailyLimit = "2h";
-    applications.mode = "allowlist";
-    applications.allowed = [
-      "firefox" # with filtering
-      "inkscape"
-      "tuxmath"
-    ];
-  };
-};
+# Build all components
+nix build .#default
+
+# Build VM for testing
+nix build .#nixosConfigurations.dots-family-test-vm.config.system.build.vm
+./result/bin/run-dots-family-test-vm
+
+# Run test suite
+nix run .#test
 ```
+
+See [README.md](../README.md) for complete documentation.
 
 ## Development Status
 
-This is planning documentation. Implementation follows the roadmap in IMPLEMENTATION_ROADMAP.md.
+Implementation complete. See [docs/INDEX.md](./INDEX.md) for current documentation.
 
 ## Contributing
 

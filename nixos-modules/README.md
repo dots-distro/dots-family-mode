@@ -166,6 +166,7 @@ services.dots-family = {
   enable = true;                    # Enable DOTS Family Mode
   databasePath = "/var/lib/dots-family/family.db";  # Database location
   reportingOnly = false;            # Set to true for monitoring without enforcement
+  runAsRoot = false;               # Run daemon as root (true) or dedicated user (false, default)
   
   # User groups
   parentUsers = [ "mom" "dad" ];    # Users with full control

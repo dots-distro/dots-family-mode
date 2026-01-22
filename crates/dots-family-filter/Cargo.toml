@@ -10,7 +10,7 @@ description = "DOTS Family Mode web content filtering and proxy"
 [dependencies]
 dots-family-common.workspace = true
 dots-family-proto.workspace = true
-tokio = { workspace = true, features = ["net", "rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["net", "rt-multi-thread", "macros", "io-util"] }
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
@@ -27,7 +27,6 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 clap = { version = "4.0", features = ["derive"] }
 toml = "0.8"
 dirs = "5.0"
-zbus = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

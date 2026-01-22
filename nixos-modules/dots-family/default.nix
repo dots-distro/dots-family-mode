@@ -81,6 +81,7 @@ in {
     ./dbus.nix
     ./security.nix
     ./user-services.nix
+    ./ssl-intercept.nix
   ];
 
   options.services.dots-family = {
