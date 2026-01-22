@@ -345,10 +345,10 @@ cargo test --workspace
 # Integration tests (requires VM/container)
 if [ "$1" = "--integration" ]; then
     echo "3. Running integration tests..."
-    ./testing/integration-test.sh
+    ./scripts/tests/integration-test.sh
     
     echo "4. Running performance tests..."
-    ./testing/performance-test.sh
+    ./scripts/tests/performance-test.sh
 fi
 
 echo "All tests completed successfully!"

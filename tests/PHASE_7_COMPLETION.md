@@ -7,14 +7,14 @@
 ## Completed Objectives
 
 ### ✅ 1. VM Testing Environment Setup
-- **Created comprehensive NixOS container configuration** (`testing/configs/nixos-container.nix`)
+- **Created comprehensive NixOS container configuration** (`tests/configs/nixos-container.nix`)
   - Full eBPF support with latest kernel
   - Complete Rust development environment
   - DBus system integration with proper policy files
   - Security capabilities for eBPF monitoring
   - Bind mounts for live development
 
-- **Implemented quick testing framework** (`testing/scripts/vm-simple-test.sh`)
+- **Implemented quick testing framework** (`scripts/tests/vm-simple-test.sh`)
   - Workspace compilation verification (excluding database)
   - Individual crate testing
   - Unit test execution
@@ -34,14 +34,14 @@
   - **Build time**: ~13.9 seconds for full workspace check
 
 ### ✅ 3. Integration Testing Framework
-- **Enhanced integration test suite** (`testing/scripts/integration-test.sh`)
+- **Enhanced integration test suite** (`scripts/tests/integration-test.sh`)
   - Complete daemon lifecycle testing
   - CLI tool connectivity validation
   - Profile management verification
   - Monitoring data collection testing
   - Automatic cleanup and error handling
 
-- **Performance testing infrastructure** (`testing/scripts/performance-test.sh`)
+- **Performance testing infrastructure** (`scripts/tests/performance-test.sh`)
   - Stress testing for process/network/filesystem monitoring
   - Resource usage monitoring
   - Load testing framework
@@ -152,17 +152,17 @@ DBus Policy    Profile Management    Load Testing       Deployment
 echo $IN_NIX_SHELL  # Should be "impure"
 
 # Quick validation
-./testing/scripts/vm-simple-test.sh
+./scripts/tests/vm-simple-test.sh
 
 # Full integration (with database)
 export DATABASE_URL="sqlite:////tmp/dots-test.db"
-./testing/scripts/run-all-tests.sh --all
+./scripts/tests/run-all-tests.sh --all
 ```
 
 ### VM Container Setup
 ```bash
 # Install NixOS container
-sudo cp testing/configs/nixos-container.nix /etc/nixos/containers/dots-testing.nix
+sudo cp tests/configs/nixos-container.nix /etc/nixos/containers/dots-testing.nix
 sudo nixos-rebuild switch
 sudo nixos-container start dots-testing
 sudo nixos-container login dots-testing

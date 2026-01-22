@@ -20,21 +20,21 @@ cargo test --workspace
 
 echo "3. Running integration tests..."
 if [ "$1" = "--integration" ] || [ "$1" = "--all" ]; then
-    chmod +x testing/scripts/integration-test.sh
-    ./testing/scripts/integration-test.sh
+    chmod +x scripts/tests/integration-test.sh
+    ./scripts/tests/integration-test.sh
 fi
 
 echo "4. Running performance tests..."
 if [ "$1" = "--performance" ] || [ "$1" = "--all" ]; then
-    chmod +x testing/scripts/performance-test.sh  
-    ./testing/scripts/performance-test.sh
+    chmod +x scripts/tests/performance-test.sh  
+    ./scripts/tests/performance-test.sh
 fi
 
 echo ""
 echo "🎉 All requested tests completed successfully!"
 echo ""
 echo "Usage:"
-echo "  ./testing/scripts/run-all-tests.sh                    # Compilation + unit tests only"
-echo "  ./testing/scripts/run-all-tests.sh --integration      # Add integration tests"
-echo "  ./testing/scripts/run-all-tests.sh --performance      # Add performance tests" 
-echo "  ./testing/scripts/run-all-tests.sh --all              # Run everything"
+echo "  ./scripts/tests/run-all-tests.sh                    # Compilation + unit tests only"
+echo "  ./scripts/tests/run-all-tests.sh --integration      # Add integration tests"
+echo "  ./scripts/tests/run-all-tests.sh --performance      # Add performance tests" 
+echo "  ./scripts/tests/run-all-tests.sh --all              # Run everything"
