@@ -394,7 +394,7 @@ clippy = craneLib.cargoClippy {
         dots-family-test-vm = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            ./nix/vm-simple.nix
+            ./tests/nix/vm-simple.nix
             nixosModules.dots-family
             {
               # Override the package set to include our DOTS Family packages
@@ -435,7 +435,7 @@ clippy = craneLib.cargoClippy {
         dots-family-test-vm-root = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
-            ./nix/vm-simple.nix
+            ./tests/nix/vm-simple.nix
             nixosModules.dots-family
             {
               # Override the package set to include our DOTS Family packages
