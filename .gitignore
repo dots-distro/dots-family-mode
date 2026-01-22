@@ -1,32 +1,31 @@
-/target/
-
-**/*.rs.bk
-*.pdb
-
-.direnv/
-.envrc.cache
+# Build Artifacts
+target/
 result
 result-*
+node_modules/
 
+# IDE/Editor
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
+*.rs.bk
+*.pdb
 .DS_Store
 
-# Log files
-/logs/
-*.log
+# Nix
+.direnv/
+.envrc.cache
 
-# Test data and artifacts
-/tests/data/
+# Test Output & Logs
+test-evidence/
+logs/
+*.log
 *.qcow2
 *.db
 sqlx_cache_gen.db
 sqlx_prepare.db
-
-# Other temporary files
+sqlite:
 sqlite:/
-
+/tests/data/
