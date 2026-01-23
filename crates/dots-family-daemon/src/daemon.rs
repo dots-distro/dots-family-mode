@@ -1,20 +1,25 @@
-use anyhow::{Context, Result};
 use std::sync::Arc;
-use tokio::signal;
-use tokio::sync::RwLock;
-use tokio::time::{interval, Duration};
+
+use anyhow::{Context, Result};
+use dots_family_db::{migrations, Database, DatabaseConfig};
+use tokio::{
+    signal,
+    sync::RwLock,
+    time::{interval, Duration},
+};
 use tracing::{debug, error, info, warn};
 use zbus::ConnectionBuilder;
 
-use crate::config::DaemonConfig;
-use crate::dbus_impl::FamilyDaemonService;
-use crate::ebpf::{EbpfHealth, EbpfManager};
-use crate::edge_case_handler::EdgeCaseHandler;
-use crate::enforcement::EnforcementEngine;
-use crate::monitoring_service::MonitoringService;
-use crate::policy_engine::PolicyEngine;
-use crate::profile_manager::ProfileManager;
-use dots_family_db::{migrations, Database, DatabaseConfig};
+use crate::{
+    config::DaemonConfig,
+    dbus_impl::FamilyDaemonService,
+    ebpf::{EbpfHealth, EbpfManager},
+    edge_case_handler::EdgeCaseHandler,
+    enforcement::EnforcementEngine,
+    monitoring_service::MonitoringService,
+    policy_engine::PolicyEngine,
+    profile_manager::ProfileManager,
+};
 
 pub struct Daemon {
     ebpf_manager: RwLock<Option<EbpfManager>>,
@@ -80,7 +85,7 @@ pub async fn initialize_database() -> Result<Database> {
     info!("Initializing database");
 
     let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "/tmp/dots-family.db".to_string());
+        std::env::var("DOTS_FAMILY_DB_PATH").unwrap_or_else(|_| "/tmp/dots-family.db".to_string());
 
     migrations::create_database_if_not_exists(&database_url)
         .await

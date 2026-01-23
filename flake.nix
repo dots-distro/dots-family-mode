@@ -421,6 +421,10 @@ clippy = craneLib.cargoClippy {
               # Enable DOTS Family Mode with test configuration
               services.dots-family = {
                 enable = true;
+                package = self.packages.x86_64-linux.dots-family-daemon;
+                monitorPackage = self.packages.x86_64-linux.dots-family-monitor;
+                ctlPackage = self.packages.x86_64-linux.dots-family-ctl;
+                ebpfPackage = self.packages.x86_64-linux.dots-family-ebpf;
                 parentUsers = [ "parent" ];
                 childUsers = [ "child" ];
                 reportingOnly = true;  # Safe mode for testing
@@ -462,6 +466,10 @@ clippy = craneLib.cargoClippy {
               # Enable DOTS Family Mode with root privileges (matching manual install)
               services.dots-family = {
                 enable = true;
+                package = self.packages.x86_64-linux.dots-family-daemon;
+                monitorPackage = self.packages.x86_64-linux.dots-family-monitor;
+                ctlPackage = self.packages.x86_64-linux.dots-family-ctl;
+                ebpfPackage = self.packages.x86_64-linux.dots-family-ebpf;
                 parentUsers = [ "parent" ];
                 childUsers = [ "child" ];
                 reportingOnly = true;  # Safe mode for testing

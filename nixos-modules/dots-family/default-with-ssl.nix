@@ -48,20 +48,18 @@ let
       # eBPF dependencies for daemon
       buildInputs = (buildDotsPackage "dummy" {}).buildInputs ++ (with pkgs; [
         libbpf
-        linuxHeaders
         llvm
         clang
-        rustc
       ]);
-      
-      # Don't strip eBPF objects
-      dontStrip = true;
-      
-      # Add Rust eBPF target
-      RUSTFLAGS = "-C target-arch=bpf";
       
       # Enable eBPF features
       cargoBuildFlags = [ "--features ebpf" ];
+      
+      postInstall = ''
+        # Install eBPF programs
+        mkdir -p $out/lib/dots-family
+        cp target/bpfel-unknown-none/release/*.o $out/lib/dots-family/ || true
+      '';
     });
     
     monitor = pkgs.dots-family-monitor or (buildDotsPackage "dots-family-monitor" {
@@ -106,12 +104,6 @@ in {
       type = lib.types.package;
       default = defaultDotsPackages.ctl;
       description = "The dots-family-ctl package to use";
-    };
-
-    ebpfPackage = lib.mkOption {
-      type = lib.types.nullOr lib.types.package;
-      default = null;
-      description = "The dots-family-ebpf package to use for eBPF monitoring programs";
     };
 
     databasePath = lib.mkOption {
@@ -207,46 +199,72 @@ in {
                   type = lib.types.listOf (lib.types.enum [ "mon" "tue" "wed" "thu" "fri" "sat" "sun" ]);
                   default = [ "mon" "tue" "wed" "thu" "fri" ];
                   description = "Days when this time window applies";
-                };
-              };
-            });
-            default = [ ];
-            description = "Time windows when computer access is allowed";
+    };
+    
+    # SSL/TLS interception options
+    sslIntercept = lib.mkOption {
+      type = lib.types.submodule {
+        options = {
+          enable = lib.mkEnableOption "Enable SSL/TLS interception for HTTPS filtering";
+
+          certPath = lib.mkOption {
+            type = lib.types.str;
+            default = "/var/lib/dots-family/ssl";
+            description = "Directory to store SSL certificates and keys";
           };
-          
-          allowedApplications = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = [ ];
-            example = [ "firefox" "inkscape" "tuxmath" ];
-            description = "List of allowed application IDs";
+
+          caCertPath = lib.mkOption {
+            type = lib.types.str;
+            default = "/var/lib/dots-family/ssl/ca.crt";
+            description = "Path to CA certificate";
           };
-          
-          blockedApplications = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = [ ];
-            example = [ "discord" "steam" ];
-            description = "List of blocked application IDs";
+
+          caKeyPath = lib.mkOption {
+            type = lib.types.str;
+            default = "/var/lib/dots-family/ssl/ca.key";
+            description = "Path to CA private key";
           };
-          
-          webFilteringLevel = lib.mkOption {
-            type = lib.types.enum [ "strict" "moderate" "minimal" "disabled" ];
-            default = "moderate";
-            description = "Web content filtering level";
+
+          countryCode = lib.mkOption {
+            type = lib.types.str;
+            default = "US";
+            description = "Country code for CA certificate";
+          };
+
+          state = lib.mkOption {
+            type = lib.types.str;
+            default = "California";
+            description = "State for CA certificate";
+          };
+
+          locality = lib.mkOption {
+            type = lib.types.str;
+            default = "San Francisco";
+            description = "Locality (city) for CA certificate";
+          };
+
+          organization = lib.mkOption {
+            type = lib.types.str;
+            default = "DOTS Family Mode";
+            description = "Organization for CA certificate";
+          };
+
+          pkcs12Password = lib.mkOption {
+            type = lib.types.str;
+            default = "dots-family";
+            description = "Password for PKCS12 certificate bundle";
           };
         };
-      });
-      default = { };
-      description = "User profiles with their restrictions";
-    };
-
-    settings = lib.mkOption {
-      type = lib.types.attrs;
-      default = { };
-      description = "Additional configuration settings";
+      };
+      default = {};
+      description = "SSL/TLS interception configuration for HTTPS filtering";
     };
   };
 
   config = lib.mkIf cfg.enable {
+    # Enable SSL intercept when web filtering is enabled
+    services.dots-family.sslIntercept.enable = cfg.enableWebFiltering;
+    
     # System packages - use the configured packages
     environment.systemPackages = [
       cfg.package      # daemon
@@ -258,6 +276,8 @@ in {
     systemd.tmpfiles.rules = [
       "d /var/lib/dots-family 0755 root root"
       "d /var/log/dots-family 0755 root root"
+    ] ++ lib.optionals (cfg.enableWebFiltering && cfg.sslIntercept.enable) [
+      "d ${cfg.sslIntercept.certPath} 700 root root"
     ];
 
     # Pass configuration to submodules using the configured packages
@@ -266,11 +286,12 @@ in {
         daemon = cfg.package;
         monitor = cfg.monitorPackage;
         ctl = cfg.ctlPackage;
-        ebpf = cfg.ebpfPackage;
       };
       config = cfg;
       inherit (cfg) runAsRoot;
     };
+    
+
     
     # User groups for family mode
     users.groups = {
@@ -286,6 +307,48 @@ in {
       (lib.genAttrs cfg.childUsers (user: {
         extraGroups = [ "dots-family-children" ];
       }))
+    ];
+    
+    # SSL/TLS interception configuration (when web filtering enabled)
+
+    # Generate CA certificate on activation (when web filtering enabled)
+    systemd.services.dots-family-ssl-ca = lib.mkIf (cfg.enableWebFiltering && cfg.sslIntercept.enable) {
+      description = "Generate DOTS Family Mode SSL CA Certificate";
+      after = [ "network.target" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = "yes";
+        ExecStart = let
+          certGenerationScript = pkgs.writeScriptBin "generate-dots-family-ca" ''
+            #!/bin/bash
+            set -euo pipefail
+
+            CERT_DIR="${cfg.sslIntercept.certPath}"
+            CA_KEY="$CERT_DIR/ca.key"
+            CA_CERT="$CERT_DIR/ca.crt"
+            CA_PEM="$CERT_DIR/ca.pem"
+
+            echo "Generating DOTS Family Mode CA certificate..."
+
+            # Create certificate directory
+            mkdir -p "$CERT_DIR"
+            chmod 700 "$CERT_DIR"
+
+            # Generate CA private key
+            openssl genpkey -algorithm RSA -out "$CA_KEY" 4096
+
+            # Generate CA certificate
+            openssl req -new -x509 -key "$CA_KEY" -out "$CA_CERT" -days 3650 \
+              -subj "/C=${cfg.sslIntercept.countryCode}/ST=${cfg.sslIntercept.state}/L=${cfg.sslIntercept.locality}/O=${cfg.sslIntercept.organization}/CN=DOTS Family Mode CA"
+
+            # Create PEM bundle
+            cat "$CA_CERT" "$CA_KEY" > "$CA_PEM"
+
+            echo "CA certificate generated successfully!"
+            echo "Certificate: $CA_CERT"
+            echo "Private key: $CA_KEY"
+          '';
     ];
   };
 }

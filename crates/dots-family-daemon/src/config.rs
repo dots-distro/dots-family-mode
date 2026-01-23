@@ -1,7 +1,10 @@
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
@@ -27,13 +30,13 @@ pub struct DatabaseConfig {
 
 impl Default for DatabaseConfig {
     fn default() -> Self {
-        let config_dir =
-            dirs::config_dir().unwrap_or_else(|| PathBuf::from("/tmp")).join("dots-family");
+        let path = std::env::var("DOTS_FAMILY_DB_PATH").unwrap_or_else(|_| {
+            let config_dir =
+                dirs::config_dir().unwrap_or_else(|| PathBuf::from("/tmp")).join("dots-family");
+            config_dir.join("family.db").to_string_lossy().to_string()
+        });
 
-        Self {
-            path: config_dir.join("family.db").to_string_lossy().to_string(),
-            encryption_key: None,
-        }
+        Self { path, encryption_key: None }
     }
 }
 
@@ -62,6 +65,12 @@ impl Default for DbusConfig {
 impl DaemonConfig {
     /// Default configuration file path
     pub fn default_config_path() -> PathBuf {
+        // Check for service environment variable first
+        if let Ok(config_dir) = std::env::var("DOTS_FAMILY_CONFIG_DIR") {
+            return PathBuf::from(config_dir).join("daemon.toml");
+        }
+
+        // Fall back to user config directory for development
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
             .join("dots-family")

@@ -5,6 +5,17 @@ let
   internal = cfg.internal or { };
   packages = internal.packages or { };
   
+  # eBPF program paths - only set if ebpf package is provided
+  ebpfEnvVars = if packages.ebpf or null != null then [
+    "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
+    "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
+    "BPF_NETWORK_MONITOR_PATH=${packages.ebpf}/target/bpfel-unknown-none/release/network-monitor"
+    "BPF_FILESYSTEM_MONITOR_PATH=${packages.ebpf}/target/bpfel-unknown-none/release/filesystem-monitor"
+  ] else [
+    "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
+    "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
+  ];
+  
 in {
   options.services.dots-family.internal = lib.mkOption {
     type = lib.types.attrs;
@@ -26,16 +37,19 @@ in {
         Type = "dbus";
         BusName = "org.dots.FamilyDaemon";
         ExecStart = "${packages.daemon or cfg.package}/bin/dots-family-daemon";
+        Environment = ebpfEnvVars;
         
         # User configuration
         DynamicUser = false;
-        User = "root";
-        Group = "root";
+        User = "dots-family";
+        Group = "dots-family";
         
         # Filesystem protection
         ProtectSystem = "strict";
         ProtectHome = true;
         ReadWritePaths = [ "/var/lib/dots-family" "/var/log/dots-family" ];
+        StateDirectory = "dots-family";
+        ConfigurationDirectory = "dots-family";
         PrivateTmp = true;
         ProtectKernelTunables = true;
         ProtectKernelModules = true;
@@ -87,5 +101,10 @@ in {
     };
     
     users.groups.dots-family = { };
+    
+    # Create config subdirectory in state directory
+    systemd.tmpfiles.rules = [
+      "d /var/lib/dots-family/config 0750 dots-family dots-family -"
+    ];
   };
 }
