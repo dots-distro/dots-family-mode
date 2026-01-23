@@ -3,22 +3,16 @@
 pkgs.testers.runNixOSTest {
   name = "dots-family-full-deployment";
   
-  nodes.machine = { config, pkgs, ... }: {
+  nodes.machine = { config, ... }: {
     imports = [
       self.nixosModules.dots-family
     ];
 
-    nixpkgs.overlays = [
-      (final: prev: {
-        dots-family-daemon = self.packages.${pkgs.system}.dots-family-daemon;
-        dots-family-monitor = self.packages.${pkgs.system}.dots-family-monitor;
-        dots-family-ctl = self.packages.${pkgs.system}.dots-family-ctl;
-        dots-terminal-filter = self.packages.${pkgs.system}.dots-terminal-filter;
-      })
-    ];
-
     services.dots-family = {
       enable = true;
+      package = self.packages.${pkgs.system}.dots-family-daemon;
+      monitorPackage = self.packages.${pkgs.system}.dots-family-monitor;
+      ctlPackage = self.packages.${pkgs.system}.dots-family-ctl;
       parentUsers = [ "parent" ];
       childUsers = [ "child" ];
       reportingOnly = true;
