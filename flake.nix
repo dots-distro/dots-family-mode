@@ -55,7 +55,13 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchainStable;
 
         # Common source filter
-        src = craneLib.cleanCargoSource (craneLib.path ./.);
+        src = pkgs.lib.cleanSourceWith {
+          src = craneLib.path ./.;
+          filter = path: type:
+            (pkgs.lib.hasSuffix ".sql" path) ||
+            (pkgs.lib.hasSuffix ".json" path) ||
+            (craneLib.filterCargoSources path type);
+        };
 
         cargoArtifacts = craneLib.buildDepsOnly {
           inherit src nativeBuildInputs buildInputs;
