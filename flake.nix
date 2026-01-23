@@ -97,7 +97,7 @@
           version = "0.1.0";
           
           src = pkgs.lib.cleanSourceWith {
-            src = ./dots-family-ebpf;
+            src = ./crates/dots-family-ebpf;
             filter = path: type:
               (pkgs.lib.hasSuffix "Cargo.toml" path) ||
               (pkgs.lib.hasSuffix "rust-toolchain.toml" path) ||
