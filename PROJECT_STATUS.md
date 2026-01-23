@@ -17,6 +17,12 @@ DOTS Family Mode has a **working web filtering proxy** and **comprehensive test 
 - ✅ **Evidence Generation**: Working (direct methods)
 - ❌ **Playwright Integration**: Limited in NixOS dev environment
 
+## Recent Changes
+
+- Fixed `sqlx` migration filtering in `flake.nix`.
+- Fixed `dots-wm-bridge` test failures.
+- Cleaned up root directory artifacts.
+
 ---
 
 ## What Works
