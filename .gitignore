@@ -2,6 +2,8 @@
 target/
 result
 result-*
+test-vm
+vm-test
 node_modules/
 
 # IDE/Editor
