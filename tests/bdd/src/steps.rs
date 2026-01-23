@@ -44,14 +44,26 @@ async fn set_current_time(world: &mut TimeWindowWorld, time: String) {
     // Parse time in HH:MM format
     let naive_time = NaiveTime::parse_from_str(&time, "%H:%M").expect("Invalid time format");
 
-    // Store as string for now - will use chrono properly in implementation
-    world.current_time = Some(
-        chrono::Local::now()
-            .date_naive()
-            .and_time(naive_time)
-            .and_local_timezone(chrono::Local)
-            .unwrap(),
-    );
+    // Create a date for the current day if specified, otherwise use today
+    let date = if let Some(weekday) = world.current_day {
+        // Find a date with the specified weekday
+        // Start from a known Monday (2024-01-01 was a Monday)
+        let base_date = chrono::NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+        let days_offset = match weekday {
+            Weekday::Mon => 0,
+            Weekday::Tue => 1,
+            Weekday::Wed => 2,
+            Weekday::Thu => 3,
+            Weekday::Fri => 4,
+            Weekday::Sat => 5,
+            Weekday::Sun => 6,
+        };
+        base_date + chrono::Duration::days(days_offset)
+    } else {
+        chrono::Local::now().date_naive()
+    };
+
+    world.current_time = Some(date.and_time(naive_time).and_local_timezone(chrono::Local).unwrap());
 }
 
 #[given("weekday windows are configured as:")]
@@ -206,7 +218,40 @@ async fn attempt_login(world: &mut TimeWindowWorld) {
 #[when(expr = "the time reaches {string}")]
 async fn time_reaches(world: &mut TimeWindowWorld, time: String) {
     set_current_time(world, time).await;
-    // In real implementation, this would trigger window end checks
+
+    // Check if we need to lock the session or show warnings
+    if world.feature_enabled && world.session_active && world.user_type == "child" {
+        let current_time = world.current_time.unwrap_or_else(|| chrono::Local::now());
+
+        let config = TimeWindowConfig {
+            weekday_windows: world.weekday_windows.clone(),
+            weekend_windows: world.weekend_windows.clone(),
+            holiday_windows: world.holiday_windows.clone(),
+            grace_period_minutes: world.grace_period_minutes.unwrap_or(2),
+            warning_minutes: 5,
+        };
+
+        let enforcer = TimeWindowEnforcer::new(config).with_holiday(world.is_holiday);
+
+        // Check if we should show a warning
+        if enforcer.should_warn(current_time) {
+            if let Some(warning_msg) = enforcer.get_warning_message(current_time) {
+                world.displayed_messages.push(warning_msg);
+            }
+        }
+
+        // Check if session should be locked
+        if enforcer.should_lock(current_time) {
+            if world.has_unsaved_work && world.grace_period_minutes.is_some() {
+                // Start grace period
+                world.displayed_messages.push("Grace period started".to_string());
+            } else {
+                // Lock immediately
+                world.session_active = false;
+                world.displayed_messages.push("Time window has ended".to_string());
+            }
+        }
+    }
 }
 
 #[when("a parent issues an override command")]
@@ -304,10 +349,17 @@ async fn message_displayed(world: &mut TimeWindowWorld, expected_message: String
 }
 
 #[then(expr = "the next available window should be shown as {string}")]
-async fn next_window_shown(_world: &mut TimeWindowWorld, _time: String) {
-    // RED PHASE: Not implemented yet
-    // Will fail until we implement window calculation
-    panic!("Next window calculation not implemented");
+async fn next_window_shown(world: &mut TimeWindowWorld, expected_time: String) {
+    // Check if the next window info was stored in messages
+    let found = world.displayed_messages.iter().any(|msg| {
+        msg.contains(&expected_time) || msg.contains(&format!("Next window: {}", expected_time))
+    });
+
+    assert!(
+        found,
+        "Expected next window '{}' to be shown in messages: {:?}",
+        expected_time, world.displayed_messages
+    );
 }
 
 #[then("the session should be locked immediately")]

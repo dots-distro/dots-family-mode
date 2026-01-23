@@ -132,14 +132,27 @@ impl TimeWindowEnforcer {
             return "No time windows configured for today".to_string();
         }
 
+        // Check if we're before the first window of the day
         if let Some(next) = next_window {
-            format!("Computer access starts at {}", next)
-        } else {
-            // Format all windows as ranges
-            let ranges: Vec<String> =
-                windows.iter().map(|w| format!("{}-{}", w.start, w.end)).collect();
-            format!("Computer access is restricted to: {}", ranges.join(", "))
+            // If next window is the first window (no windows have passed yet)
+            let is_before_first = windows.iter().all(|w| {
+                parse_time(&w.end)
+                    .ok()
+                    .and_then(|end_time| {
+                        parse_time(next).ok().map(|next_time| next_time <= end_time)
+                    })
+                    .unwrap_or(false)
+            });
+
+            if is_before_first && windows.len() == 1 {
+                return format!("Computer access starts at {}", next);
+            }
         }
+
+        // Otherwise, show all windows as ranges
+        let ranges: Vec<String> =
+            windows.iter().map(|w| format!("{}-{}", w.start, w.end)).collect();
+        format!("Computer access is restricted to: {}", ranges.join(", "))
     }
 
     /// Check if a warning should be displayed (window closing soon)
