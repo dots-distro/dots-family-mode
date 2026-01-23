@@ -10,6 +10,10 @@ DOTS Family Mode is a comprehensive parental control and child safety system des
 - **NixOS Integration**: Declarative module system
 - **VM Testing**: Automated test framework available
 
+## Known Limitations
+
+- **Browser Testing**: Playwright-based browser tests are limited in the NixOS development environment due to browser binary compatibility issues. For full browser testing capabilities, use the VM environment.
+
 ## Quick Start
 
 To get started with DOTS Family Mode, you need to have Nix installed.
@@ -173,6 +177,9 @@ systemctl --user enable dots-family-monitor.service
   - dots-family-ctl - CLI tool
   - dots-family-filter - Web filtering
   - dots-terminal-filter - Terminal filtering
+  - dots-family-ebpf - eBPF programs
+  - dots-family-gui - Graphical user interface
+  - dots-wm-bridge - Window manager integration
 
 - **nixos-modules/** - NixOS integration
   - default.nix - Main module
@@ -185,6 +192,12 @@ systemctl --user enable dots-family-monitor.service
   - dots-family-daemon.service
   - dots-family-monitor.service
   - install.sh - Installation script
+
+- **scripts/** - Utility scripts and automation
+  - ci/ - CI/CD scripts
+  - legacy/ - Legacy scripts
+  - setup/ - Setup and installation scripts
+  - tests/ - Test automation scripts
 
 - **docs/** - Documentation
   - See docs/INDEX.md for full documentation list
