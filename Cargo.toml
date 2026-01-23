@@ -12,6 +12,7 @@ members = [
     "crates/dots-terminal-filter",
     "crates/dots-wm-bridge",
     # "crates/dots-family-ebpf",
+    "tests/bdd",
 ]
 
 [workspace.package]
@@ -49,6 +50,8 @@ bytes = "1.0"
 aya-ebpf = "0.1"
 aya-log-ebpf = "0.1"
 network-types = "0.0.5"
+cucumber = { version = "0.21", features = ["macros"] }
+futures = "0.3"
 
 dots-family-common = { path = "crates/dots-family-common" }
 dots-family-proto = { path = "crates/dots-family-proto" }

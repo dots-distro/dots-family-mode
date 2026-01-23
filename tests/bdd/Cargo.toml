@@ -1,0 +1,27 @@
+[package]
+name = "dots-family-bdd-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "dots_family_bdd"
+path = "src/lib.rs"
+
+[[test]]
+name = "time_windows"
+harness = false
+
+[dependencies]
+cucumber.workspace = true
+tokio.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+anyhow.workspace = true
+
+# Project dependencies
+dots-family-common.workspace = true
+dots-family-daemon = { path = "../../crates/dots-family-daemon" }
