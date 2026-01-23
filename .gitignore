@@ -29,3 +29,4 @@ sqlx_prepare.db
 sqlite:
 sqlite:/
 /tests/data/
+ebpf-result
