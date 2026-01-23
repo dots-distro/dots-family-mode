@@ -32,3 +32,4 @@ sqlite:
 sqlite:/
 /tests/data/
 ebpf-result
+*.backup

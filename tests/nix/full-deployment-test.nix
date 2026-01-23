@@ -97,7 +97,7 @@ pkgs.testers.runNixOSTest {
     
     with subtest("Profile can be created"):
         # Create a test profile to verify database operations work
-        machine.succeed("dots-family-ctl profile create testchild 'Test Child' 8")
+        machine.succeed("dots-family-ctl profile create testchild 8-12")
     
     with subtest("Service logs show no critical errors"):
         logs = machine.succeed("journalctl -u dots-family-daemon.service --no-pager")
