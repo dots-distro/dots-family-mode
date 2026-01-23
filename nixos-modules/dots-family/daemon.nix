@@ -25,7 +25,7 @@ in {
       serviceConfig = {
         Type = "dbus";
         BusName = "org.dots.FamilyDaemon";
-        ExecStart = "/run/wrappers/bin/dots-family-daemon";
+        ExecStart = "${packages.daemon or cfg.package}/bin/dots-family-daemon";
         
         # User configuration
         DynamicUser = false;
