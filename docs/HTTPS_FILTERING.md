@@ -55,7 +55,7 @@ crates/dots-family-filter/
 │   └── ...
 └── Cargo.toml               # Dependencies
 
-scripts/
+scripts/tests/
 └── test-https-filtering.sh  # Comprehensive test script (NEW)
 ```
 
@@ -193,10 +193,10 @@ openssl x509 -req -in site.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
 
 ```bash
 # Run the comprehensive test suite
-./scripts/test-https-filtering.sh --evidence /tmp/https-test
+./scripts/tests/test-https-filtering.sh --evidence /tmp/https-test
 
 # Test with custom proxy
-PROXY_HOST=127.0.0.1 PROXY_PORT=8080 ./scripts/test-https-filtering.sh
+PROXY_HOST=127.0.0.1 PROXY_PORT=8080 ./scripts/tests/test-https-filtering.sh
 ```
 
 ### Manual Testing
@@ -240,7 +240,7 @@ ssh -p 10022 parent@localhost
 # Password: parent123
 
 # Run HTTPS tests
-./scripts/test-https-filtering.sh --evidence /var/log/dots-family-https-test
+./scripts/tests/test-https-filtering.sh --evidence /var/log/dots-family-https-test
 ```
 
 ### VM Configuration

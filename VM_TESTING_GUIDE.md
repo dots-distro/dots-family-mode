@@ -66,7 +66,7 @@ busctl call org.dots.FamilyDaemon /org/dots/FamilyDaemon \
 
 # 7. Run the full integration test
 # First, copy the test script to the VM:
-scp -P 10022 scripts/vm_integration_test.sh root@localhost:/tmp/
+scp -P 10022 scripts/tests/vm_integration_test.sh root@localhost:/tmp/
 ssh -p 10022 root@localhost "bash /tmp/vm_integration_test.sh"
 ```
 

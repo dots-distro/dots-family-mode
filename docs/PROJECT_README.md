@@ -41,7 +41,7 @@ nix develop
 nix build .#default
 
 # Run end-to-end test
-./scripts/test_full_system.sh
+./scripts/tests/test_full_system.sh
 
 # Start daemon
 ./result/bin/dots-family-daemon
@@ -58,11 +58,11 @@ For development work that requires eBPF programs (daemon development):
 
 ```bash
 # Option 1: Use the cargo wrapper script (recommended)
-./scripts/cargo-with-ebpf.sh build --package dots-family-daemon
-./scripts/cargo-with-ebpf.sh test --package dots-family-daemon
+./scripts/setup/cargo-with-ebpf.sh build --package dots-family-daemon
+./scripts/setup/cargo-with-ebpf.sh test --package dots-family-daemon
 
 # Option 2: Set up environment manually
-source scripts/setup-dev-env.sh
+source scripts/setup/setup-dev-env.sh
 cargo build --package dots-family-daemon
 ```
 
@@ -172,7 +172,7 @@ nix build .#default
 cargo test --workspace
 
 # Run full system test
-./scripts/test_full_system.sh
+./scripts/tests/test_full_system.sh
 ```
 
 ## Documentation
