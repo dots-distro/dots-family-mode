@@ -58,7 +58,7 @@ pkgs.testers.runNixOSTest {
     
     with subtest("DOTS Family packages are installed"):
         machine.succeed("which dots-family-ctl")
-        machine.succeed("dots-family-ctl --version")
+        machine.succeed("dots-family-ctl --help")
         machine.succeed("nix-store -qR /run/current-system | grep dots-family")
     
     with subtest("Database directory exists"):
