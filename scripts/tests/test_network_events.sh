@@ -108,7 +108,7 @@ echo -e "${CYAN}═══ Test 2: Network Configuration Validation ═══${NC
 log_test "Systemd service has network capabilities" \
     "Verify systemd service includes CAP_NET_ADMIN"
 
-if grep -q "CAP_NET_ADMIN" systemd/dots-family-daemon.service; then
+if grep -q "CAP_NET_ADMIN" deployment/systemd/dots-family-daemon.service; then
     log_success "CAP_NET_ADMIN capability configured"
     log_event "Capability" "CAP_NET_ADMIN - Required for network monitoring"
 else
@@ -118,7 +118,7 @@ fi
 log_test "Systemd service restricts address families" \
     "Verify systemd service has RestrictAddressFamilies configured"
 
-if grep -q "RestrictAddressFamilies" systemd/dots-family-daemon.service; then
+if grep -q "RestrictAddressFamilies" deployment/systemd/dots-family-daemon.service; then
     log_success "Address family restrictions configured"
     log_event "Security" "Network access limited to AF_UNIX, AF_INET, AF_INET6"
 else
@@ -131,7 +131,7 @@ echo -e "${CYAN}═══ Test 3: DBus Network Interface Validation ═══${N
 log_test "DBus service supports network queries" \
     "Verify DBus interface includes network-related methods"
 
-if grep -q "org.dots.FamilyDaemon" dbus/org.dots.FamilyDaemon.service; then
+if grep -q "org.dots.FamilyDaemon" deployment/dbus/org.dots.FamilyDaemon.service; then
     log_success "DBus service name configured"
     log_event "DBus" "org.dots.FamilyDaemon - Daemon service bus name"
 else
@@ -167,7 +167,7 @@ echo -e "${CYAN}═══ Test 5: Network Filter Configuration ═══${NC}"
 log_test "Network filtering is configured" \
     "Verify network filter service has proper configuration"
 
-if test -f systemd/dots-family-daemon.service; then
+if test -f deployment/systemd/dots-family-daemon.service; then
     log_success "Network filter service configuration exists"
     
     # Check for web filtering configuration
@@ -231,7 +231,7 @@ echo "- HTTPS: 443 (potentially monitored)" >> "${EVIDENCE_FILE}"
 echo "- DNS: 53 (potentially monitored)" >> "${EVIDENCE_FILE}"
 echo "- Custom filter port: 8888 (dots-family-filter)" >> "${EVIDENCE_FILE}"
 
-if test -f systemd/dots-family-daemon.service; then
+if test -f deployment/systemd/dots-family-daemon.service; then
     log_success "Port monitoring configured in service"
     log_event "Ports" "Filter service configured on port 8888"
 fi
@@ -261,7 +261,7 @@ log_test "Network event logging" \
     "Verify network events are logged properly"
 
 # Check log directory configuration
-if grep -q "LogsDirectory=dots-family" systemd/dots-family-daemon.service; then
+if grep -q "LogsDirectory=dots-family" deployment/systemd/dots-family-daemon.service; then
     log_success "Network event logging configured"
     log_event "Logging" "Network events logged to /var/log/dots-family/"
 else

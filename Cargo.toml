@@ -11,7 +11,7 @@ members = [
     # "crates/dots-family-gui",  # Temporarily disabled due to compilation issues
     "crates/dots-terminal-filter",
     "crates/dots-wm-bridge",
-    "crates/dots-family-ebpf",
+    # "crates/dots-family-ebpf",
 ]
 
 [workspace.package]

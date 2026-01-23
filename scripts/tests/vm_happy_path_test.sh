@@ -178,11 +178,11 @@ run_test "NixOS modules load without errors" \
 
 run_test "Systemd service file is valid" \
     "Validate systemd service configuration syntax" \
-    bash -c 'systemd-analyze verify systemd/dots-family-daemon.service 2>/dev/null || true'
+    bash -c 'systemd-analyze verify deployment/systemd/dots-family-daemon.service 2>/dev/null || true'
 
 run_test "Installation script is executable" \
     "Check install script has correct permissions" \
-    bash -c 'test -x systemd/install.sh'
+    bash -c 'test -x deployment/systemd/install.sh'
 
 log_section "1.4 Database Migration Tests"
 
@@ -229,27 +229,27 @@ log_section "2.2 Service Configuration"
 
 run_test "Systemd service has correct description" \
     "Verify service file contains proper description" \
-    bash -c 'grep -q "Description=DOTS Family Mode Daemon" systemd/dots-family-daemon.service'
+    bash -c 'grep -q "Description=DOTS Family Mode Daemon" deployment/systemd/dots-family-daemon.service'
 
 run_test "Systemd service has correct dependencies" \
     "Verify service has proper After/Wants directives" \
-    bash -c 'grep -q "After=network.target" systemd/dots-family-daemon.service'
+    bash -c 'grep -q "After=network.target" deployment/systemd/dots-family-daemon.service'
 
 run_test "Systemd service has restart policy" \
     "Verify service has Restart configuration" \
-    bash -c 'grep -q "Restart=on-failure" systemd/dots-family-daemon.service'
+    bash -c 'grep -q "Restart=on-failure" deployment/systemd/dots-family-daemon.service'
 
 run_test "Systemd service has proper user settings" \
     "Verify service runs as root or dedicated user" \
-    bash -c 'grep -qE "(User=root|User=dots-family)" systemd/dots-family-daemon.service'
+    bash -c 'grep -qE "(User=root|User=dots-family)" deployment/systemd/dots-family-daemon.service'
 
 run_test "Systemd service has capability configuration" \
     "Verify eBPF capabilities are configured" \
-    bash -c 'grep -q "CAP_SYS_ADMIN" systemd/dots-family-daemon.service'
+    bash -c 'grep -q "CAP_SYS_ADMIN" deployment/systemd/dots-family-daemon.service'
 
 run_test "Systemd service has filesystem protection" \
     "Verify ProtectSystem directive is present" \
-    bash -c 'grep -q "ProtectSystem" systemd/dots-family-daemon.service'
+    bash -c 'grep -q "ProtectSystem" deployment/systemd/dots-family-daemon.service'
 
 log_section "2.3 Configuration File Tests"
 
@@ -269,15 +269,15 @@ log_section "2.4 DBus Service Configuration"
 
 run_test "DBus service file exists" \
     "Verify D-Bus service definition is present" \
-    bash -c 'test -f dbus/org.dots.FamilyDaemon.service'
+    bash -c 'test -f deployment/dbus/org.dots.FamilyDaemon.service'
 
 run_test "DBus service has correct name" \
     "Verify DBus service name matches daemon" \
-    bash -c 'grep -q "org.dots.FamilyDaemon" dbus/org.dots.FamilyDaemon.service'
+    bash -c 'grep -q "org.dots.FamilyDaemon" deployment/dbus/org.dots.FamilyDaemon.service'
 
 run_test "DBus service has correct executable path" \
     "Verify DBus service points to correct binary" \
-    bash -c 'grep -q "dots-family-daemon" dbus/org.dots.FamilyDaemon.service'
+    bash -c 'grep -q "dots-family-daemon" deployment/dbus/org.dots.FamilyDaemon.service'
 
 echo ""
 echo -e "${WHITE}═══════════════════════════════════════════════════════════════${NC}"
@@ -485,7 +485,7 @@ log_section "6.3 Script Tests"
 
 run_test "VM test script exists" \
     "Verify VM testing script is present" \
-    bash -c 'test -f scripts/vm-test.sh'
+    bash -c 'test -f scripts/tests/vm-test.sh'
 
 run_test "Integration test script exists" \
     "Verify integration test script is present" \

@@ -336,7 +336,7 @@ echo -e "${CYAN}═══ Test 9: DBus Communication for Blocking ═══${NC}
 log_test "DBus service configured" \
     "Verify DBus communication for policy enforcement"
 
-if test -f dbus/org.dots.FamilyDaemon.service; then
+if test -f deployment/dbus/org.dots.FamilyDaemon.service; then
     log_success "DBus service file found"
     log_event "DBus" "org.dots.FamilyDaemon - Policy enforcement bus"
 else
@@ -420,7 +420,7 @@ echo -e "${CYAN}═══ Test 12: Violation Logging ═══${NC}"
 log_test "Violation logging configured" \
     "Verify policy violations are logged"
 
-if grep -q "LogsDirectory=dots-family" systemd/dots-family-daemon.service; then
+if grep -q "LogsDirectory=dots-family" deployment/systemd/dots-family-daemon.service; then
     log_success "Violation logging configured"
     log_event "Logging" "Violations logged to /var/log/dots-family/"
 else

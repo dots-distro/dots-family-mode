@@ -137,7 +137,7 @@ echo -e "${CYAN}═══ Test 2: Process Monitoring Capability ═══${NC}"
 log_test "Systemd service has process capabilities" \
     "Verify systemd service includes CAP_SYS_PTRACE"
 
-if grep -q "CAP_SYS_PTRACE" systemd/dots-family-daemon.service; then
+if grep -q "CAP_SYS_PTRACE" deployment/systemd/dots-family-daemon.service; then
     log_success "CAP_SYS_PTRACE capability configured"
     log_event "Capability" "CAP_SYS_PTRACE - Required for process monitoring"
 else
@@ -147,7 +147,7 @@ fi
 log_test "Systemd service has DAC capability" \
     "Verify systemd service includes CAP_DAC_READ_SEARCH"
 
-if grep -q "CAP_DAC_READ_SEARCH" systemd/dots-family-daemon.service; then
+if grep -q "CAP_DAC_READ_SEARCH" deployment/systemd/dots-family-daemon.service; then
     log_success "CAP_DAC_READ_SEARCH capability configured"
     log_event "Capability" "CAP_DAC_READ_SEARCH - Filesystem access for monitoring"
 else
@@ -271,7 +271,7 @@ echo -e "${CYAN}═══ Test 7: Process Activity Logging ═══${NC}"
 log_test "Process activity logging configured" \
     "Verify daemon logs process activity"
 
-if grep -q "LogsDirectory=dots-family" systemd/dots-family-daemon.service; then
+if grep -q "LogsDirectory=dots-family" deployment/systemd/dots-family-daemon.service; then
     log_success "Process activity logging configured"
     log_event "Logging" "Process events logged to /var/log/dots-family/"
 else

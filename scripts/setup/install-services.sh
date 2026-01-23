@@ -19,7 +19,7 @@ echo "Installing DOTS Family Mode systemd services..."
 
 # Copy service files to systemd directory
 echo "Installing systemd service files..."
-cp "${SCRIPT_DIR}/systemd/dots-family-daemon.service" "${SYSTEMD_SYSTEM_DIR}/"
+cp "${SCRIPT_DIR}/deployment/systemd/dots-family-daemon.service" "${SYSTEMD_SYSTEM_DIR}/"
 cp "${SCRIPT_DIR}/systemd/dots-family-monitor@.service" "${SYSTEMD_SYSTEM_DIR}/"
 cp "${SCRIPT_DIR}/systemd/dots-family-filter.service" "${SYSTEMD_SYSTEM_DIR}/"
 cp "${SCRIPT_DIR}/systemd/dots-family.target" "${SYSTEMD_SYSTEM_DIR}/"
@@ -105,7 +105,7 @@ fi
 echo "Installing DBus service file..."
 DBUS_SERVICES_DIR="/usr/share/dbus-1/system-services"
 mkdir -p "$DBUS_SERVICES_DIR"
-cp "${SCRIPT_DIR}/dbus/org.dots.FamilyDaemon.service" "$DBUS_SERVICES_DIR/"
+cp "${SCRIPT_DIR}/deployment/dbus/org.dots.FamilyDaemon.service" "$DBUS_SERVICES_DIR/"
 
 # Reload systemd
 echo "Reloading systemd..."

@@ -270,7 +270,7 @@ Once the VM is running:
 2. **Run integration tests:**
    ```bash
    # Copy the test script to VM
-   scp -P 10022 scripts/vm_integration_test.sh root@localhost:/tmp/
+   scp -P 10022 scripts/tests/vm_integration_test.sh root@localhost:/tmp/
    ssh -p 10022 root@localhost "bash /tmp/vm_integration_test.sh"
    ```
 

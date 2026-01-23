@@ -69,7 +69,7 @@ install_dbus_configuration() {
         DBUS_SERVICES_DIR="/usr/share/dbus-1/system-services"
         
         cp "$PROJECT_ROOT/dbus/org.dots.FamilyDaemon.conf" "$DBUS_DIR/"
-        cp "$PROJECT_ROOT/dbus/org.dots.FamilyDaemon.service" "$DBUS_SERVICES_DIR/"
+        cp "$PROJECT_ROOT/deployment/dbus/org.dots.FamilyDaemon.service" "$DBUS_SERVICES_DIR/"
         
         # Reload D-Bus configuration
         systemctl reload dbus.service
