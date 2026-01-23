@@ -386,6 +386,11 @@ clippy = craneLib.cargoClippy {
             SQLX_OFFLINE = "false"; # Also allow clippy to access DB for sqlx
             cargoClippyExtraArgs = "--workspace --all-features -- -D warnings";
           };
+          
+          nixos-deployment = import ./tests/nix/full-deployment-test.nix {
+            inherit pkgs;
+            self = self;
+          };
         };
       }
     ) // {

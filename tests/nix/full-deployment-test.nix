@@ -1,0 +1,107 @@
+{ pkgs, self }:
+
+pkgs.testers.runNixOSTest {
+  name = "dots-family-full-deployment";
+  
+  nodes.machine = { config, pkgs, ... }: {
+    imports = [
+      self.nixosModules.dots-family
+    ];
+
+    nixpkgs.overlays = [
+      (final: prev: {
+        dots-family-daemon = self.packages.${pkgs.system}.dots-family-daemon;
+        dots-family-monitor = self.packages.${pkgs.system}.dots-family-monitor;
+        dots-family-ctl = self.packages.${pkgs.system}.dots-family-ctl;
+        dots-terminal-filter = self.packages.${pkgs.system}.dots-terminal-filter;
+      })
+    ];
+
+    services.dots-family = {
+      enable = true;
+      parentUsers = [ "parent" ];
+      childUsers = [ "child" ];
+      reportingOnly = true;
+      runAsRoot = true;
+      
+      profiles.child = {
+        name = "Test Child";
+        ageGroup = "8-12";
+        dailyScreenTimeLimit = "2h";
+        timeWindows = [{
+          start = "09:00";
+          end = "17:00";
+          days = [ "mon" "tue" "wed" "thu" "fri" ];
+        }];
+        allowedApplications = [ "firefox" "calculator" ];
+        webFilteringLevel = "moderate";
+      };
+    };
+
+    users.users = {
+      parent = {
+        isNormalUser = true;
+        password = "parent123";
+        extraGroups = [ "wheel" ];
+      };
+      
+      child = {
+        isNormalUser = true;
+        password = "child123";
+      };
+    };
+  };
+
+  testScript = ''
+    start_all()
+    machine.wait_for_unit("multi-user.target")
+    
+    with subtest("User accounts and groups exist"):
+        machine.succeed("id parent")
+        machine.succeed("id child")
+        machine.succeed("getent group dots-family-parents")
+        machine.succeed("getent group dots-family-children")
+    
+    with subtest("DOTS Family packages are installed"):
+        machine.succeed("which dots-family-ctl")
+        machine.succeed("dots-family-ctl --version")
+        machine.succeed("nix-store -qR /run/current-system | grep dots-family")
+    
+    with subtest("Database directory exists"):
+        machine.succeed("test -d /var/lib/dots-family")
+        machine.succeed("test -d /var/log/dots-family")
+    
+    with subtest("DBus policy files are installed"):
+        machine.succeed("test -f /etc/dbus-1/system.d/org.dots.FamilyDaemon.conf")
+    
+    with subtest("SSL certificates are generated"):
+        machine.wait_for_unit("dots-family-ssl-ca.service")
+        machine.succeed("test -f /var/lib/dots-family/ssl/ca.crt")
+        machine.succeed("test -f /var/lib/dots-family/ssl/ca.key")
+        machine.succeed("openssl x509 -in /var/lib/dots-family/ssl/ca.crt -noout -text")
+    
+    with subtest("Daemon service starts successfully"):
+        machine.wait_for_unit("dots-family-daemon.service")
+        machine.succeed("systemctl is-active dots-family-daemon.service")
+    
+    with subtest("DBus service is available"):
+        machine.wait_until_succeeds("busctl status org.dots.FamilyDaemon", timeout=30)
+        machine.succeed("busctl introspect org.dots.FamilyDaemon /org/dots/FamilyDaemon")
+    
+    with subtest("CLI tool communicates with daemon"):
+        machine.succeed("dots-family-ctl status")
+    
+    with subtest("Database is created and accessible"):
+        machine.succeed("test -f /var/lib/dots-family/family.db")
+        machine.succeed("sqlite3 /var/lib/dots-family/family.db '.tables'")
+    
+    with subtest("Profile configuration is loaded"):
+        output = machine.succeed("dots-family-ctl profile list")
+        assert "child" in output or "Test Child" in output, "Child profile not found"
+    
+    with subtest("Service logs show no critical errors"):
+        logs = machine.succeed("journalctl -u dots-family-daemon.service --no-pager")
+        assert "panic" not in logs.lower(), "Daemon panicked"
+        assert "fatal" not in logs.lower(), "Fatal error in daemon"
+  '';
+}
