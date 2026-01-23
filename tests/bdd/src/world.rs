@@ -2,14 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Local, Weekday};
 use cucumber::World;
-
-/// Represents a time window configuration
-#[derive(Debug, Clone)]
-pub struct TimeWindow {
-    pub start: String,
-    pub end: String,
-    pub label: String,
-}
+use dots_family_common::TimeWindow;
 
 /// BDD World for time window testing
 #[derive(Debug, World)]

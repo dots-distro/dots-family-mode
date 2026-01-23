@@ -192,8 +192,9 @@ impl Default for RateLimiter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use secrecy::SecretString;
+
+    use super::*;
 
     #[test]
     fn test_password_hashing_and_verification() {
