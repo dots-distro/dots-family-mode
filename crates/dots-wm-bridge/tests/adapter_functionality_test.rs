@@ -74,8 +74,16 @@ fn test_adapter_availability_checks() {
     println!("  Generic: {}", generic_available);
 
     // At least one should be available in any Wayland environment
+    // BUT we might be running in a CI/build sandbox without Wayland
     let any_available = niri_available || sway_available || hyprland_available || generic_available;
-    assert!(any_available, "At least one adapter should be available");
+
+    if std::env::var("WAYLAND_DISPLAY").is_ok()
+        || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("wayland")
+    {
+        assert!(any_available, "At least one adapter should be available in a Wayland environment");
+    } else {
+        println!("Skipping availability assertion: Not running in a Wayland environment");
+    }
 
     println!("✓ Adapter availability test completed successfully!");
 }
