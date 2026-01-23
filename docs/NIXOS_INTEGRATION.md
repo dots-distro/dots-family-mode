@@ -217,6 +217,54 @@ in {
 }
 ```
 
+## Environment Variables
+
+The daemon supports several environment variables for flexible configuration:
+
+### Core Configuration
+
+- **`DOTS_FAMILY_DB_PATH`**: Path to the SQLite database file
+  - Default: `/var/lib/dots-family/family.db` (user config) or `/tmp/dots-family.db` (fallback)
+  - Set via NixOS module: Automatically configured from `databasePath` option
+  - Example: `DOTS_FAMILY_DB_PATH=/custom/path/family.db`
+
+- **`DOTS_FAMILY_CONFIG_DIR`**: Directory containing daemon configuration files
+  - Default: `~/.config/dots-family` (development) or checks environment variable
+  - Set via NixOS module: `/var/lib/dots-family/config`
+  - Example: `DOTS_FAMILY_CONFIG_DIR=/etc/dots-family`
+
+### eBPF Monitoring (Optional)
+
+If the `ebpfPackage` option is provided, these environment variables are automatically set:
+
+- **`BPF_NETWORK_MONITOR_PATH`**: Path to network monitoring eBPF program
+  - Example: `${ebpfPackage}/target/bpfel-unknown-none/release/network-monitor`
+
+- **`BPF_FILESYSTEM_MONITOR_PATH`**: Path to filesystem monitoring eBPF program
+  - Example: `${ebpfPackage}/target/bpfel-unknown-none/release/filesystem-monitor`
+
+### NixOS Module Configuration
+
+The NixOS module automatically configures these variables in the systemd service:
+
+```nix
+services.dots-family = {
+  enable = true;
+  databasePath = "/var/lib/dots-family/family.db";  # Sets DOTS_FAMILY_DB_PATH
+  ebpfPackage = pkgs.dots-family-ebpf;              # Sets BPF_*_PATH variables
+};
+```
+
+The service configuration in `daemon.nix` includes:
+
+```nix
+Environment = [
+  "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
+  "DOTS_FAMILY_DB_PATH=${cfg.databasePath}"
+  # eBPF paths added conditionally if ebpfPackage is set
+];
+```
+
 ## DBus Configuration (dbus.nix)
 
 ```nix

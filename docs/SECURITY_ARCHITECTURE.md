@@ -153,6 +153,8 @@ users.users.dots-family = {
 
 ### System Service with Capabilities
 
+The daemon runs as a dedicated, unprivileged `dots-family` system user with specific capabilities, following the principle of least privilege. It does **not** run as root.
+
 ```nix
 systemd.services.dots-family-daemon = {
   serviceConfig = {

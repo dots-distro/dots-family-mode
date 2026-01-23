@@ -136,6 +136,10 @@ dots-family-ctl session list
     childUsers = [ "child" ];
     reportingOnly = true;  # Safe mode for testing
     
+    # Optional: Custom paths
+    databasePath = "/var/lib/dots-family/family.db";
+    ebpfPackage = pkgs.dots-family-ebpf;  # Enable eBPF monitoring
+    
     profiles.child = {
       name = "Test Child";
       ageGroup = "8-12";
@@ -151,6 +155,16 @@ dots-family-ctl session list
   };
 }
 ```
+
+### Environment Variables
+
+The daemon supports configuration via environment variables:
+- `DOTS_FAMILY_DB_PATH` - Database file location
+- `DOTS_FAMILY_CONFIG_DIR` - Configuration directory
+- `BPF_NETWORK_MONITOR_PATH` - eBPF network monitor (if enabled)
+- `BPF_FILESYSTEM_MONITOR_PATH` - eBPF filesystem monitor (if enabled)
+
+See [NIXOS_INTEGRATION.md](./docs/NIXOS_INTEGRATION.md#environment-variables) for details.
 
 ### Manual Installation
 ```bash
