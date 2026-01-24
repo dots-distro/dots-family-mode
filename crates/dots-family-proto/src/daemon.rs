@@ -96,8 +96,32 @@ pub trait FamilyDaemon {
         token: &str,
     ) -> zbus::Result<String>;
 
+    // Approval request methods
+    async fn list_pending_requests(&self, token: &str) -> zbus::Result<String>;
+
+    async fn approve_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> zbus::Result<String>;
+
+    async fn deny_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> zbus::Result<String>;
+
     #[zbus(signal)]
     async fn policy_updated(&self, profile_id: &str) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn approval_request_created(
+        &self,
+        request_id: &str,
+        request_type: &str,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn time_limit_warning(&self, minutes_remaining: u32) -> zbus::Result<()>;

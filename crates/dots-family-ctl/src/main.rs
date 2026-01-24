@@ -4,6 +4,8 @@ use clap::{Parser, Subcommand};
 mod auth;
 mod commands;
 
+use commands::approval::ApprovalAction;
+
 #[derive(Parser)]
 #[command(name = "dots-family-ctl")]
 #[command(about = "DOTS Family Mode CLI control tool", long_about = None)]
@@ -32,6 +34,11 @@ enum Commands {
     Report {
         #[command(subcommand)]
         action: ReportAction,
+    },
+
+    Approval {
+        #[command(subcommand)]
+        action: ApprovalAction,
     },
 
     Status,
@@ -198,6 +205,15 @@ async fn main() -> Result<()> {
                     output.as_deref(),
                 )
                 .await?
+            }
+        },
+        Commands::Approval { action } => match action {
+            ApprovalAction::List => commands::approval::list().await?,
+            ApprovalAction::Approve { request_id, message } => {
+                commands::approval::approve(request_id, message).await?
+            }
+            ApprovalAction::Deny { request_id, message } => {
+                commands::approval::deny(request_id, message).await?
             }
         },
         Commands::Status => commands::status::show().await?,
