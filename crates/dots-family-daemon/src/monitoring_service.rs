@@ -51,16 +51,14 @@ impl MonitoringService {
                 std::env::var("BPF_NETWORK_MONITOR_PATH").ok().filter(|p| !p.is_empty())
             {
                 if let Err(e) = network_monitor.load(std::path::Path::new(&network_path)).await {
-                    return Err(anyhow::anyhow!(
-                        "Failed to load eBPF network monitor from {}: {}",
+                    warn!(
+                        "Failed to load eBPF network monitor from {}: {} - continuing without network monitoring",
                         network_path,
                         e
-                    ));
+                    );
                 }
             } else {
-                return Err(anyhow::anyhow!(
-                    "BPF_NETWORK_MONITOR_PATH not set - eBPF network monitoring required"
-                ));
+                warn!("BPF_NETWORK_MONITOR_PATH not set - network monitoring disabled");
             }
         }
 
@@ -72,16 +70,14 @@ impl MonitoringService {
                 if let Err(e) =
                     filesystem_monitor.load(std::path::Path::new(&filesystem_path)).await
                 {
-                    return Err(anyhow::anyhow!(
-                        "Failed to load eBPF filesystem monitor from {}: {}",
+                    warn!(
+                        "Failed to load eBPF filesystem monitor from {}: {} - continuing without filesystem monitoring",
                         filesystem_path,
                         e
-                    ));
+                    );
                 }
             } else {
-                return Err(anyhow::anyhow!(
-                    "BPF_FILESYSTEM_MONITOR_PATH not set - eBPF filesystem monitoring required"
-                ));
+                warn!("BPF_FILESYSTEM_MONITOR_PATH not set - filesystem monitoring disabled");
             }
         }
 
