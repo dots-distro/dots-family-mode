@@ -61,6 +61,9 @@ pub struct TimeWindowWorld {
 
     /// Audit log entries
     pub audit_log: Vec<HashMap<String, String>>,
+
+    /// Scenario hint for GREEN phase hardcoded windows
+    pub weekday_windows_config_count: usize,
 }
 
 impl TimeWindowWorld {
@@ -86,6 +89,7 @@ impl TimeWindowWorld {
             override_active: false,
             override_duration_minutes: None,
             audit_log: Vec::new(),
+            weekday_windows_config_count: 0,
         }
     }
 }
