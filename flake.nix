@@ -98,97 +98,37 @@
         ];
 
         # Stage 1: eBPF Programs (kernel-space)
-        # Build actual eBPF programs with proper Rust nightly toolchain
+        # Build actual eBPF programs from pre-compiled binaries
+        # TODO: Build directly from Rust source once Nix sandbox build is resolved
+        # See: https://github.com/dots-distro/dots-family-mode/issues/TBD
         dots-family-ebpf = pkgs.stdenv.mkDerivation {
           pname = "dots-family-ebpf";
           version = "0.1.0";
           
-          src = pkgs.lib.cleanSourceWith {
-            src = ./crates/dots-family-ebpf;
-            filter = path: type:
-              (pkgs.lib.hasSuffix "Cargo.toml" path) ||
-              (pkgs.lib.hasSuffix "rust-toolchain.toml" path) ||
-              (pkgs.lib.hasSuffix ".rs" path) ||
-              (pkgs.lib.hasSuffix "Cargo.lock" path) ||
-              (type == "directory");
-          };
+          src = ./prebuilt-ebpf;
           
-          nativeBuildInputs = with pkgs; [
-            rustToolchainNightly
-            bpf-linker
-            llvm
-          ];
-          
-          buildInputs = with pkgs; [
-            libbpf
-            elfutils
-            zlib
-          ];
-          
-          # eBPF-specific environment
-          CARGO_TARGET_BPFEL_UNKNOWN_NONE_LINKER = "bpf-linker";
-          RUST_SRC_PATH = "${rustToolchainNightly}/lib/rustlib/src/rust/library";
-          
-          buildPhase = ''
-            echo "Building eBPF programs with nightly Rust..."
-            export HOME=$(mktemp -d)
-            
-            # For now, create stub binaries that follow proper eBPF format
-            # TODO: Fix actual eBPF compilation in next iteration
-            mkdir -p target/bpfel-unknown-none/release
-            
-            # Create improved eBPF ELF stub files with proper program sections
-            for prog in process-monitor network-monitor filesystem-monitor; do
-              echo "Creating improved eBPF ELF stub for $prog..."
-              
-              # Create a minimal but valid eBPF object file
-              cat > /tmp/$prog.c << 'EOF'
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-
-SEC("tracepoint/syscalls/sys_enter_execve")
-int trace_execve(void *ctx) {
-    return 0;
-}
-
-char _license[] SEC("license") = "GPL";
-EOF
-              
-              # Compile with llc to create proper eBPF object from LLVM IR
-              # Create a simple eBPF program in LLVM IR format first
-              cat > /tmp/$prog.ll << 'EOF'
-; Simple eBPF program that can be loaded by aya
-target datalayout = "e-m:e-p:64:64-i64:64-n32:64-S128"
-target triple = "bpf"
-
-define i32 @trace_execve(i8* %ctx) #0 section "tracepoint/syscalls/sys_enter_execve" {
-  ret i32 0
-}
-
-attributes #0 = { nounwind }
-EOF
-              
-              ${pkgs.llvm}/bin/llc -march=bpf -filetype=obj /tmp/$prog.ll -o target/bpfel-unknown-none/release/$prog
-            done
-          '';
+          dontBuild = true;
           
           installPhase = ''
-            echo "Installing eBPF programs to $out..."
-            mkdir -p $out/target/bpfel-unknown-none/release
+            mkdir -p $out/bin
+            cp process-monitor $out/bin/
+            cp network-monitor $out/bin/
+            cp filesystem-monitor $out/bin/
             
-            # Copy only the binary files, not directories
-            for prog in process-monitor network-monitor filesystem-monitor; do
-              if [ -f "target/bpfel-unknown-none/release/$prog" ]; then
-                cp "target/bpfel-unknown-none/release/$prog" "$out/target/bpfel-unknown-none/release/"
-              fi
-            done
-            
-            echo "eBPF programs installed:"
-            ls -la $out/target/bpfel-unknown-none/release/ || true
-            file $out/target/bpfel-unknown-none/release/* || true
+            echo "Pre-compiled eBPF programs installed:"
+            ls -la $out/bin/
+            file $out/bin/* || true
           '';
           
-          doCheck = false;
+          meta = with pkgs.lib; {
+            description = "eBPF programs for DOTS Family Mode monitoring (pre-compiled)";
+            longDescription = ''
+              These are pre-compiled eBPF programs built with:
+              cargo build --release --target bpfel-unknown-none -Z build-std=core
+              
+              This is a temporary solution until the Nix sandbox build is resolved.
+            '';
+          };
         };
 
         # Helper function to build user-space crate packages with eBPF support
@@ -217,9 +157,9 @@ EOF
             RUSTFLAGS = "-A rust_2024_compatibility";
 
             # Inject eBPF ELF paths for daemon
-            BPF_PROCESS_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/target/bpfel-unknown-none/release/process-monitor" else "";
-            BPF_NETWORK_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/target/bpfel-unknown-none/release/network-monitor" else "";
-            BPF_FILESYSTEM_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/target/bpfel-unknown-none/release/filesystem-monitor" else "";
+            BPF_PROCESS_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/process-monitor" else "";
+            BPF_NETWORK_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/network-monitor" else "";
+            BPF_FILESYSTEM_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/filesystem-monitor" else "";
 
             postInstall = ''
               # Wrap binaries with runtime dependencies
@@ -270,9 +210,9 @@ EOF
             BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
             
             # Inject eBPF ELF paths
-            BPF_PROCESS_MONITOR_PATH = "${dots-family-ebpf}/target/bpfel-unknown-none/release/process-monitor";
-            BPF_NETWORK_MONITOR_PATH = "${dots-family-ebpf}/target/bpfel-unknown-none/release/network-monitor";
-            BPF_FILESYSTEM_MONITOR_PATH = "${dots-family-ebpf}/target/bpfel-unknown-none/release/filesystem-monitor";
+            BPF_PROCESS_MONITOR_PATH = "${dots-family-ebpf}/bin/process-monitor";
+            BPF_NETWORK_MONITOR_PATH = "${dots-family-ebpf}/bin/network-monitor";
+            BPF_FILESYSTEM_MONITOR_PATH = "${dots-family-ebpf}/bin/filesystem-monitor";
             
             # Skip tests for full workspace build (some are integration tests)
             doCheck = false;
