@@ -1,17 +1,21 @@
-use crate::components::sidebar_row::{SidebarRow, SidebarRowMsg};
-use crate::state::profile_store::ProfileStore;
-use crate::views::child_interface::{ChildInterface, ChildInterfaceMsg};
-use crate::views::child_lockscreen::{ChildLockscreen, ChildLockscreenMsg, LockscreenReason};
-use crate::views::content_filtering::{ContentFiltering, ContentFilteringMsg};
-use crate::views::dashboard::{Dashboard, DashboardMsg};
-use crate::views::policy_config::{PolicyConfig, PolicyConfigMsg};
-use crate::views::profile_editor::{ProfileEditor, ProfileEditorMsg};
-use crate::views::reports::{Reports, ReportsMsg};
 use dots_family_common::types::Profile;
 use gtk4::prelude::*;
 use libadwaita::prelude::*;
-use relm4::factory::FactoryVecDeque;
-use relm4::prelude::*;
+use relm4::{factory::FactoryVecDeque, prelude::*};
+
+use crate::{
+    components::sidebar_row::SidebarRow,
+    state::profile_store::ProfileStore,
+    views::{
+        child_interface::{ChildInterface, ChildInterfaceMsg},
+        child_lockscreen::{ChildLockscreen, ChildLockscreenMsg, LockscreenReason},
+        content_filtering::ContentFiltering,
+        dashboard::{Dashboard, DashboardMsg},
+        policy_config::PolicyConfig,
+        profile_editor::{ProfileEditor, ProfileEditorMsg},
+        reports::{Reports, ReportsMsg},
+    },
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum AppMode {
@@ -113,7 +117,6 @@ impl SimpleComponent for AppModel {
                                 set_visible: model.is_parent_mode,
 
                                 #[local_ref]
-                                #[allow(unused_assignments)] // Used by relm4 macro
                                 sidebar_list -> gtk4::ListBox {
                                     set_selection_mode: gtk4::SelectionMode::Single,
                                     set_css_classes: &["navigation-sidebar"],

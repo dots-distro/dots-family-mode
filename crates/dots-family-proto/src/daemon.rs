@@ -68,6 +68,34 @@ pub trait FamilyDaemon {
         end_date: &str,
     ) -> zbus::Result<String>;
 
+    // Time window configuration methods
+    async fn add_time_window(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        start: &str,
+        end: &str,
+        token: &str,
+    ) -> zbus::Result<String>;
+
+    async fn remove_time_window(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        start: &str,
+        end: &str,
+        token: &str,
+    ) -> zbus::Result<String>;
+
+    async fn list_time_windows(&self, profile_id: &str, token: &str) -> zbus::Result<String>;
+
+    async fn clear_time_windows(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        token: &str,
+    ) -> zbus::Result<String>;
+
     #[zbus(signal)]
     async fn policy_updated(&self, profile_id: &str) -> zbus::Result<()>;
 

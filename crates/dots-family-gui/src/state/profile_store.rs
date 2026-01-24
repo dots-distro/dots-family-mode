@@ -19,6 +19,7 @@ impl ProfileStore {
         let p1 = Profile {
             id: Uuid::new_v4(),
             name: "Alice".to_string(),
+            username: None,
             age_group: AgeGroup::LateElementary,
             birthday: None,
             created_at: Utc::now(),
@@ -28,7 +29,7 @@ impl ProfileStore {
                     daily_limit_minutes: 120,
                     weekend_bonus_minutes: 60,
                     exempt_categories: vec![],
-                    windows: TimeWindows { weekday: vec![], weekend: vec![] },
+                    windows: TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
                 },
                 applications: ApplicationConfig {
                     mode: ApplicationMode::Blocklist,

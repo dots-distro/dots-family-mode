@@ -24,6 +24,16 @@ enum Commands {
         action: SessionAction,
     },
 
+    TimeWindow {
+        #[command(subcommand)]
+        action: TimeWindowAction,
+    },
+
+    Report {
+        #[command(subcommand)]
+        action: ReportAction,
+    },
+
     Status,
 
     Check {
@@ -55,6 +65,89 @@ enum SessionAction {
     History { profile_id: Option<String> },
 }
 
+#[derive(Subcommand)]
+enum TimeWindowAction {
+    /// Add a time window to a profile
+    Add {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+        #[arg(long, help = "Add weekday time window")]
+        weekday: bool,
+        #[arg(long, help = "Add weekend time window")]
+        weekend: bool,
+        #[arg(long, help = "Add holiday time window")]
+        holiday: bool,
+        #[arg(help = "Start time (HH:MM format)")]
+        start: String,
+        #[arg(help = "End time (HH:MM format)")]
+        end: String,
+    },
+    /// List time windows for a profile
+    List {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+    },
+    /// Remove a time window from a profile
+    Remove {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+        #[arg(long, help = "Remove from weekday windows")]
+        weekday: bool,
+        #[arg(long, help = "Remove from weekend windows")]
+        weekend: bool,
+        #[arg(long, help = "Remove from holiday windows")]
+        holiday: bool,
+        #[arg(help = "Time window to remove (HH:MM-HH:MM format)")]
+        window: String,
+    },
+    /// Clear all time windows for a profile
+    Clear {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+        #[arg(long, help = "Clear only weekday windows")]
+        weekday: bool,
+        #[arg(long, help = "Clear only weekend windows")]
+        weekend: bool,
+        #[arg(long, help = "Clear only holiday windows")]
+        holiday: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum ReportAction {
+    /// Get a daily activity report
+    Daily {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+        #[arg(short, long, help = "Date in YYYY-MM-DD format (defaults to today)")]
+        date: Option<String>,
+    },
+    /// Get a weekly activity report
+    Weekly {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+        #[arg(
+            short,
+            long,
+            help = "Week start date in YYYY-MM-DD format (defaults to current week Monday)"
+        )]
+        week_start: Option<String>,
+    },
+    /// Export reports to a file
+    Export {
+        #[arg(help = "Profile name or ID")]
+        profile: String,
+        #[arg(short, long, default_value = "json", help = "Export format (json or csv)")]
+        format: String,
+        #[arg(short, long, help = "Start date (YYYY-MM-DD)")]
+        start_date: String,
+        #[arg(short, long, help = "End date (YYYY-MM-DD)")]
+        end_date: String,
+        #[arg(short, long, help = "Output file path (prints to stdout if not specified)")]
+        output: Option<String>,
+    },
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -74,6 +167,37 @@ async fn main() -> Result<()> {
             SessionAction::View => commands::session::view().await?,
             SessionAction::History { profile_id } => {
                 commands::session::history(profile_id.as_deref()).await?
+            }
+        },
+        Commands::TimeWindow { action } => match action {
+            TimeWindowAction::Add { profile, weekday, weekend, holiday, start, end } => {
+                commands::time_window::add(&profile, weekday, weekend, holiday, &start, &end)
+                    .await?
+            }
+            TimeWindowAction::List { profile } => commands::time_window::list(&profile).await?,
+            TimeWindowAction::Remove { profile, weekday, weekend, holiday, window } => {
+                commands::time_window::remove(&profile, weekday, weekend, holiday, &window).await?
+            }
+            TimeWindowAction::Clear { profile, weekday, weekend, holiday } => {
+                commands::time_window::clear(&profile, weekday, weekend, holiday).await?
+            }
+        },
+        Commands::Report { action } => match action {
+            ReportAction::Daily { profile, date } => {
+                commands::report::daily(&profile, date.as_deref()).await?
+            }
+            ReportAction::Weekly { profile, week_start } => {
+                commands::report::weekly(&profile, week_start.as_deref()).await?
+            }
+            ReportAction::Export { profile, format, start_date, end_date, output } => {
+                commands::report::export(
+                    &profile,
+                    &format,
+                    &start_date,
+                    &end_date,
+                    output.as_deref(),
+                )
+                .await?
             }
         },
         Commands::Status => commands::status::show().await?,

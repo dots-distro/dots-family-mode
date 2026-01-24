@@ -1344,6 +1344,300 @@ impl ProfileManager {
             _ => Err(anyhow!("Unsupported export format: {}", format)),
         }
     }
+
+    // ============================================================================
+    // Time Window Configuration Methods
+    // ============================================================================
+
+    /// Add a time window to a profile's configuration
+    pub async fn add_time_window(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        start: &str,
+        end: &str,
+        token: &str,
+    ) -> Result<()> {
+        use dots_family_common::types::TimeWindow;
+
+        // Validate parent authentication
+        if !self.validate_session(token).await {
+            return Err(anyhow!("Invalid or expired session token"));
+        }
+
+        // Validate time format (HH:MM)
+        Self::validate_time_format(start)?;
+        Self::validate_time_format(end)?;
+
+        // Validate start < end
+        if start >= end {
+            return Err(anyhow!("Start time must be before end time"));
+        }
+
+        // Validate window type
+        if !matches!(window_type, "weekday" | "weekend" | "holiday") {
+            return Err(anyhow!(
+                "Invalid window type '{}'. Must be one of: weekday, weekend, holiday",
+                window_type
+            ));
+        }
+
+        // Try to find profile by ID first, then by name
+        let profile = match ProfileQueries::get_by_id(&self._db, profile_id).await {
+            Ok(p) => p,
+            Err(_) => ProfileQueries::get_by_name(&self._db, profile_id).await?,
+        };
+
+        // Parse existing config
+        let mut config: dots_family_common::types::ProfileConfig =
+            serde_json::from_str(&profile.config)?;
+
+        // Create new time window
+        let new_window = TimeWindow { start: start.to_string(), end: end.to_string() };
+
+        // Check for overlapping windows
+        let target_windows = match window_type {
+            "weekday" => &config.screen_time.windows.weekday,
+            "weekend" => &config.screen_time.windows.weekend,
+            "holiday" => &config.screen_time.windows.holiday,
+            _ => unreachable!(),
+        };
+
+        for existing in target_windows {
+            if Self::windows_overlap(&new_window, existing) {
+                return Err(anyhow!(
+                    "Time window {}–{} overlaps with existing window {}–{}",
+                    start,
+                    end,
+                    existing.start,
+                    existing.end
+                ));
+            }
+        }
+
+        // Add window to appropriate list
+        match window_type {
+            "weekday" => config.screen_time.windows.weekday.push(new_window),
+            "weekend" => config.screen_time.windows.weekend.push(new_window),
+            "holiday" => config.screen_time.windows.holiday.push(new_window),
+            _ => unreachable!(),
+        }
+
+        // Sort windows by start time
+        match window_type {
+            "weekday" => config.screen_time.windows.weekday.sort_by(|a, b| a.start.cmp(&b.start)),
+            "weekend" => config.screen_time.windows.weekend.sort_by(|a, b| a.start.cmp(&b.start)),
+            "holiday" => config.screen_time.windows.holiday.sort_by(|a, b| a.start.cmp(&b.start)),
+            _ => unreachable!(),
+        }
+
+        // Save updated config
+        let updated_config_json = serde_json::to_string(&config)?;
+        ProfileQueries::update_config(&self._db, &profile.id, &updated_config_json).await?;
+
+        info!("Added {} time window {}–{} to profile {}", window_type, start, end, profile.name);
+
+        Ok(())
+    }
+
+    /// Remove a specific time window from a profile's configuration
+    pub async fn remove_time_window(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        start: &str,
+        end: &str,
+        token: &str,
+    ) -> Result<()> {
+        // Validate parent authentication
+        if !self.validate_session(token).await {
+            return Err(anyhow!("Invalid or expired session token"));
+        }
+
+        // Validate window type
+        if !matches!(window_type, "weekday" | "weekend" | "holiday") {
+            return Err(anyhow!(
+                "Invalid window type '{}'. Must be one of: weekday, weekend, holiday",
+                window_type
+            ));
+        }
+
+        // Try to find profile by ID first, then by name
+        let profile = match ProfileQueries::get_by_id(&self._db, profile_id).await {
+            Ok(p) => p,
+            Err(_) => ProfileQueries::get_by_name(&self._db, profile_id).await?,
+        };
+
+        // Parse existing config
+        let mut config: dots_family_common::types::ProfileConfig =
+            serde_json::from_str(&profile.config)?;
+
+        // Remove matching window
+        let removed = match window_type {
+            "weekday" => {
+                let original_len = config.screen_time.windows.weekday.len();
+                config.screen_time.windows.weekday.retain(|w| !(w.start == start && w.end == end));
+                config.screen_time.windows.weekday.len() < original_len
+            }
+            "weekend" => {
+                let original_len = config.screen_time.windows.weekend.len();
+                config.screen_time.windows.weekend.retain(|w| !(w.start == start && w.end == end));
+                config.screen_time.windows.weekend.len() < original_len
+            }
+            "holiday" => {
+                let original_len = config.screen_time.windows.holiday.len();
+                config.screen_time.windows.holiday.retain(|w| !(w.start == start && w.end == end));
+                config.screen_time.windows.holiday.len() < original_len
+            }
+            _ => unreachable!(),
+        };
+
+        if !removed {
+            return Err(anyhow!(
+                "Time window {}–{} not found in {} windows",
+                start,
+                end,
+                window_type
+            ));
+        }
+
+        // Save updated config
+        let updated_config_json = serde_json::to_string(&config)?;
+        ProfileQueries::update_config(&self._db, &profile.id, &updated_config_json).await?;
+
+        info!(
+            "Removed {} time window {}–{} from profile {}",
+            window_type, start, end, profile.name
+        );
+
+        Ok(())
+    }
+
+    /// List all time windows for a profile
+    pub async fn list_time_windows(
+        &self,
+        profile_id: &str,
+        token: &str,
+    ) -> Result<serde_json::Value> {
+        // Validate parent authentication
+        if !self.validate_session(token).await {
+            return Err(anyhow!("Invalid or expired session token"));
+        }
+
+        // Try to find profile by ID first, then by name
+        let profile = match ProfileQueries::get_by_id(&self._db, profile_id).await {
+            Ok(p) => p,
+            Err(_) => ProfileQueries::get_by_name(&self._db, profile_id).await?,
+        };
+
+        // Parse existing config
+        let config: dots_family_common::types::ProfileConfig =
+            serde_json::from_str(&profile.config)?;
+
+        Ok(serde_json::json!({
+            "profile_id": profile.id,
+            "profile_name": profile.name,
+            "weekday": config.screen_time.windows.weekday,
+            "weekend": config.screen_time.windows.weekend,
+            "holiday": config.screen_time.windows.holiday,
+        }))
+    }
+
+    /// Clear all time windows of a specific type from a profile
+    pub async fn clear_time_windows(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        token: &str,
+    ) -> Result<()> {
+        // Validate parent authentication
+        if !self.validate_session(token).await {
+            return Err(anyhow!("Invalid or expired session token"));
+        }
+
+        // Validate window type
+        if !matches!(window_type, "weekday" | "weekend" | "holiday") {
+            return Err(anyhow!(
+                "Invalid window type '{}'. Must be one of: weekday, weekend, holiday",
+                window_type
+            ));
+        }
+
+        // Try to find profile by ID first, then by name
+        let profile = match ProfileQueries::get_by_id(&self._db, profile_id).await {
+            Ok(p) => p,
+            Err(_) => ProfileQueries::get_by_name(&self._db, profile_id).await?,
+        };
+
+        // Parse existing config
+        let mut config: dots_family_common::types::ProfileConfig =
+            serde_json::from_str(&profile.config)?;
+
+        // Clear windows
+        let count = match window_type {
+            "weekday" => {
+                let count = config.screen_time.windows.weekday.len();
+                config.screen_time.windows.weekday.clear();
+                count
+            }
+            "weekend" => {
+                let count = config.screen_time.windows.weekend.len();
+                config.screen_time.windows.weekend.clear();
+                count
+            }
+            "holiday" => {
+                let count = config.screen_time.windows.holiday.len();
+                config.screen_time.windows.holiday.clear();
+                count
+            }
+            _ => unreachable!(),
+        };
+
+        // Save updated config
+        let updated_config_json = serde_json::to_string(&config)?;
+        ProfileQueries::update_config(&self._db, &profile.id, &updated_config_json).await?;
+
+        info!("Cleared {} {} time windows from profile {}", count, window_type, profile.name);
+
+        Ok(())
+    }
+
+    /// Helper: Check if two time windows overlap
+    fn windows_overlap(
+        window1: &dots_family_common::types::TimeWindow,
+        window2: &dots_family_common::types::TimeWindow,
+    ) -> bool {
+        // Two windows overlap if one starts before the other ends
+        // Window1 starts before Window2 ends AND Window2 starts before Window1 ends
+        !(window1.end <= window2.start || window2.end <= window1.start)
+    }
+
+    /// Helper: Validate time format (HH:MM)
+    fn validate_time_format(time: &str) -> Result<()> {
+        let parts: Vec<&str> = time.split(':').collect();
+        if parts.len() != 2 {
+            return Err(anyhow!(
+                "Invalid time format '{}'. Expected HH:MM (e.g., 08:00, 15:30)",
+                time
+            ));
+        }
+
+        let hours = parts[0]
+            .parse::<u32>()
+            .map_err(|_| anyhow!("Invalid hours '{}' in time '{}'", parts[0], time))?;
+        let minutes = parts[1]
+            .parse::<u32>()
+            .map_err(|_| anyhow!("Invalid minutes '{}' in time '{}'", parts[1], time))?;
+
+        if hours > 23 {
+            return Err(anyhow!("Hours must be 0-23, got {}", hours));
+        }
+        if minutes > 59 {
+            return Err(anyhow!("Minutes must be 0-59, got {}", minutes));
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -724,6 +724,70 @@ impl FamilyDaemonService {
         }
     }
 
+    // ============================================================================
+    // Time Window Configuration Methods
+    // ============================================================================
+
+    async fn add_time_window(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        start: &str,
+        end: &str,
+        token: &str,
+    ) -> String {
+        match self.profile_manager.add_time_window(profile_id, window_type, start, end, token).await
+        {
+            Ok(()) => r#"{"status":"success"}"#.to_string(),
+            Err(e) => {
+                warn!("Failed to add time window: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn remove_time_window(
+        &self,
+        profile_id: &str,
+        window_type: &str,
+        start: &str,
+        end: &str,
+        token: &str,
+    ) -> String {
+        match self
+            .profile_manager
+            .remove_time_window(profile_id, window_type, start, end, token)
+            .await
+        {
+            Ok(()) => r#"{"status":"success"}"#.to_string(),
+            Err(e) => {
+                warn!("Failed to remove time window: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
+    async fn list_time_windows(&self, profile_id: &str, token: &str) -> String {
+        match self.profile_manager.list_time_windows(profile_id, token).await {
+            Ok(windows) => serde_json::to_string(&windows)
+                .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
+            Err(e) => {
+                warn!("Failed to list time windows: {}", e);
+                format!(r#"{{"error":"{}"}}"#, e)
+            }
+        }
+    }
+
+    async fn clear_time_windows(&self, profile_id: &str, window_type: &str, token: &str) -> String {
+        match self.profile_manager.clear_time_windows(profile_id, window_type, token).await {
+            Ok(()) => r#"{"status":"success"}"#.to_string(),
+            Err(e) => {
+                warn!("Failed to clear time windows: {}", e);
+                format!(r#"{{"error":"{}","status":"failed"}}"#, e)
+            }
+        }
+    }
+
     #[zbus(signal)]
     async fn time_window_ending(
         signal_ctxt: &zbus::SignalContext<'_>,
