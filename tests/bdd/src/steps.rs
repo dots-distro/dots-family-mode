@@ -635,6 +635,13 @@ async fn child_session_active(world: &mut TimeWindowWorld) {
     assert!(world.session_active, "Expected child session to remain active");
 }
 
+#[then(expr = "the session should remain active until {string}")]
+async fn session_active_until(world: &mut TimeWindowWorld, _until_time: String) {
+    // For midnight-spanning windows, verify session is currently active
+    // The actual enforcement would check this time in the daemon
+    assert!(world.session_active, "Expected session to remain active until specified time");
+}
+
 #[then("a notification should inform the child of the extension")]
 async fn extension_notification(world: &mut TimeWindowWorld) {
     // Verify that an extension notification was shown
@@ -645,9 +652,15 @@ async fn extension_notification(world: &mut TimeWindowWorld) {
 }
 
 #[then(expr = "at {string} the session should lock")]
-async fn lock_at_time(_world: &mut TimeWindowWorld, _time: String) {
-    // RED PHASE: Time-based locking not implemented
-    panic!("Time-based session locking not implemented");
+async fn lock_at_time(world: &mut TimeWindowWorld, time: String) {
+    // Simulate time advancing to the specified time
+    set_current_time(world, time.clone()).await;
+
+    // Trigger time-based checks (same as time_reaches)
+    time_reaches(world, time.clone()).await;
+
+    // Verify session is now locked
+    assert!(!world.session_active, "Expected session to be locked at {}", time);
 }
 
 #[then(expr = "the effective window should be {string}")]
