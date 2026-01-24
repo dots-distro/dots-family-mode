@@ -391,6 +391,11 @@ clippy = craneLib.cargoClippy {
             inherit pkgs;
             self = self;
           };
+          
+          time-window-enforcement = import ./tests/nix/time-window-test.nix {
+            inherit pkgs;
+            self = self;
+          };
         };
       }
     ) // {
