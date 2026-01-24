@@ -984,6 +984,7 @@ dependencies = [
  "chrono",
  "dots-family-common",
  "dots-family-proto",
+ "futures",
  "gtk4",
  "libadwaita",
  "relm4",

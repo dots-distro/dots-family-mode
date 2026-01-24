@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use chrono::NaiveDate;
 use dots_family_proto::daemon::FamilyDaemonProxy;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use zbus::Connection;
@@ -48,12 +49,17 @@ pub struct CategoryUsage {
 #[derive(Clone, Debug)]
 pub struct DaemonClient {
     proxy: Arc<Mutex<Option<FamilyDaemonProxy<'static>>>>,
+    connection: Arc<Mutex<Option<Connection>>>,
     connected: Arc<Mutex<bool>>,
 }
 
 impl DaemonClient {
     pub async fn new() -> Self {
-        Self { proxy: Arc::new(Mutex::new(None)), connected: Arc::new(Mutex::new(false)) }
+        Self {
+            proxy: Arc::new(Mutex::new(None)),
+            connection: Arc::new(Mutex::new(None)),
+            connected: Arc::new(Mutex::new(false)),
+        }
     }
 
     pub async fn connect(&self) -> Result<()> {
@@ -68,6 +74,7 @@ impl DaemonClient {
         match proxy.ping().await {
             Ok(_) => {
                 *self.proxy.lock().await = Some(proxy);
+                *self.connection.lock().await = Some(connection);
                 *self.connected.lock().await = true;
                 Ok(())
             }
@@ -230,5 +237,35 @@ impl DaemonClient {
             .deny_request(request_id, response_message, token)
             .await
             .map_err(|e| anyhow!("D-Bus error: {}", e))
+    }
+
+    /// Subscribe to approval_request_created signals
+    /// This spawns a background task that listens for signals
+    pub async fn subscribe_approval_requests<F>(&self, callback: F) -> Result<()>
+    where
+        F: Fn(String, String) + Send + 'static,
+    {
+        let conn_guard = self.connection.lock().await;
+        let connection =
+            conn_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?.clone();
+        drop(conn_guard);
+
+        // Create a new proxy for signal subscription
+        let proxy = FamilyDaemonProxy::new(&connection)
+            .await
+            .map_err(|e| anyhow!("Failed to create proxy for signals: {}", e))?;
+
+        let mut stream = proxy.receive_approval_request_created().await?;
+
+        // Spawn background task to listen for signals
+        tokio::spawn(async move {
+            while let Some(signal) = stream.next().await {
+                if let Ok(args) = signal.args() {
+                    callback(args.request_id().to_string(), args.request_type().to_string());
+                }
+            }
+        });
+
+        Ok(())
     }
 }

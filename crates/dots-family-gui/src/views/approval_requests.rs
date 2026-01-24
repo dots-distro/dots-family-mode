@@ -1,4 +1,5 @@
 use dots_family_common::types::Profile;
+use futures::StreamExt;
 use gtk4::prelude::*;
 use relm4::{factory::FactoryVecDeque, prelude::*};
 
@@ -34,6 +35,7 @@ pub enum ApprovalRequestsMsg {
     AttemptAuth,
     AuthenticationResult(bool, Option<String>),
     DaemonClientReady(DaemonClient),
+    ApprovalRequestSignal(String, String), // request_id, request_type
 }
 
 #[relm4::component(pub)]
@@ -462,6 +464,26 @@ impl SimpleComponent for ApprovalRequests {
                     self.parent_password.clear();
                     // Now fetch the requests
                     sender.input(ApprovalRequestsMsg::RefreshRequests);
+
+                    // Subscribe to approval request signals for real-time updates
+                    if let Some(daemon_client) = &self.daemon_client {
+                        let daemon_client = daemon_client.clone();
+                        let sender_clone = sender.clone();
+                        relm4::spawn(async move {
+                            let result = daemon_client
+                                .subscribe_approval_requests(move |request_id, request_type| {
+                                    sender_clone.input(ApprovalRequestsMsg::ApprovalRequestSignal(
+                                        request_id,
+                                        request_type,
+                                    ));
+                                })
+                                .await;
+
+                            if let Err(e) = result {
+                                eprintln!("Failed to subscribe to approval signals: {}", e);
+                            }
+                        });
+                    }
                 } else {
                     self.auth_failed = true;
                     self.parent_password.clear();
@@ -469,6 +491,10 @@ impl SimpleComponent for ApprovalRequests {
             }
             ApprovalRequestsMsg::DaemonClientReady(client) => {
                 self.daemon_client = Some(client);
+            }
+            ApprovalRequestsMsg::ApprovalRequestSignal(_request_id, _request_type) => {
+                // New approval request detected - refresh the list
+                sender.input(ApprovalRequestsMsg::RefreshRequests);
             }
         }
     }

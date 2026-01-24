@@ -20,6 +20,7 @@
         dots-family-daemon = self.packages.${final.system}.dots-family-daemon;
         dots-family-monitor = self.packages.${final.system}.dots-family-monitor;
         dots-family-ctl = self.packages.${final.system}.dots-family-ctl;
+        dots-family-gui = self.packages.${final.system}.dots-family-gui;
         dots-terminal-filter = self.packages.${final.system}.dots-terminal-filter;
       };
     
@@ -246,6 +247,7 @@ EOF
           dots-family-daemon = buildCrateWithEbpf { pname = "dots-family-daemon"; hasEbpf = true; doCheck = false; };
           dots-family-monitor = buildCrateWithEbpf { pname = "dots-family-monitor"; doCheck = false; };
           dots-family-ctl = buildCrateWithEbpf { pname = "dots-family-ctl"; doCheck = false; };
+          dots-family-gui = buildCrateWithEbpf { pname = "dots-family-gui"; doCheck = false; };
           dots-terminal-filter = buildCrateWithEbpf { pname = "dots-terminal-filter"; doCheck = false; };
           
           # Default package builds all workspace members
