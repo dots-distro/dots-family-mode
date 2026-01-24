@@ -365,6 +365,12 @@ EOF
           build = self.packages.${system}.default;
           ebpf-build = self.packages.${system}.dots-family-ebpf;
           
+          # NixOS VM integration tests
+          approval-workflow-test = pkgs.testers.nixosTest (import ./tests/nix/test-approval-workflow.nix {
+            inherit pkgs;
+            self = self;
+          });
+          
 test = craneLib.buildPackage {
             inherit src cargoArtifacts;
             nativeBuildInputs = nativeBuildInputs ++ [ rustToolchainStable ];

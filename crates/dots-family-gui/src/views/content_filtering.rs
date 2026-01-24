@@ -208,12 +208,12 @@ impl SimpleComponent for ContentFiltering {
                 if let Some(ref _daemon_client) = self.daemon_client {
                     println!("Configuration would be saved to daemon");
                 }
-                sender.output(String::from("Content filtering settings saved"));
+                let _ = sender.output(String::from("Content filtering settings saved"));
             }
 
             ContentFilteringMsg::LoadConfiguration => {
                 println!("Loading content filtering configuration...");
-                sender.output(String::from("Content filtering settings loaded"));
+                let _ = sender.output(String::from("Content filtering settings loaded"));
             }
 
             ContentFilteringMsg::ResetToDefaults => {
@@ -237,7 +237,7 @@ impl SimpleComponent for ContentFiltering {
                 self.new_custom_pattern.clear();
                 self.custom_pattern_reason.clear();
                 println!("Reset to default content filtering configuration");
-                sender.output(String::from("Reset to default settings"));
+                let _ = sender.output(String::from("Reset to default settings"));
             }
         }
     }

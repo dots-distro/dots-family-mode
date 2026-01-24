@@ -18,6 +18,8 @@ pub struct ApprovalRequests {
     parent_password: String,
     show_auth_dialog: bool,
     auth_failed: bool,
+    error_message: Option<String>,
+    show_loading: bool,
 }
 
 #[derive(Debug)]
@@ -36,6 +38,8 @@ pub enum ApprovalRequestsMsg {
     AuthenticationResult(bool, Option<String>),
     DaemonClientReady(DaemonClient),
     ApprovalRequestSignal(String, String), // request_id, request_type
+    ShowError(String),
+    DismissError,
 }
 
 #[relm4::component(pub)]
@@ -121,6 +125,77 @@ impl SimpleComponent for ApprovalRequests {
                     }
                 },
 
+                // Error Dialog Overlay
+                gtk4::Box {
+                    set_orientation: gtk4::Orientation::Vertical,
+                    set_spacing: 20,
+                    set_margin_all: 40,
+                    set_valign: gtk4::Align::Center,
+                    set_halign: gtk4::Align::Center,
+
+                    #[watch]
+                    set_visible: model.error_message.is_some(),
+
+                    gtk4::Frame {
+                        set_width_request: 400,
+                        add_css_class: "card",
+
+                        gtk4::Box {
+                            set_orientation: gtk4::Orientation::Vertical,
+                            set_spacing: 16,
+                            set_margin_all: 24,
+
+                            gtk4::Box {
+                                set_orientation: gtk4::Orientation::Horizontal,
+                                set_spacing: 12,
+
+                                gtk4::Image {
+                                    set_icon_name: Some("dialog-error-symbolic"),
+                                    set_pixel_size: 48,
+                                    add_css_class: "error",
+                                },
+
+                                gtk4::Box {
+                                    set_orientation: gtk4::Orientation::Vertical,
+                                    set_spacing: 8,
+                                    set_hexpand: true,
+
+                                    gtk4::Label {
+                                        set_label: "Connection Error",
+                                        add_css_class: "title-2",
+                                        set_halign: gtk4::Align::Start,
+                                    },
+
+                                    gtk4::Label {
+                                        #[watch]
+                                        set_label: &model.error_message.as_deref().unwrap_or("Unknown error"),
+                                        add_css_class: "dim-label",
+                                        set_wrap: true,
+                                        set_halign: gtk4::Align::Start,
+                                    }
+                                }
+                            },
+
+                            gtk4::Box {
+                                set_orientation: gtk4::Orientation::Horizontal,
+                                set_spacing: 8,
+                                set_halign: gtk4::Align::End,
+
+                                gtk4::Button {
+                                    set_label: "Retry",
+                                    connect_clicked => ApprovalRequestsMsg::RefreshRequests,
+                                },
+
+                                gtk4::Button {
+                                    set_label: "Dismiss",
+                                    add_css_class: "suggested-action",
+                                    connect_clicked => ApprovalRequestsMsg::DismissError,
+                                }
+                            }
+                        }
+                    }
+                },
+
                 // Main Content (only visible when authenticated)
                 gtk4::ScrolledWindow {
                     set_policy: (gtk4::PolicyType::Never, gtk4::PolicyType::Automatic),
@@ -147,7 +222,38 @@ impl SimpleComponent for ApprovalRequests {
                         gtk4::Button {
                             set_icon_name: "view-refresh-symbolic",
                             set_tooltip_text: Some("Refresh"),
+                            #[watch]
+                            set_sensitive: !model.show_loading,
                             connect_clicked => ApprovalRequestsMsg::RefreshRequests,
+                        },
+
+                        gtk4::Spinner {
+                            #[watch]
+                            set_visible: model.show_loading,
+                            #[watch]
+                            set_spinning: model.show_loading,
+                        }
+                    },
+
+                    // Loading overlay
+                    gtk4::Box {
+                        set_orientation: gtk4::Orientation::Vertical,
+                        set_spacing: 12,
+                        set_valign: gtk4::Align::Center,
+                        set_vexpand: true,
+                        set_margin_all: 40,
+
+                        #[watch]
+                        set_visible: model.show_loading && model.request_cards.is_empty(),
+
+                        gtk4::Spinner {
+                            set_size_request: (48, 48),
+                            set_spinning: true,
+                        },
+
+                        gtk4::Label {
+                            set_label: "Loading requests...",
+                            add_css_class: "dim-label",
                         }
                     },
 
@@ -156,7 +262,7 @@ impl SimpleComponent for ApprovalRequests {
                         set_spacing: 12,
 
                         #[watch]
-                        set_visible: model.request_cards.is_empty(),
+                        set_visible: model.request_cards.is_empty() && !model.show_loading,
 
                         gtk4::Box {
                             set_orientation: gtk4::Orientation::Vertical,
@@ -286,6 +392,8 @@ impl SimpleComponent for ApprovalRequests {
             parent_password: String::new(),
             show_auth_dialog: true,
             auth_failed: false,
+            error_message: None,
+            show_loading: false,
         };
 
         let widgets = view_output!();
@@ -314,6 +422,8 @@ impl SimpleComponent for ApprovalRequests {
             ApprovalRequestsMsg::RefreshRequests => {
                 if let (Some(daemon_client), Some(token)) = (&self.daemon_client, &self.auth_token)
                 {
+                    self.show_loading = true;
+                    self.error_message = None;
                     let daemon_client = daemon_client.clone();
                     let token = token.clone();
                     relm4::spawn(async move {
@@ -324,22 +434,31 @@ impl SimpleComponent for ApprovalRequests {
                                         sender.input(ApprovalRequestsMsg::UpdateRequests(requests));
                                     }
                                     Err(e) => {
-                                        eprintln!("Failed to parse approval requests: {}", e);
+                                        sender.input(ApprovalRequestsMsg::ShowError(format!(
+                                            "Failed to parse server response: {}",
+                                            e
+                                        )));
                                         sender.input(ApprovalRequestsMsg::UpdateRequests(vec![]));
                                     }
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Failed to fetch approval requests: {}", e);
+                                sender.input(ApprovalRequestsMsg::ShowError(format!(
+                                    "Failed to connect to daemon: {}. Is it running?",
+                                    e
+                                )));
                                 sender.input(ApprovalRequestsMsg::UpdateRequests(vec![]));
                             }
                         }
                     });
                 } else {
-                    eprintln!("Daemon client not initialized or not authenticated");
+                    self.error_message = Some(
+                        "Not authenticated or daemon not connected. Please try again.".to_string(),
+                    );
                 }
             }
             ApprovalRequestsMsg::UpdateRequests(requests) => {
+                self.show_loading = false;
                 // Clear existing cards
                 let mut guard = self.request_cards.guard();
                 guard.clear();
@@ -495,6 +614,13 @@ impl SimpleComponent for ApprovalRequests {
             ApprovalRequestsMsg::ApprovalRequestSignal(_request_id, _request_type) => {
                 // New approval request detected - refresh the list
                 sender.input(ApprovalRequestsMsg::RefreshRequests);
+            }
+            ApprovalRequestsMsg::ShowError(error) => {
+                self.error_message = Some(error);
+                self.show_loading = false;
+            }
+            ApprovalRequestsMsg::DismissError => {
+                self.error_message = None;
             }
         }
     }
