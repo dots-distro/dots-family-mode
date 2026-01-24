@@ -59,6 +59,10 @@ pub struct TimeWindowWorld {
     pub override_active: bool,
     pub override_duration_minutes: Option<u32>,
 
+    /// Window extension (when parent extends active session)
+    pub window_extended_until: Option<String>,
+    pub window_close_time: Option<String>,
+
     /// Audit log entries
     pub audit_log: Vec<HashMap<String, String>>,
 
@@ -91,6 +95,8 @@ impl TimeWindowWorld {
             has_unsaved_work: false,
             override_active: false,
             override_duration_minutes: None,
+            window_extended_until: None,
+            window_close_time: None,
             audit_log: Vec::new(),
             weekday_windows_config_count: 0,
             persistent_notifications: Vec::new(),

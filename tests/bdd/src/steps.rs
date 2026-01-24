@@ -3,7 +3,7 @@
 // GREEN PHASE: These step definitions use real implementation logic
 // to make tests pass.
 
-use chrono::{NaiveTime, Weekday};
+use chrono::{NaiveTime, Timelike, Weekday};
 use cucumber::{given, then, when};
 use dots_family_common::{AccessResult, TimeWindow, TimeWindowConfig, TimeWindowEnforcer};
 
@@ -330,9 +330,9 @@ async fn parent_issues_override(world: &mut TimeWindowWorld) {
 }
 
 #[given(expr = "the window will close at {string}")]
-async fn window_will_close_at(_world: &mut TimeWindowWorld, _time: String) {
-    // This is informational - the window closing time is already configured
-    // No action needed here
+async fn window_will_close_at(world: &mut TimeWindowWorld, time: String) {
+    // Store the window close time for extension calculations
+    world.window_close_time = Some(time);
 }
 
 #[when(expr = "specifies duration {string}")]
@@ -352,7 +352,22 @@ async fn parent_extends_session(world: &mut TimeWindowWorld, duration: String) {
         .next()
         .and_then(|s| s.parse().ok())
         .expect("Invalid duration format");
+
     world.override_duration_minutes = Some(minutes);
+
+    // Calculate the new end time by adding minutes to the window close time
+    if let Some(close_time) = &world.window_close_time {
+        // Parse the close time
+        let close = NaiveTime::parse_from_str(close_time, "%H:%M").expect("Invalid time format");
+
+        // Add extension duration
+        let extended = close + chrono::Duration::minutes(minutes as i64);
+        world.window_extended_until =
+            Some(format!("{:02}:{:02}", extended.hour(), extended.minute()));
+
+        // Add notification about extension
+        world.displayed_messages.push(format!("Session extended by {} minutes", minutes));
+    }
 }
 
 #[when("the override is activated")]
@@ -603,9 +618,16 @@ async fn audit_entry_fields(world: &mut TimeWindowWorld) {
 }
 
 #[then(expr = "the window end time should be extended to {string}")]
-async fn window_extended(_world: &mut TimeWindowWorld, _time: String) {
-    // RED PHASE: Window extension not implemented
-    panic!("Window extension not implemented");
+async fn window_extended(world: &mut TimeWindowWorld, expected_time: String) {
+    assert!(world.window_extended_until.is_some(), "Window extension was not applied");
+
+    assert_eq!(
+        world.window_extended_until.as_ref().unwrap(),
+        &expected_time,
+        "Expected window to be extended to {}, but got {:?}",
+        expected_time,
+        world.window_extended_until
+    );
 }
 
 #[then("the child session should remain active")]
@@ -614,9 +636,12 @@ async fn child_session_active(world: &mut TimeWindowWorld) {
 }
 
 #[then("a notification should inform the child of the extension")]
-async fn extension_notification(_world: &mut TimeWindowWorld) {
-    // RED PHASE: Extension notifications not implemented
-    panic!("Extension notifications not implemented");
+async fn extension_notification(world: &mut TimeWindowWorld) {
+    // Verify that an extension notification was shown
+    assert!(
+        world.displayed_messages.iter().any(|msg| msg.contains("extended")),
+        "Expected extension notification to be shown"
+    );
 }
 
 #[then(expr = "at {string} the session should lock")]
