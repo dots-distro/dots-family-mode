@@ -11,6 +11,7 @@ pub mod policy_engine;
 pub mod profile_manager;
 pub mod reports;
 pub mod session_manager;
+pub mod time_window_enforcement_task;
 pub mod time_window_manager;
 
 #[cfg(test)]

@@ -17,14 +17,18 @@ use crate::{
     edge_case_handler::EdgeCaseHandler,
     enforcement::EnforcementEngine,
     monitoring_service::MonitoringService,
+    notification_manager::NotificationManager,
     policy_engine::PolicyEngine,
     profile_manager::ProfileManager,
+    time_window_enforcement_task::TimeWindowEnforcementTask,
+    time_window_manager::TimeWindowManager,
 };
 
 pub struct Daemon {
     ebpf_manager: RwLock<Option<EbpfManager>>,
     policy_engine: RwLock<PolicyEngine>,
     enforcement_engine: RwLock<EnforcementEngine>,
+    time_window_manager: RwLock<Option<Arc<TimeWindowManager>>>,
     config: DaemonConfig,
 }
 
@@ -41,6 +45,7 @@ impl Daemon {
             ebpf_manager: RwLock::new(None),
             policy_engine: RwLock::new(policy_engine),
             enforcement_engine: RwLock::new(enforcement_engine),
+            time_window_manager: RwLock::new(None),
             config,
         })
     }
@@ -78,6 +83,16 @@ impl Daemon {
         } else {
             None
         }
+    }
+
+    pub async fn set_time_window_manager(&self, manager: Arc<TimeWindowManager>) {
+        let mut time_window_manager = self.time_window_manager.write().await;
+        *time_window_manager = Some(manager);
+    }
+
+    pub async fn get_time_window_manager(&self) -> Option<Arc<TimeWindowManager>> {
+        let time_window_manager = self.time_window_manager.read().await;
+        time_window_manager.clone()
     }
 }
 
@@ -208,6 +223,31 @@ pub async fn run() -> Result<()> {
                 process_activity_enforcement(&daemon_clone_policy, &monitoring_service_clone).await
             {
                 warn!("Activity processing error: {}", e);
+            }
+        }
+    });
+
+    // Time window enforcement task - runs every 60 seconds
+    info!("Starting time window enforcement task");
+    let notification_manager = NotificationManager::new();
+    let time_window_manager = Arc::new(TimeWindowManager::new(notification_manager));
+
+    // Set time window manager in daemon so it's accessible from DBus service
+    daemon.set_time_window_manager(time_window_manager.clone()).await;
+
+    let enforcement_for_time_windows =
+        Arc::new(RwLock::new(EnforcementEngine::new(daemon.config.dry_run.unwrap_or(false))));
+    let time_window_task =
+        TimeWindowEnforcementTask::new(time_window_manager.clone(), enforcement_for_time_windows);
+
+    tokio::spawn(async move {
+        let mut interval_timer = interval(Duration::from_secs(60));
+
+        loop {
+            interval_timer.tick().await;
+
+            if let Err(e) = time_window_task.check_and_enforce().await {
+                error!("Time window enforcement error: {}", e);
             }
         }
     });

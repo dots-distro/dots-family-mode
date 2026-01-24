@@ -333,11 +333,22 @@ impl FamilyDaemonService {
         if let Some(ref daemon) = self.daemon {
             match self.profile_manager._load_profile(profile_id).await {
                 Ok(profile) => {
+                    // Sync to policy engine
                     let mut policy_engine = daemon.get_policy_engine_mut().await;
-                    if let Err(e) = policy_engine.set_active_profile(profile).await {
+                    if let Err(e) = policy_engine.set_active_profile(profile.clone()).await {
                         warn!("Failed to sync profile to policy engine: {}", e);
                     } else {
                         info!("Profile {} synced to policy engine", profile_id);
+                    }
+                    drop(policy_engine);
+
+                    // Sync to time window manager
+                    if let Some(time_window_manager) = daemon.get_time_window_manager().await {
+                        if let Err(e) = time_window_manager.set_active_profile(profile).await {
+                            warn!("Failed to sync profile to time window manager: {}", e);
+                        } else {
+                            info!("Profile {} synced to time window manager", profile_id);
+                        }
                     }
                 }
                 Err(e) => warn!("Failed to load profile for policy sync: {}", e),
@@ -586,11 +597,21 @@ impl FamilyDaemonService {
         if let Some(ref daemon) = self.daemon {
             match self.profile_manager._load_profile(profile_id).await {
                 Ok(profile) => {
+                    // Sync to policy engine
                     let mut policy_engine = daemon.get_policy_engine_mut().await;
-                    match policy_engine.set_active_profile(profile).await {
-                        Ok(()) => r#"{"status":"success"}"#.to_string(),
-                        Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+                    if let Err(e) = policy_engine.set_active_profile(profile.clone()).await {
+                        return format!(r#"{{"error":"{}"}}"#, e);
                     }
+                    drop(policy_engine);
+
+                    // Sync to time window manager
+                    if let Some(time_window_manager) = daemon.get_time_window_manager().await {
+                        if let Err(e) = time_window_manager.set_active_profile(profile).await {
+                            warn!("Failed to sync profile to time window manager: {}", e);
+                        }
+                    }
+
+                    r#"{"status":"success"}"#.to_string()
                 }
                 Err(e) => format!(r#"{{"error":"Failed to load profile: {}"}}"#, e),
             }

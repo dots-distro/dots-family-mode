@@ -14,6 +14,8 @@ mod policy_engine;
 mod profile_manager;
 mod reports;
 mod session_manager;
+mod time_window_enforcement_task;
+mod time_window_manager;
 
 #[tokio::main]
 async fn main() -> Result<()> {
