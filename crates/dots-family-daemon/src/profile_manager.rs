@@ -930,17 +930,27 @@ impl ProfileManager {
         Ok(requests)
     }
 
-    /// Approve an approval request and optionally create exception
+    /// Approve an approval request and create corresponding exception
     pub async fn approve_request(
         &self,
         request_id: &str,
         response_message: &str,
         token: &str,
     ) -> Result<Option<String>> {
-        use dots_family_db::queries::approval_requests::ApprovalRequestQueries;
+        use chrono::Utc;
+        use dots_family_db::{
+            models::NewException,
+            queries::{approval_requests::ApprovalRequestQueries, exceptions::ExceptionQueries},
+        };
 
         self.ensure_valid_session(token).await?;
 
+        // Get the approval request details before marking it as approved
+        let request = ApprovalRequestQueries::get_by_id(&self._db, request_id)
+            .await?
+            .ok_or_else(|| anyhow!("Approval request not found"))?;
+
+        // Mark the request as approved
         ApprovalRequestQueries::review_request(
             &self._db,
             request_id,
@@ -950,10 +960,147 @@ impl ProfileManager {
         )
         .await?;
 
-        // TODO: Create corresponding exception based on request type
-        // For now, return None until we implement exception creation logic
+        // Parse the request type from the stored string and details
+        let request_type =
+            self.parse_request_type_from_db(&request.request_type, &request.details)?;
 
-        Ok(None)
+        // Convert RequestType to ExceptionType
+        let exception_type = request_type.to_exception_type();
+
+        // Get default duration for this request type
+        let duration = request_type.default_exception_duration();
+
+        // Calculate expiration time based on duration
+        let expires_at = match duration {
+            dots_family_common::types::ExceptionDuration::Duration(d) => Utc::now() + d,
+            dots_family_common::types::ExceptionDuration::UntilTime(t) => t,
+            dots_family_common::types::ExceptionDuration::UntilEndOfDay => {
+                let end_of_day = Utc::now().date_naive().and_hms_opt(23, 59, 59).unwrap();
+                chrono::DateTime::from_naive_utc_and_offset(end_of_day, Utc)
+            }
+            // For session-based or manual exceptions, set a far future date
+            _ => Utc::now() + chrono::Duration::days(365),
+        };
+
+        // Create the exception in the database
+        let exception_id = uuid::Uuid::new_v4().to_string();
+
+        // Map ExceptionType to database fields
+        let (db_exception_type, app_id, website, amount_minutes) = match exception_type {
+            dots_family_common::types::ExceptionType::ApplicationOverride { app_id } => {
+                ("app".to_string(), Some(app_id), None, None)
+            }
+            dots_family_common::types::ExceptionType::WebsiteOverride { domain } => {
+                ("website".to_string(), None, Some(domain), None)
+            }
+            dots_family_common::types::ExceptionType::ScreenTimeExtension { extra_minutes } => {
+                ("screen_time".to_string(), None, None, Some(extra_minutes as i64))
+            }
+            dots_family_common::types::ExceptionType::TimeWindowOverride { .. } => {
+                ("time".to_string(), None, None, None)
+            }
+            dots_family_common::types::ExceptionType::TerminalCommandOverride { command } => {
+                // Store command in app_id field for now
+                ("command".to_string(), Some(command), None, None)
+            }
+            dots_family_common::types::ExceptionType::CustomOverride { description, .. } => {
+                // Store description in app_id field
+                ("custom".to_string(), Some(description), None, None)
+            }
+        };
+
+        let new_exception = NewException {
+            id: exception_id.clone(),
+            profile_id: request.profile_id.clone(),
+            exception_type: db_exception_type.clone(),
+            granted_by: "parent".to_string(),
+            expires_at,
+            reason: Some(response_message.to_string()),
+            amount_minutes,
+            app_id,
+            website,
+            scope: None,
+        };
+
+        ExceptionQueries::create(&self._db, new_exception).await?;
+
+        // Send notification about exception creation
+        let profile_uuid = Uuid::parse_str(&request.profile_id)?;
+        let exception_uuid = Uuid::parse_str(&exception_id)?;
+        let notification = NotificationManager::create_exception_notification(
+            profile_uuid,
+            exception_uuid,
+            &db_exception_type,
+            true, // is_created = true
+        );
+
+        if let Err(e) = self.notification_manager.send_notification(notification).await {
+            warn!("Failed to send exception creation notification: {}", e);
+        }
+
+        Ok(Some(exception_id))
+    }
+
+    /// Helper to parse request type from database format
+    fn parse_request_type_from_db(
+        &self,
+        request_type_str: &str,
+        details: &serde_json::Value,
+    ) -> Result<dots_family_common::types::RequestType> {
+        use chrono::Utc;
+        use dots_family_common::types::RequestType;
+
+        match request_type_str {
+            "app" => {
+                let app_id = details["app_id"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing app_id in request details"))?
+                    .to_string();
+                Ok(RequestType::ApplicationAccess { app_id })
+            }
+            "website" => {
+                let url = details["url"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing url in request details"))?
+                    .to_string();
+                let domain = details["domain"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing domain in request details"))?
+                    .to_string();
+                Ok(RequestType::WebsiteAccess { url, domain })
+            }
+            "screen_time" => {
+                let requested_minutes = details["requested_minutes"]
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("Missing requested_minutes in request details"))?
+                    as u32;
+                Ok(RequestType::ScreenTimeExtension { requested_minutes })
+            }
+            "time_extension" => {
+                let requested_end_time_str = details["requested_end_time"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing requested_end_time in request details"))?;
+                let requested_end_time =
+                    chrono::DateTime::parse_from_rfc3339(requested_end_time_str)?
+                        .with_timezone(&Utc);
+                Ok(RequestType::TimeExtension { requested_end_time })
+            }
+            "command" => {
+                let command = details["command"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing command in request details"))?
+                    .to_string();
+                Ok(RequestType::TerminalCommand { command })
+            }
+            "custom" => {
+                let description = details["description"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing description in request details"))?
+                    .to_string();
+                Ok(RequestType::Custom { description })
+            }
+            _ => Err(anyhow!("Unknown request type: {}", request_type_str)),
+        }
     }
 
     /// Deny an approval request  

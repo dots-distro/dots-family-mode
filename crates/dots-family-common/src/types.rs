@@ -328,6 +328,56 @@ pub enum RequestType {
     Custom { description: String },
 }
 
+impl RequestType {
+    /// Convert a RequestType to the corresponding ExceptionType
+    /// This is used when a parent approves a request to automatically create an exception
+    pub fn to_exception_type(&self) -> ExceptionType {
+        match self {
+            RequestType::ApplicationAccess { app_id } => {
+                ExceptionType::ApplicationOverride { app_id: app_id.clone() }
+            }
+            RequestType::WebsiteAccess { domain, .. } => {
+                ExceptionType::WebsiteOverride { domain: domain.clone() }
+            }
+            RequestType::ScreenTimeExtension { requested_minutes } => {
+                ExceptionType::ScreenTimeExtension { extra_minutes: *requested_minutes }
+            }
+            RequestType::TimeExtension { requested_end_time } => {
+                ExceptionType::TimeWindowOverride { start: Utc::now(), end: *requested_end_time }
+            }
+            RequestType::TerminalCommand { command } => {
+                ExceptionType::TerminalCommandOverride { command: command.clone() }
+            }
+            RequestType::Custom { description } => ExceptionType::CustomOverride {
+                description: description.clone(),
+                policy_changes: HashMap::new(),
+            },
+        }
+    }
+
+    /// Get the default duration for an exception created from this request type
+    pub fn default_exception_duration(&self) -> ExceptionDuration {
+        match self {
+            // Application access: 1 hour
+            RequestType::ApplicationAccess { .. } => {
+                ExceptionDuration::Duration(Duration::hours(1))
+            }
+            // Website access: 1 hour
+            RequestType::WebsiteAccess { .. } => ExceptionDuration::Duration(Duration::hours(1)),
+            // Screen time extension: Until end of day (the extra time is for today)
+            RequestType::ScreenTimeExtension { .. } => ExceptionDuration::UntilEndOfDay,
+            // Time extension: Until the requested end time
+            RequestType::TimeExtension { requested_end_time } => {
+                ExceptionDuration::UntilTime(*requested_end_time)
+            }
+            // Terminal command: One-time use (until end of session)
+            RequestType::TerminalCommand { .. } => ExceptionDuration::UntilSessionEnd,
+            // Custom: Manual (requires explicit parent revocation)
+            RequestType::Custom { .. } => ExceptionDuration::Manual,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RequestStatus {
     /// Request is pending parent review
