@@ -1,7 +1,10 @@
+use std::{
+    path::Path,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use aya::Bpf;
 use serde_json::{json, Value};
-use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 use tracing::info;
 

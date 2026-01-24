@@ -1,13 +1,15 @@
+use std::{sync::Arc, time::SystemTime};
+
 use anyhow::Result;
+use dots_family_proto::events::ActivityEvent;
 use serde_json::Value;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::{interval, Duration};
+use tokio::{
+    sync::Mutex,
+    time::{interval, Duration},
+};
 use tracing::{error, info, warn};
 
 use crate::ebpf::{FilesystemMonitorEbpf, NetworkMonitorEbpf, ProcessMonitorEbpf};
-use dots_family_proto::events::ActivityEvent;
-use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct MonitoringService {

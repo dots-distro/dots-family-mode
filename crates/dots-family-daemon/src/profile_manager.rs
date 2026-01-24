@@ -1,19 +1,18 @@
+use std::{collections::HashMap, sync::Arc, time::Instant};
+
 use anyhow::{anyhow, Result};
-use dots_family_common::security::{EncryptionKey, PasswordManager, SessionToken};
-use dots_family_common::types::{ApplicationMode, Profile};
-use dots_family_db::queries::profiles::ProfileQueries;
-use dots_family_db::Database;
+use dots_family_common::{
+    security::{EncryptionKey, PasswordManager, SessionToken},
+    types::{ApplicationMode, Profile},
+};
+use dots_family_db::{queries::profiles::ProfileQueries, Database};
 use secrecy::SecretString;
 use sqlx::Row;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use crate::config::DaemonConfig;
-use crate::notification_manager::NotificationManager;
+use crate::{config::DaemonConfig, notification_manager::NotificationManager};
 
 #[allow(dead_code)]
 const HEARTBEAT_TIMEOUT_SECS: u64 = 30;
@@ -108,8 +107,7 @@ impl ProfileManager {
     }
 
     async fn create_session_for_profile(&self, profile_id: &str) -> Result<()> {
-        use dots_family_db::models::NewSession;
-        use dots_family_db::queries::sessions::SessionQueries;
+        use dots_family_db::{models::NewSession, queries::sessions::SessionQueries};
 
         let new_session = NewSession::new(profile_id.to_string());
         let session_id = new_session.id.clone();
@@ -162,8 +160,7 @@ impl ProfileManager {
     }
 
     pub async fn _set_active_profile(&self, profile_id: &str) -> Result<()> {
-        use dots_family_db::models::NewSession;
-        use dots_family_db::queries::sessions::SessionQueries;
+        use dots_family_db::{models::NewSession, queries::sessions::SessionQueries};
 
         let profile = self._load_profile(profile_id).await?;
 
@@ -251,8 +248,10 @@ impl ProfileManager {
             ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig,
             TerminalFilteringConfig, TimeWindow, TimeWindows, WebFilteringConfig,
         };
-        use dots_family_db::models::{NewAuditLog, NewProfile};
-        use dots_family_db::queries::{audit::AuditQueries, profiles::ProfileQueries};
+        use dots_family_db::{
+            models::{NewAuditLog, NewProfile},
+            queries::{audit::AuditQueries, profiles::ProfileQueries},
+        };
 
         let age_group_enum = match age_group {
             "5-7" => dots_family_common::types::AgeGroup::EarlyElementary,
@@ -409,8 +408,7 @@ impl ProfileManager {
 
     pub async fn report_activity(&self, activity_json: &str) -> Result<()> {
         use dots_family_common::types::Activity;
-        use dots_family_db::models::NewActivity;
-        use dots_family_db::queries::activities::ActivityQueries;
+        use dots_family_db::{models::NewActivity, queries::activities::ActivityQueries};
 
         info!("Activity reported: {}", activity_json);
 
@@ -616,8 +614,7 @@ impl ProfileManager {
     }
 
     async fn ensure_valid_session(&self, token: &str) -> Result<()> {
-        use dots_family_db::models::NewAuditLog;
-        use dots_family_db::queries::audit::AuditQueries;
+        use dots_family_db::{models::NewAuditLog, queries::audit::AuditQueries};
 
         if !self.validate_session(token).await {
             let audit = NewAuditLog {
@@ -636,8 +633,7 @@ impl ProfileManager {
     }
 
     async fn log_permission_request(&self, request_type: &str, details: &str) -> Result<String> {
-        use dots_family_db::models::NewAuditLog;
-        use dots_family_db::queries::audit::AuditQueries;
+        use dots_family_db::{models::NewAuditLog, queries::audit::AuditQueries};
 
         let approval_id = Uuid::new_v4().to_string();
 
@@ -678,8 +674,7 @@ impl ProfileManager {
         risk_level: &str,
         reasons: &str,
     ) -> Result<String> {
-        use dots_family_db::models::NewAuditLog;
-        use dots_family_db::queries::audit::AuditQueries;
+        use dots_family_db::{models::NewAuditLog, queries::audit::AuditQueries};
 
         let approval_id = Uuid::new_v4().to_string();
 
@@ -1193,14 +1188,14 @@ impl ProfileManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use dots_family_common::types::{
         ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig,
         TerminalFilteringConfig, TimeWindows, WebFilteringConfig,
     };
-    use dots_family_db::queries::profiles::ProfileQueries;
-    use dots_family_db::Database;
+    use dots_family_db::{queries::profiles::ProfileQueries, Database};
     use tempfile::tempdir;
+
+    use super::*;
 
     async fn setup_test_db() -> (Database, tempfile::TempDir, DaemonConfig) {
         let dir = tempdir().unwrap();
@@ -1523,8 +1518,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_bdd_given_activities_when_get_used_time_today_then_returns_total() {
-        use dots_family_db::models::NewActivity;
-        use dots_family_db::queries::activities::ActivityQueries;
+        use dots_family_db::{models::NewActivity, queries::activities::ActivityQueries};
 
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
@@ -1562,8 +1556,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_bdd_given_used_time_when_get_remaining_time_then_returns_difference() {
-        use dots_family_db::models::NewActivity;
-        use dots_family_db::queries::activities::ActivityQueries;
+        use dots_family_db::{models::NewActivity, queries::activities::ActivityQueries};
 
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;
@@ -1590,8 +1583,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_bdd_given_time_limit_exceeded_when_check_app_then_returns_false() {
-        use dots_family_db::models::NewActivity;
-        use dots_family_db::queries::activities::ActivityQueries;
+        use dots_family_db::{models::NewActivity, queries::activities::ActivityQueries};
 
         let (db, _dir, config) = setup_test_db().await;
         let profile_id = create_test_profile(&db, "Test Child").await;

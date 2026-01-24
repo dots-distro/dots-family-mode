@@ -1,9 +1,10 @@
+use std::time::SystemTime;
+
 use anyhow::Result;
 use chrono::{Datelike, Local, NaiveTime};
 use dots_family_common::types::{ApplicationMode, Profile, TimeWindow};
 use dots_family_proto::events::ActivityEvent;
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -290,17 +291,62 @@ impl PolicyEngine {
     pub async fn get_active_profile(&self) -> Option<&Profile> {
         self.active_profile.as_ref()
     }
+
+    /// Check if current time allows access based on time windows
+    pub async fn check_time_window_access(&self) -> Result<bool> {
+        if let Some(profile) = &self.active_profile {
+            Ok(self.is_within_allowed_time_window(profile))
+        } else {
+            // No profile, allow by default
+            Ok(true)
+        }
+    }
+
+    /// Get the next available time window for the active profile
+    pub async fn get_next_time_window(&self) -> Result<Option<TimeWindow>> {
+        if let Some(profile) = &self.active_profile {
+            let now = Local::now();
+            let current_time = now.time();
+            let is_weekend = now.weekday().num_days_from_monday() >= 5;
+
+            let time_windows = if is_weekend {
+                &profile.config.screen_time.windows.weekend
+            } else {
+                &profile.config.screen_time.windows.weekday
+            };
+
+            // Find the next window after current time
+            for window in time_windows {
+                if let Ok(start_time) = NaiveTime::parse_from_str(&window.start, "%H:%M") {
+                    if start_time > current_time {
+                        return Ok(Some(window.clone()));
+                    }
+                }
+            }
+
+            // If no window found today, return the first window of tomorrow
+            if let Some(first_window) = time_windows.first() {
+                return Ok(Some(first_window.clone()));
+            }
+
+            Ok(None)
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::time::SystemTime;
+
     use chrono::Utc;
     use dots_family_common::types::{
         AgeGroup, ApplicationConfig, ProfileConfig, ScreenTimeConfig, TimeWindows,
     };
-    use std::time::SystemTime;
     use uuid::Uuid;
+
+    use super::*;
 
     fn create_test_profile(
         age_group: AgeGroup,

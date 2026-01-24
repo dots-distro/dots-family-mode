@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use chrono::{Duration, Utc};
 use dots_family_common::types::{ActivityPattern, AlertSeverity, AlertType, BehaviorAlert};
 use dots_family_db::Database;
-use std::collections::HashMap;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -373,8 +374,9 @@ impl BehaviorAnalyzer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::tempdir;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_behavior_analyzer_creation() {

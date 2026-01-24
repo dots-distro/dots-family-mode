@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use std::process::Command;
+
+use anyhow::{Context, Result};
 use tracing::{debug, error, info, warn};
 
 pub struct EnforcementEngine {
@@ -197,6 +198,78 @@ impl EnforcementEngine {
             Err(e) => {
                 warn!("Failed to send notification: {}", e);
             }
+        }
+
+        Ok(())
+    }
+
+    /// Lock the current user session using loginctl
+    pub async fn lock_session(&self, username: Option<&str>) -> Result<()> {
+        info!("Attempting to lock session for user: {:?}", username);
+
+        if self.dry_run {
+            warn!("DRY RUN: Would lock session for user: {:?}", username);
+            return Ok(());
+        }
+
+        // Use loginctl to lock the session
+        // If username is provided, find their session and lock it
+        // Otherwise, lock all sessions
+        let output = if let Some(user) = username {
+            // Get the user's session ID
+            let list_output = Command::new("loginctl")
+                .args(["list-sessions", "--no-legend"])
+                .output()
+                .context("Failed to list sessions")?;
+
+            if !list_output.status.success() {
+                let error_msg = String::from_utf8_lossy(&list_output.stderr);
+                error!("Failed to list sessions: {}", error_msg);
+                return Err(anyhow::anyhow!("Failed to list sessions: {}", error_msg));
+            }
+
+            let sessions_str = String::from_utf8_lossy(&list_output.stdout);
+            let mut session_id = None;
+
+            // Parse session list to find user's session
+            for line in sessions_str.lines() {
+                if line.contains(user) {
+                    // Extract session ID (first column)
+                    if let Some(sid) = line.split_whitespace().next() {
+                        session_id = Some(sid.to_string());
+                        break;
+                    }
+                }
+            }
+
+            match session_id {
+                Some(sid) => {
+                    info!("Locking session {} for user {}", sid, user);
+                    Command::new("loginctl")
+                        .args(["lock-session", &sid])
+                        .output()
+                        .context("Failed to execute loginctl lock-session")?
+                }
+                None => {
+                    warn!("No active session found for user {}", user);
+                    return Ok(());
+                }
+            }
+        } else {
+            // Lock all sessions
+            info!("Locking all sessions");
+            Command::new("loginctl")
+                .arg("lock-sessions")
+                .output()
+                .context("Failed to execute loginctl lock-sessions")?
+        };
+
+        if output.status.success() {
+            info!("Successfully locked session(s)");
+        } else {
+            let error_msg = String::from_utf8_lossy(&output.stderr);
+            error!("Failed to lock session: {}", error_msg);
+            return Err(anyhow::anyhow!("Failed to lock session: {}", error_msg));
         }
 
         Ok(())

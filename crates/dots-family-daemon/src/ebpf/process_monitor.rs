@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use aya::Bpf;
-use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 
 /// Process monitor using eBPF for kernel-level monitoring

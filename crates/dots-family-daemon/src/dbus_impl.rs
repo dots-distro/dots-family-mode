@@ -1,14 +1,14 @@
-use anyhow::Result;
 use std::sync::Arc;
+
+use anyhow::Result;
+use dots_family_proto::events::ActivityEvent;
 use tracing::{debug, error, info, warn};
 use zbus::interface;
 
-use crate::config::DaemonConfig;
-use crate::daemon::Daemon;
-use crate::enforcement::EnforcementEngine;
-use crate::monitoring_service::MonitoringService;
-use crate::profile_manager::ProfileManager;
-use dots_family_proto::events::ActivityEvent;
+use crate::{
+    config::DaemonConfig, daemon::Daemon, enforcement::EnforcementEngine,
+    monitoring_service::MonitoringService, profile_manager::ProfileManager,
+};
 
 pub struct FamilyDaemonService {
     profile_manager: ProfileManager,
@@ -642,6 +642,69 @@ impl FamilyDaemonService {
             }
         }
     }
+
+    /// Check if current time is within allowed time windows
+    async fn check_time_window(&self) -> String {
+        if let Some(ref daemon) = self.daemon {
+            let policy_engine = daemon.get_policy_engine().await;
+            match policy_engine.check_time_window_access().await {
+                Ok(allowed) => serde_json::json!({
+                    "allowed": allowed,
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                })
+                .to_string(),
+                Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+            }
+        } else {
+            r#"{"error":"Policy engine not available"}"#.to_string()
+        }
+    }
+
+    /// Get the next available time window
+    async fn get_next_time_window(&self) -> String {
+        if let Some(ref daemon) = self.daemon {
+            let policy_engine = daemon.get_policy_engine().await;
+            match policy_engine.get_next_time_window().await {
+                Ok(Some(window)) => serde_json::json!({
+                    "start": window.start,
+                    "end": window.end,
+                    "available": true
+                })
+                .to_string(),
+                Ok(None) => {
+                    r#"{"available":false,"reason":"No upcoming windows configured"}"#.to_string()
+                }
+                Err(e) => format!(r#"{{"error":"{}"}}"#, e),
+            }
+        } else {
+            r#"{"error":"Policy engine not available"}"#.to_string()
+        }
+    }
+
+    /// Lock the current user session
+    async fn lock_session(&self, username: &str) -> String {
+        if let Some(ref daemon) = self.daemon {
+            let enforcement = daemon.get_enforcement_engine().await;
+            match enforcement
+                .lock_session(if username.is_empty() { None } else { Some(username) })
+                .await
+            {
+                Ok(()) => r#"{"status":"success","session_locked":true}"#.to_string(),
+                Err(e) => {
+                    error!("Failed to lock session for {}: {}", username, e);
+                    format!(r#"{{"error":"{}","session_locked":false}}"#, e)
+                }
+            }
+        } else {
+            r#"{"error":"Enforcement engine not available"}"#.to_string()
+        }
+    }
+
+    #[zbus(signal)]
+    async fn time_window_ending(
+        signal_ctxt: &zbus::SignalContext<'_>,
+        minutes_remaining: u32,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn policy_updated(

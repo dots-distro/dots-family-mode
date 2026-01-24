@@ -1,7 +1,7 @@
-use anyhow::Result;
-use dots_family_db::queries::SessionQueries;
-use dots_family_db::{Database, NewSession};
 use std::sync::Arc;
+
+use anyhow::Result;
+use dots_family_db::{queries::SessionQueries, Database, NewSession};
 use tokio::sync::RwLock;
 use tracing::info;
 

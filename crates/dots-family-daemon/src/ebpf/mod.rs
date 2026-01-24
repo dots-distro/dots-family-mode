@@ -2,14 +2,14 @@ pub mod filesystem_monitor;
 pub mod network_monitor;
 pub mod process_monitor;
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use aya::Bpf;
-use std::collections::HashMap;
-use tracing::{error, info, warn};
-
 pub use filesystem_monitor::FilesystemMonitorEbpf;
 pub use network_monitor::NetworkMonitorEbpf;
 pub use process_monitor::ProcessMonitorEbpf;
+use tracing::{error, info, warn};
 
 /// Health status for eBPF programs
 #[derive(Debug, Clone)]
