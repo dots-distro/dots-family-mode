@@ -238,6 +238,25 @@ in {
             description = "Time windows for weekends when computer access is allowed";
           };
           
+          holidayTimeWindows = lib.mkOption {
+            type = lib.types.listOf (lib.types.submodule {
+              options = {
+                start = lib.mkOption {
+                  type = lib.types.str;
+                  example = "09:00";
+                  description = "Start time (24-hour format)";
+                };
+                end = lib.mkOption {
+                  type = lib.types.str;
+                  example = "17:00";
+                  description = "End time (24-hour format)";
+                };
+              };
+            });
+            default = [ ];
+            description = "Time windows for holidays when computer access is allowed";
+          };
+          
           allowedApplications = lib.mkOption {
             type = lib.types.listOf lib.types.str;
             default = [ ];

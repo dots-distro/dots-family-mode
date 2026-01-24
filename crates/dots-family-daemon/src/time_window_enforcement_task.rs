@@ -3,12 +3,9 @@ use std::sync::Arc;
 use anyhow::Result;
 use dots_family_common::AccessResult;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
-use crate::{
-    enforcement::EnforcementEngine, notification_manager::NotificationManager,
-    time_window_manager::TimeWindowManager,
-};
+use crate::{enforcement::EnforcementEngine, time_window_manager::TimeWindowManager};
 
 /// Handles periodic time window enforcement checks
 pub struct TimeWindowEnforcementTask {
@@ -61,8 +58,8 @@ impl TimeWindowEnforcementTask {
                 if self.time_window_manager.should_warn().await? {
                     let warning_sent = self.last_warning_sent.read().await;
                     if !*warning_sent {
-                        // Send warning notification
-                        self.send_warning_notification().await?;
+                        // Send warning notification using TimeWindowManager
+                        self.time_window_manager.send_warning_notification().await?;
 
                         // Mark that we sent the warning
                         drop(warning_sent);

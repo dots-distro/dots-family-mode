@@ -303,6 +303,7 @@ impl ProfileManager {
                         start: "09:00".to_string(),
                         end: "21:00".to_string(),
                     }],
+                    holiday: vec![],
                 },
             },
             applications: ApplicationConfig {

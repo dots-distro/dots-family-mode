@@ -7,7 +7,7 @@ use dots_family_common::{
     AccessResult, TimeWindowConfig, TimeWindowEnforcer,
 };
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use crate::notification_manager::NotificationManager;
 
@@ -38,9 +38,9 @@ impl TimeWindowManager {
         let config = TimeWindowConfig {
             weekday_windows: profile.config.screen_time.windows.weekday.clone(),
             weekend_windows: profile.config.screen_time.windows.weekend.clone(),
-            holiday_windows: Vec::new(), // TODO: Add holiday support to Profile
-            grace_period_minutes: 2,     // Default grace period
-            warning_minutes: 5,          // Default warning time
+            holiday_windows: profile.config.screen_time.windows.holiday.clone(),
+            grace_period_minutes: 2, // Default grace period
+            warning_minutes: 5,      // Default warning time
         };
 
         // Create enforcer
@@ -117,9 +117,30 @@ impl TimeWindowManager {
         if let Some(message) = self.get_warning_message().await? {
             info!("Sending time window warning: {}", message);
 
-            // TODO: Use NotificationManager to send desktop notification
-            // For now, just log
-            warn!("TIME WINDOW WARNING: {}", message);
+            // Get active profile to include in notification
+            let profile = self.active_profile.read().await;
+            if let Some(profile) = profile.as_ref() {
+                // Extract minutes from warning message (format: "Your time window ends at HH:MM (N minutes)")
+                let minutes_remaining = if message.contains("minutes)") {
+                    // Parse the minutes from the message
+                    message
+                        .split('(')
+                        .nth(1)
+                        .and_then(|s| s.split(' ').next())
+                        .and_then(|s| s.parse::<u32>().ok())
+                        .unwrap_or(5)
+                } else {
+                    5 // Default to 5 minutes if parsing fails
+                };
+
+                let notification = NotificationManager::create_time_window_ending_notification(
+                    profile.id,
+                    &profile.name,
+                    minutes_remaining,
+                );
+
+                self.notification_manager.send_notification(notification).await?;
+            }
 
             // Update last warning time
             let mut last_warning = self.last_warning_sent.write().await;
@@ -216,6 +237,7 @@ mod tests {
                             start: "08:00".to_string(),
                             end: "21:00".to_string(),
                         }],
+                        holiday: vec![],
                     },
                 },
                 applications: Default::default(),

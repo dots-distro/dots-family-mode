@@ -84,7 +84,7 @@ impl Default for ScreenTimeConfig {
             daily_limit_minutes: 120,
             weekend_bonus_minutes: 0,
             exempt_categories: Vec::new(),
-            windows: TimeWindows { weekday: Vec::new(), weekend: Vec::new() },
+            windows: TimeWindows { weekday: Vec::new(), weekend: Vec::new(), holiday: Vec::new() },
         }
     }
 }
@@ -93,6 +93,8 @@ impl Default for ScreenTimeConfig {
 pub struct TimeWindows {
     pub weekday: Vec<TimeWindow>,
     pub weekend: Vec<TimeWindow>,
+    #[serde(default)]
+    pub holiday: Vec<TimeWindow>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -617,7 +619,7 @@ mod tests {
                     daily_limit_minutes: 120,
                     weekend_bonus_minutes: 60,
                     exempt_categories: vec!["education".to_string()],
-                    windows: TimeWindows { weekday: vec![], weekend: vec![] },
+                    windows: TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
                 },
                 applications: ApplicationConfig {
                     mode: ApplicationMode::Allowlist,
@@ -664,6 +666,7 @@ mod tests {
                             start: "09:00".to_string(),
                             end: "22:00".to_string(),
                         }],
+                        holiday: vec![],
                     },
                 },
                 applications: ApplicationConfig {
@@ -809,6 +812,7 @@ mod tests {
             windows: TimeWindows {
                 weekday: vec![TimeWindow { start: "16:00".to_string(), end: "20:00".to_string() }],
                 weekend: vec![],
+                holiday: vec![],
             },
         };
 
