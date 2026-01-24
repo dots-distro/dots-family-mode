@@ -64,6 +64,9 @@ pub struct TimeWindowWorld {
 
     /// Scenario hint for GREEN phase hardcoded windows
     pub weekday_windows_config_count: usize,
+
+    /// Persistent notifications (for warnings that stay visible)
+    pub persistent_notifications: Vec<String>,
 }
 
 impl TimeWindowWorld {
@@ -90,6 +93,7 @@ impl TimeWindowWorld {
             override_duration_minutes: None,
             audit_log: Vec::new(),
             weekday_windows_config_count: 0,
+            persistent_notifications: Vec::new(),
         }
     }
 }
