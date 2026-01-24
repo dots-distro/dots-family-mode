@@ -147,7 +147,8 @@ impl ProfileManager {
 
         Ok(Profile {
             id: Uuid::parse_str(&db_profile.id)?,
-            name: db_profile.name,
+            name: db_profile.name.clone(),
+            username: None, // TODO: Add username field to database
             age_group,
             birthday: db_profile
                 .birthday
@@ -226,7 +227,8 @@ impl ProfileManager {
 
             let profile = Profile {
                 id: Uuid::parse_str(&db_profile.id)?,
-                name: db_profile.name,
+                name: db_profile.name.clone(),
+                username: None, // TODO: Add username field to database
                 age_group,
                 birthday: db_profile
                     .birthday

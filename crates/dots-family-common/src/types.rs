@@ -29,6 +29,9 @@ pub struct Profile {
     pub id: Uuid,
     /// Display name for the child
     pub name: String,
+    /// System username (e.g., "child1")
+    #[serde(default)]
+    pub username: Option<String>,
     /// Age-based classification determining default restrictions
     pub age_group: AgeGroup,
     /// Optional birthday for more precise age-based filtering
@@ -48,6 +51,7 @@ impl Default for Profile {
         Self {
             id: Uuid::new_v4(),
             name: String::new(),
+            username: None,
             age_group: AgeGroup::EarlyElementary,
             birthday: None,
             created_at: Utc::now(),

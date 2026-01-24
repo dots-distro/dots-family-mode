@@ -90,7 +90,10 @@ impl TimeWindowEnforcementTask {
 
                         // Lock the session
                         let enforcement = self.enforcement_engine.read().await;
-                        enforcement.lock_session(Some(&profile.name)).await?;
+
+                        // Use username if available, otherwise use profile name (fallback)
+                        let user_to_lock = profile.username.as_deref().or(Some(&profile.name));
+                        enforcement.lock_session(user_to_lock).await?;
 
                         // Mark session as locked
                         drop(locked);
