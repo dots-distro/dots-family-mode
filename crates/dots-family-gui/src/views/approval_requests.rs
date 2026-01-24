@@ -13,6 +13,10 @@ pub struct ApprovalRequests {
     request_cards: FactoryVecDeque<ApprovalRequestCard>,
     selected_request: Option<String>,
     response_message: String,
+    auth_token: Option<String>,
+    parent_password: String,
+    show_auth_dialog: bool,
+    auth_failed: bool,
 }
 
 #[derive(Debug)]
@@ -25,6 +29,11 @@ pub enum ApprovalRequestsMsg {
     DenySelected,
     UpdateResponseMessage(String),
     ShowMessage(String),
+    ShowAuthDialog,
+    ParentPasswordChanged(String),
+    AttemptAuth,
+    AuthenticationResult(bool, Option<String>),
+    DaemonClientReady(DaemonClient),
 }
 
 #[relm4::component(pub)]
@@ -34,134 +43,214 @@ impl SimpleComponent for ApprovalRequests {
     type Output = String;
 
     view! {
-        gtk4::ScrolledWindow {
-            set_policy: (gtk4::PolicyType::Never, gtk4::PolicyType::Automatic),
-
-            #[wrap(Some)]
-            set_child = &gtk4::Box {
+            gtk4::Box {
                 set_orientation: gtk4::Orientation::Vertical,
-                set_spacing: 20,
-                set_margin_all: 20,
 
-                gtk4::Box {
-                    set_orientation: gtk4::Orientation::Horizontal,
-                    set_spacing: 12,
-
-                    gtk4::Label {
-                        set_label: "Approval Requests",
-                        add_css_class: "title-1",
-                        set_halign: gtk4::Align::Start,
-                        set_hexpand: true,
-                    },
-
-                    gtk4::Button {
-                        set_icon_name: "view-refresh-symbolic",
-                        set_tooltip_text: Some("Refresh"),
-                        connect_clicked => ApprovalRequestsMsg::RefreshRequests,
-                    }
-                },
-
+                // Authentication Dialog Overlay
                 gtk4::Box {
                     set_orientation: gtk4::Orientation::Vertical,
-                    set_spacing: 12,
+                    set_spacing: 20,
+                    set_margin_all: 40,
+                    set_valign: gtk4::Align::Center,
+                    set_halign: gtk4::Align::Center,
 
                     #[watch]
-                    set_visible: model.request_cards.is_empty(),
+                    set_visible: model.show_auth_dialog,
 
-                    gtk4::Box {
-                        set_orientation: gtk4::Orientation::Vertical,
-                        set_spacing: 12,
-                        set_valign: gtk4::Align::Center,
-                        set_vexpand: true,
-                        set_margin_all: 40,
+                    gtk4::Frame {
+                        set_width_request: 400,
+                        add_css_class: "card",
 
-                        gtk4::Image {
-                            set_icon_name: Some("emblem-ok-symbolic"),
-                            set_pixel_size: 64,
-                            add_css_class: "success",
-                        },
+                        gtk4::Box {
+                            set_orientation: gtk4::Orientation::Vertical,
+                            set_spacing: 16,
+                            set_margin_all: 24,
 
-                        gtk4::Label {
-                            set_label: "No Pending Requests",
-                            add_css_class: "title-2",
-                        },
+                            gtk4::Label {
+                                set_label: "Parent Authentication Required",
+                                add_css_class: "title-2",
+                            },
 
-                        gtk4::Label {
-                            set_label: "All approval requests have been handled",
-                            add_css_class: "dim-label",
+                            gtk4::Label {
+                                set_label: "Enter your parent password to view approval requests",
+                                add_css_class: "dim-label",
+                                set_wrap: true,
+                            },
+
+                            gtk4::PasswordEntry {
+                                set_placeholder_text: Some("Parent password"),
+                                #[watch]
+                                set_text: &model.parent_password,
+                                set_show_peek_icon: true,
+                                connect_changed[sender] => move |entry| {
+                                    sender.input(ApprovalRequestsMsg::ParentPasswordChanged(
+                                        entry.text().to_string()
+                                    ));
+                                },
+                                connect_activate => ApprovalRequestsMsg::AttemptAuth,
+                            },
+
+                            gtk4::Box {
+                                #[watch]
+                                set_visible: model.auth_failed,
+                                set_orientation: gtk4::Orientation::Horizontal,
+                                set_spacing: 8,
+
+                                gtk4::Image {
+                                    set_icon_name: Some("dialog-error-symbolic"),
+                                    add_css_class: "error",
+                                },
+
+                                gtk4::Label {
+                                    set_label: "Authentication failed. Please check your password.",
+                                    add_css_class: "error",
+                                    set_wrap: true,
+                                }
+                            },
+
+                            gtk4::Button {
+                                set_label: "Authenticate",
+                                add_css_class: "suggested-action",
+                                #[watch]
+                                set_sensitive: !model.parent_password.is_empty(),
+                                connect_clicked => ApprovalRequestsMsg::AttemptAuth,
+                            }
                         }
                     }
                 },
 
-                gtk4::Box {
-                    set_orientation: gtk4::Orientation::Vertical,
-                    set_spacing: 12,
-
+                // Main Content (only visible when authenticated)
+                gtk4::ScrolledWindow {
+                    set_policy: (gtk4::PolicyType::Never, gtk4::PolicyType::Automatic),
                     #[watch]
-                    set_visible: !model.request_cards.is_empty(),
+                    set_visible: !model.show_auth_dialog && model.auth_token.is_some(),
 
-                    gtk4::Label {
-                        #[watch]
-                        set_label: &format!("{} pending request{}",
-                            model.request_cards.len(),
-                            if model.request_cards.len() == 1 { "" } else { "s" }
-                        ),
-                        add_css_class: "title-2",
-                        set_halign: gtk4::Align::Start,
-                    },
-
-                    #[local_ref]
-                    requests_box -> gtk4::Box {
-                        set_orientation: gtk4::Orientation::Vertical,
-                        set_spacing: 12,
-                    }
-                },
-
-                // Action buttons section
-                gtk4::Box {
+                    #[wrap(Some)]
+                    set_child = &gtk4::Box {
                     set_orientation: gtk4::Orientation::Vertical,
-                    set_spacing: 12,
-                    set_margin_top: 20,
-
-                    #[watch]
-                    set_visible: model.selected_request.is_some(),
-
-                    gtk4::Separator {},
-
-                    gtk4::Label {
-                        set_label: "Response Message (optional)",
-                        set_halign: gtk4::Align::Start,
-                        add_css_class: "heading",
-                    },
-
-                    gtk4::Entry {
-                        set_placeholder_text: Some("Enter a message for the child (optional)"),
-                        #[watch]
-                        set_text: &model.response_message,
-                        connect_changed[sender] => move |entry| {
-                            sender.input(ApprovalRequestsMsg::UpdateResponseMessage(
-                                entry.text().to_string()
-                            ));
-                        }
-                    },
+                    set_spacing: 20,
+                    set_margin_all: 20,
 
                     gtk4::Box {
                         set_orientation: gtk4::Orientation::Horizontal,
                         set_spacing: 12,
-                        set_halign: gtk4::Align::End,
 
-                        gtk4::Button {
-                            set_label: "Deny",
-                            add_css_class: "destructive-action",
-                            set_icon_name: "window-close-symbolic",
-                            connect_clicked => ApprovalRequestsMsg::DenySelected,
+                        gtk4::Label {
+                            set_label: "Approval Requests",
+                            add_css_class: "title-1",
+                            set_halign: gtk4::Align::Start,
+                            set_hexpand: true,
                         },
 
                         gtk4::Button {
-                            set_label: "Approve",
-                            add_css_class: "suggested-action",
-                            set_icon_name: "emblem-ok-symbolic",
-                            connect_clicked => ApprovalRequestsMsg::ApproveSelected,
+                            set_icon_name: "view-refresh-symbolic",
+                            set_tooltip_text: Some("Refresh"),
+                            connect_clicked => ApprovalRequestsMsg::RefreshRequests,
+                        }
+                    },
+
+                    gtk4::Box {
+                        set_orientation: gtk4::Orientation::Vertical,
+                        set_spacing: 12,
+
+                        #[watch]
+                        set_visible: model.request_cards.is_empty(),
+
+                        gtk4::Box {
+                            set_orientation: gtk4::Orientation::Vertical,
+                            set_spacing: 12,
+                            set_valign: gtk4::Align::Center,
+                            set_vexpand: true,
+                            set_margin_all: 40,
+
+                            gtk4::Image {
+                                set_icon_name: Some("emblem-ok-symbolic"),
+                                set_pixel_size: 64,
+                                add_css_class: "success",
+                            },
+
+                            gtk4::Label {
+                                set_label: "No Pending Requests",
+                                add_css_class: "title-2",
+                            },
+
+                            gtk4::Label {
+                                set_label: "All approval requests have been handled",
+                                add_css_class: "dim-label",
+                            }
+                        }
+                    },
+
+                    gtk4::Box {
+                        set_orientation: gtk4::Orientation::Vertical,
+                        set_spacing: 12,
+
+                        #[watch]
+                        set_visible: !model.request_cards.is_empty(),
+
+                        gtk4::Label {
+                            #[watch]
+                            set_label: &format!("{} pending request{}",
+                                model.request_cards.len(),
+                                if model.request_cards.len() == 1 { "" } else { "s" }
+                            ),
+                            add_css_class: "title-2",
+                            set_halign: gtk4::Align::Start,
+                        },
+
+                        #[local_ref]
+                        requests_box -> gtk4::Box {
+                            set_orientation: gtk4::Orientation::Vertical,
+                            set_spacing: 12,
+                        }
+                    },
+
+                    // Action buttons section
+                    gtk4::Box {
+                        set_orientation: gtk4::Orientation::Vertical,
+                        set_spacing: 12,
+                        set_margin_top: 20,
+
+                        #[watch]
+                        set_visible: model.selected_request.is_some(),
+
+                        gtk4::Separator {},
+
+                        gtk4::Label {
+                            set_label: "Response Message (optional)",
+                            set_halign: gtk4::Align::Start,
+                            add_css_class: "heading",
+                        },
+
+                        gtk4::Entry {
+                            set_placeholder_text: Some("Enter a message for the child (optional)"),
+                            #[watch]
+                            set_text: &model.response_message,
+                            connect_changed[sender] => move |entry| {
+                                sender.input(ApprovalRequestsMsg::UpdateResponseMessage(
+                                    entry.text().to_string()
+                                ));
+                            }
+                        },
+
+                        gtk4::Box {
+                            set_orientation: gtk4::Orientation::Horizontal,
+                            set_spacing: 12,
+                            set_halign: gtk4::Align::End,
+
+                            gtk4::Button {
+                                set_label: "Deny",
+                                add_css_class: "destructive-action",
+                                set_icon_name: "window-close-symbolic",
+                                connect_clicked => ApprovalRequestsMsg::DenySelected,
+                            },
+
+                            gtk4::Button {
+                                set_label: "Approve",
+                                add_css_class: "suggested-action",
+                                set_icon_name: "emblem-ok-symbolic",
+                                connect_clicked => ApprovalRequestsMsg::ApproveSelected,
+                            }
                         }
                     }
                 }
@@ -191,17 +280,24 @@ impl SimpleComponent for ApprovalRequests {
             request_cards,
             selected_request: None,
             response_message: String::new(),
+            auth_token: None,
+            parent_password: String::new(),
+            show_auth_dialog: true,
+            auth_failed: false,
         };
 
         let widgets = view_output!();
 
         // Initialize daemon client asynchronously
-        let sender_clone = sender.clone();
-        relm4::spawn(async move {
-            let client = DaemonClient::new().await;
-            if client.connect().await.is_ok() {
-                // Store client somehow - for now just trigger refresh
-                sender_clone.input(ApprovalRequestsMsg::RefreshRequests);
+        relm4::spawn_local({
+            let sender = sender.clone();
+            async move {
+                let client = DaemonClient::new().await;
+                if client.connect().await.is_ok() {
+                    sender.input(ApprovalRequestsMsg::DaemonClientReady(client));
+                } else {
+                    eprintln!("Failed to connect to daemon");
+                }
             }
         });
 
@@ -214,14 +310,12 @@ impl SimpleComponent for ApprovalRequests {
                 self.profile = profile;
             }
             ApprovalRequestsMsg::RefreshRequests => {
-                if let Some(daemon_client) = &self.daemon_client {
+                if let (Some(daemon_client), Some(token)) = (&self.daemon_client, &self.auth_token)
+                {
                     let daemon_client = daemon_client.clone();
+                    let token = token.clone();
                     relm4::spawn(async move {
-                        // TODO: Get token from authentication
-                        // For now, this will fail gracefully
-                        let token = ""; // Placeholder - needs parent auth
-
-                        match daemon_client.list_pending_requests(token).await {
+                        match daemon_client.list_pending_requests(&token).await {
                             Ok(response_json) => {
                                 match serde_json::from_str::<Vec<ApprovalRequest>>(&response_json) {
                                     Ok(requests) => {
@@ -240,7 +334,7 @@ impl SimpleComponent for ApprovalRequests {
                         }
                     });
                 } else {
-                    eprintln!("Daemon client not initialized");
+                    eprintln!("Daemon client not initialized or not authenticated");
                 }
             }
             ApprovalRequestsMsg::UpdateRequests(requests) => {
@@ -258,17 +352,16 @@ impl SimpleComponent for ApprovalRequests {
                 self.response_message.clear();
             }
             ApprovalRequestsMsg::ApproveSelected => {
-                if let (Some(request_id), Some(daemon_client)) =
-                    (&self.selected_request, &self.daemon_client)
+                if let (Some(request_id), Some(daemon_client), Some(token)) =
+                    (&self.selected_request, &self.daemon_client, &self.auth_token)
                 {
                     let request_id = request_id.clone();
                     let message = self.response_message.clone();
                     let daemon_client = daemon_client.clone();
+                    let token = token.clone();
 
                     relm4::spawn(async move {
-                        let token = ""; // TODO: Get token from authentication
-
-                        match daemon_client.approve_request(&request_id, &message, token).await {
+                        match daemon_client.approve_request(&request_id, &message, &token).await {
                             Ok(_response) => {
                                 sender.input(ApprovalRequestsMsg::ShowMessage(
                                     "Request approved successfully".to_string(),
@@ -289,17 +382,16 @@ impl SimpleComponent for ApprovalRequests {
                 }
             }
             ApprovalRequestsMsg::DenySelected => {
-                if let (Some(request_id), Some(daemon_client)) =
-                    (&self.selected_request, &self.daemon_client)
+                if let (Some(request_id), Some(daemon_client), Some(token)) =
+                    (&self.selected_request, &self.daemon_client, &self.auth_token)
                 {
                     let request_id = request_id.clone();
                     let message = self.response_message.clone();
                     let daemon_client = daemon_client.clone();
+                    let token = token.clone();
 
                     relm4::spawn(async move {
-                        let token = ""; // TODO: Get token from authentication
-
-                        match daemon_client.deny_request(&request_id, &message, token).await {
+                        match daemon_client.deny_request(&request_id, &message, &token).await {
                             Ok(_response) => {
                                 sender.input(ApprovalRequestsMsg::ShowMessage(
                                     "Request denied".to_string(),
@@ -324,6 +416,59 @@ impl SimpleComponent for ApprovalRequests {
             }
             ApprovalRequestsMsg::ShowMessage(message) => {
                 let _ = sender.output(message);
+            }
+            ApprovalRequestsMsg::ShowAuthDialog => {
+                self.show_auth_dialog = true;
+                self.auth_failed = false;
+                self.parent_password.clear();
+            }
+            ApprovalRequestsMsg::ParentPasswordChanged(password) => {
+                self.parent_password = password;
+                self.auth_failed = false;
+            }
+            ApprovalRequestsMsg::AttemptAuth => {
+                if let Some(daemon_client) = &self.daemon_client {
+                    let daemon_client = daemon_client.clone();
+                    let password = self.parent_password.clone();
+
+                    relm4::spawn(async move {
+                        match daemon_client.authenticate_parent(&password).await {
+                            Ok(token) => {
+                                // Check if authentication actually succeeded
+                                if token.starts_with("error:") {
+                                    sender.input(ApprovalRequestsMsg::AuthenticationResult(
+                                        false, None,
+                                    ));
+                                } else {
+                                    sender.input(ApprovalRequestsMsg::AuthenticationResult(
+                                        true,
+                                        Some(token),
+                                    ));
+                                }
+                            }
+                            Err(_) => {
+                                sender
+                                    .input(ApprovalRequestsMsg::AuthenticationResult(false, None));
+                            }
+                        }
+                    });
+                }
+            }
+            ApprovalRequestsMsg::AuthenticationResult(success, token) => {
+                if success {
+                    self.auth_token = token;
+                    self.show_auth_dialog = false;
+                    self.auth_failed = false;
+                    self.parent_password.clear();
+                    // Now fetch the requests
+                    sender.input(ApprovalRequestsMsg::RefreshRequests);
+                } else {
+                    self.auth_failed = true;
+                    self.parent_password.clear();
+                }
+            }
+            ApprovalRequestsMsg::DaemonClientReady(client) => {
+                self.daemon_client = Some(client);
             }
         }
     }
