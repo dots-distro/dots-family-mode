@@ -71,6 +71,13 @@ pub struct TimeWindowWorld {
 
     /// Persistent notifications (for warnings that stay visible)
     pub persistent_notifications: Vec<String>,
+
+    /// Time change detection
+    pub previous_time: Option<DateTime<Local>>,
+    pub time_change_detected: bool,
+
+    /// Timezone (for timezone change handling)
+    pub current_timezone: String,
 }
 
 impl TimeWindowWorld {
@@ -100,6 +107,9 @@ impl TimeWindowWorld {
             audit_log: Vec::new(),
             weekday_windows_config_count: 0,
             persistent_notifications: Vec::new(),
+            previous_time: None,
+            time_change_detected: false,
+            current_timezone: "UTC".to_string(),
         }
     }
 }
