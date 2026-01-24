@@ -1,7 +1,9 @@
-use crate::daemon_client::DaemonClient;
+use std::collections::HashSet;
+
 use gtk4::prelude::*;
 use relm4::prelude::*;
-use std::collections::HashSet;
+
+use crate::daemon_client::DaemonClient;
 
 #[derive(Debug)]
 pub struct FilteringConfig {

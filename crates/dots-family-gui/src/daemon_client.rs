@@ -194,4 +194,41 @@ impl DaemonClient {
             Err(e) => Err(anyhow!("D-Bus error exporting reports: {}", e)),
         }
     }
+
+    pub async fn list_pending_requests(&self, token: &str) -> Result<String> {
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy.list_pending_requests(token).await.map_err(|e| anyhow!("D-Bus error: {}", e))
+    }
+
+    pub async fn approve_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> Result<String> {
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy
+            .approve_request(request_id, response_message, token)
+            .await
+            .map_err(|e| anyhow!("D-Bus error: {}", e))
+    }
+
+    pub async fn deny_request(
+        &self,
+        request_id: &str,
+        response_message: &str,
+        token: &str,
+    ) -> Result<String> {
+        let proxy_guard = self.proxy.lock().await;
+        let proxy = proxy_guard.as_ref().ok_or_else(|| anyhow!("Not connected to daemon"))?;
+
+        proxy
+            .deny_request(request_id, response_message, token)
+            .await
+            .map_err(|e| anyhow!("D-Bus error: {}", e))
+    }
 }

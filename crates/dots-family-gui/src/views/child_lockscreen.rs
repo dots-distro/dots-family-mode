@@ -1,8 +1,10 @@
-use crate::daemon_client::DaemonClient;
+use std::time::Duration;
+
 use dots_family_common::types::Profile;
 use gtk4::prelude::*;
 use relm4::prelude::*;
-use std::time::Duration;
+
+use crate::daemon_client::DaemonClient;
 
 #[derive(Debug, Clone)]
 pub enum LockscreenReason {

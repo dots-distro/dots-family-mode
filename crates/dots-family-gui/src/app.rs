@@ -7,6 +7,7 @@ use crate::{
     components::sidebar_row::SidebarRow,
     state::profile_store::ProfileStore,
     views::{
+        approval_requests::{ApprovalRequests, ApprovalRequestsMsg},
         child_interface::{ChildInterface, ChildInterfaceMsg},
         child_lockscreen::{ChildLockscreen, ChildLockscreenMsg, LockscreenReason},
         content_filtering::ContentFiltering,
@@ -24,6 +25,7 @@ pub enum AppMode {
     PolicyConfig,
     ContentFiltering,
     Reports,
+    ApprovalRequests,
     ChildView,
     Lockscreen,
     Edit,
@@ -36,6 +38,7 @@ pub struct AppModel {
     policy_config: Controller<PolicyConfig>,
     content_filtering: Controller<ContentFiltering>,
     reports: Controller<Reports>,
+    approval_requests: Controller<ApprovalRequests>,
     child_interface: Controller<ChildInterface>,
     child_lockscreen: Controller<ChildLockscreen>,
     profile_editor: Controller<ProfileEditor>,
@@ -54,6 +57,7 @@ pub enum AppMsg {
     ShowPolicyConfig,
     ShowContentFiltering,
     ShowReports,
+    ShowApprovalRequests,
     ShowChildView,
     ShowLockscreen(LockscreenReason),
     LockscreenUnlocked,
@@ -161,6 +165,12 @@ impl SimpleComponent for AppModel {
                                     connect_clicked => AppMsg::ShowContentFiltering,
                                 },
 
+                                gtk4::Button {
+                                    set_label: "Approval Requests",
+                                    set_icon_name: "dialog-question-symbolic",
+                                    connect_clicked => AppMsg::ShowApprovalRequests,
+                                },
+
                                 gtk4::Separator {
                                     set_margin_top: 8,
                                     set_margin_bottom: 8,
@@ -218,6 +228,7 @@ impl SimpleComponent for AppModel {
                                 (AppMode::PolicyConfig, true) => "policy_config",
                                 (AppMode::ContentFiltering, true) => "content_filtering",
                                 (AppMode::Reports, true) => "reports",
+                                (AppMode::ApprovalRequests, true) => "approval_requests",
                                 (AppMode::ChildView, false) => "child",
                                 (AppMode::Lockscreen, _) => "lockscreen",
                                 (AppMode::Edit, _) => "edit",
@@ -235,6 +246,7 @@ impl SimpleComponent for AppModel {
                             add_named[Some("policy_config")] = model.policy_config.widget(),
                             add_named[Some("content_filtering")] = model.content_filtering.widget(),
                             add_named[Some("reports")] = model.reports.widget(),
+                            add_named[Some("approval_requests")] = model.approval_requests.widget(),
                             add_named[Some("child")] = model.child_interface.widget(),
                             add_named[Some("lockscreen")] = model.child_lockscreen.widget(),
                             add_named[Some("edit")] = model.profile_editor.widget(),
@@ -270,6 +282,10 @@ impl SimpleComponent for AppModel {
 
         let reports = Reports::builder().launch(default_profile.clone()).detach();
 
+        let approval_requests = ApprovalRequests::builder()
+            .launch(default_profile.clone())
+            .forward(sender.input_sender(), |toast_msg| AppMsg::ShowToast(toast_msg));
+
         let child_interface = ChildInterface::builder().launch(default_profile.clone()).detach();
 
         let child_lockscreen = ChildLockscreen::builder()
@@ -303,6 +319,7 @@ impl SimpleComponent for AppModel {
             policy_config,
             content_filtering,
             reports,
+            approval_requests,
             child_interface,
             child_lockscreen,
             profile_editor,
@@ -354,6 +371,7 @@ impl SimpleComponent for AppModel {
 
                 self.dashboard.emit(DashboardMsg::UpdateProfile(profile.clone()));
                 self.reports.emit(ReportsMsg::UpdateProfile(profile.clone()));
+                self.approval_requests.emit(ApprovalRequestsMsg::UpdateProfile(profile.clone()));
                 self.child_interface.emit(ChildInterfaceMsg::UpdateProfile(profile.clone()));
                 self.store.selected_profile_id = Some(profile.id);
 
@@ -373,6 +391,9 @@ impl SimpleComponent for AppModel {
             }
             AppMsg::ShowReports => {
                 self.mode = AppMode::Reports;
+            }
+            AppMsg::ShowApprovalRequests => {
+                self.mode = AppMode::ApprovalRequests;
             }
             AppMsg::ShowPolicyConfig => {
                 self.mode = AppMode::PolicyConfig;

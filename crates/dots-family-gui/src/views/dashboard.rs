@@ -1,7 +1,8 @@
-use crate::daemon_client::DaemonClient;
 use dots_family_common::types::Profile;
 use gtk4::prelude::*;
 use relm4::prelude::*;
+
+use crate::daemon_client::DaemonClient;
 
 pub struct Dashboard {
     profile: Profile,

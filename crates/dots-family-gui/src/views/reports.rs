@@ -1,8 +1,9 @@
-use crate::daemon_client::{ActivityReport, DaemonClient, WeeklyReport};
 use chrono::{Datelike, Duration, Local};
 use dots_family_common::types::Profile;
 use gtk4::prelude::*;
 use relm4::prelude::*;
+
+use crate::daemon_client::{ActivityReport, DaemonClient, WeeklyReport};
 
 pub struct Reports {
     profile: Profile,

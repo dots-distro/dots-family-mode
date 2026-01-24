@@ -1,3 +1,4 @@
+pub mod approval_requests;
 pub mod child_interface;
 pub mod child_lockscreen;
 pub mod content_filtering;
