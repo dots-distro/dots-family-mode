@@ -1,0 +1,286 @@
+   Compiling dots-family-common v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-common)
+   Compiling zbus v4.4.0
+   Compiling zbus v5.13.2
+warning: dots-family-daemon@0.1.0: Failed to build eBPF programs locally: aya-build not implemented in build.rs yet
+warning: dots-family-daemon@0.1.0: eBPF monitors will use simulation mode
+   Compiling dots-family-db v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-db)
+   Compiling dots-family-proto v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-proto)
+   Compiling notify-rust v4.11.7
+   Compiling dots-family-daemon v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-daemon)
+   Compiling dots-family-bdd-tests v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/tests/bdd)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.62s
+     Running tests/time_windows.rs (/home/shift/code/dots-distro/dots-family-mode/target/x86_64-unknown-linux-gnu/debug/deps/time_windows-b3c4759b4638097c)
+Feature: BDD Framework Smoke Test
+  Scenario: Cucumber framework is operational
+   ✔  Given the time window feature is enabled
+   ✔  And the system time zone is configured correctly
+   ✔  When the framework initialization completes
+   ✔  Then the BDD framework should be operational
+Feature: Time Window Enforcement
+  Scenario: Child can login during weekday morning window
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the current day is "Monday"
+   ✔  And the current time is "07:00"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  When a child user attempts to login
+   ✔  Then the login should succeed
+   ✔  And the session should be active
+  Scenario: Child cannot login outside weekday windows
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the current day is "Tuesday"
+   ✔  And the current time is "10:00"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  When a child user attempts to login
+   ✔  Then the login should be denied
+   ✔  And a message should explain "Computer access is restricted to: 06:00-08:00, 15:00-19:00"
+   ✔  And the next available window should be shown as "15:00"
+  Scenario: Child can login during weekend window
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the current day is "Saturday"
+   ✔  And the current time is "14:00"
+   ✔  And weekend windows are configured as:
+       | start | end   | label   |
+       | 08:00 | 21:00 | daytime |
+   ✔  When a child user attempts to login
+   ✔  Then the login should succeed
+   ✔  And the session should be active
+  Scenario: Child cannot login before weekend window starts
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the current day is "Sunday"
+   ✔  And the current time is "07:30"
+   ✔  And weekend windows are configured as:
+       | start | end   | label   |
+       | 08:00 | 21:00 | daytime |
+   ✔  When a child user attempts to login
+   ✔  Then the login should be denied
+   ✔  And a message should explain "Computer access starts at 08:00"
+  Scenario: Holiday window overrides weekday schedule
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the current day is "Monday" marked as holiday
+   ✔  And the current time is "10:00"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  And holiday windows are configured as:
+       | start | end   | label   |
+       | 08:00 | 21:00 | holiday |
+   ✔  When a child user attempts to login
+   ✔  Then the login should succeed
+   ✔  And the session should be active
+  Scenario: Session locked when time window ends
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is logged in
+   ✔  And the current day is "Wednesday"
+   ✔  And the current time is "08:00"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  When the time reaches "08:00"
+   ✔  Then the session should be locked immediately
+   ✘  And all user processes should be suspended
+      Step failed:
+      Defined: tests/features/time_windows.feature:81:5
+      Matched: tests/bdd/src/steps.rs:443:1
+      Step panicked. Captured output: Process suspension not implemented
+  Scenario: 5-minute warning before window closes
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is logged in
+   ✔  And the current day is "Thursday"
+   ✔  And the current time is "18:54"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  When the time reaches "18:55"
+   ✔  Then a warning notification should be displayed
+   ✔  And the notification should say "5 minutes remaining in this window"
+   ✘  And the notification should persist until window ends
+      Step failed:
+      Defined: tests/features/time_windows.feature:95:5
+      Matched: tests/bdd/src/steps.rs:469:1
+      Step panicked. Captured output: Notification persistence not implemented
+  Scenario: Grace period allows work to be saved
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is logged in with unsaved work
+   ✔  And the current day is "Friday"
+   ✔  And the current time is "18:59"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  And grace period is configured as "2 minutes"
+   ✔  When the time reaches "19:00"
+   ✔  Then a grace period countdown should start
+   ✔  And the user should have 2 minutes to save work
+   ✔  And the session should lock at "19:02"
+  Scenario: Multiple windows in same day
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the current day is "Monday"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  When the current time is "07:00"
+   ✔  Then login should succeed
+   ✔  When the current time is "09:00"
+   ✔  Then login should be denied
+   ✔  When the current time is "16:00"
+   ✔  Then login should succeed
+  Scenario: Parent can manually override time restriction
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is locked out due to time window
+   ✔  And the current day is "Tuesday"
+   ✔  And the current time is "10:00"
+   ✔  And weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 08:00 | morning |
+       | 15:00 | 19:00 | evening |
+   ✔  When a parent issues an override command
+   ✔  And specifies duration "30 minutes"
+   ✔  Then the child user should be able to login
+   ✔  And the override should expire after 30 minutes
+   ✔  And the session should lock when override expires
+  Scenario: Parent override logged for audit
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a parent issues a time window override
+   ✔  When the override is activated
+   ✔  Then an audit log entry should be created
+   ✘  And the entry should include:
+       | field      | value                   |
+       | event_type | time_window_override    |
+       | parent_id  | parent user ID          |
+       | child_id   | child user ID           |
+       | timestamp  | current timestamp       |
+       | duration   | override duration       |
+       | reason     | optional parent comment |
+      Step failed:
+      Defined: tests/features/time_windows.feature:144:5
+      Matched: tests/bdd/src/steps.rs:537:1
+      Step panicked. Captured output: Audit log field validation not implemented
+  Scenario: Parent can extend active session
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is logged in
+   ✔  And the current time is "18:55"
+   ✔  And the window will close at "19:00"
+   ✔  When a parent extends the session by "30 minutes"
+   ✘  Then the window end time should be extended to "19:30"
+      Step failed:
+      Defined: tests/features/time_windows.feature:158:5
+      Matched: tests/bdd/src/steps.rs:544:1
+      Step panicked. Captured output: Window extension not implemented
+  Scenario: Window spans midnight
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given weekend windows are configured as:
+       | start | end   | label   |
+       | 08:00 | 23:59 | daytime |
+   ✔  And the current day is "Saturday"
+   ✔  And the current time is "23:58"
+   ✔  When a child user is logged in
+   ✘  Then the session should remain active until "23:59"
+      Step failed:
+      Defined: tests/features/time_windows.feature:171:5
+      Step doesn't match any function
+  Scenario: Overlapping windows use earliest start and latest end
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given weekday windows are configured as:
+       | start | end   | label   |
+       | 06:00 | 10:00 | morning |
+       | 08:00 | 12:00 | midday  |
+   ✔  And the current day is "Monday"
+   ✔  When the current time is "09:00"
+   ✘  Then login should succeed
+      Step failed:
+      Defined: tests/features/time_windows.feature:181:5
+      Matched: tests/bdd/src/steps.rs:383:1
+      Step panicked. Captured output: Expected login to succeed, but it failed
+  Scenario: Empty window configuration denies all access
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given time windows are enabled
+   ✔  But no windows are configured for the current day type
+   ✔  And the current day is "Monday"
+   ✔  When a child user attempts to login
+   ✔  Then the login should be denied
+   ✔  And a message should explain "No time windows configured for today"
+  Scenario: Disabled time windows allow unrestricted access
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the time window feature is disabled
+   ✔  When a child user attempts to login at any time
+   ✔  Then the login should always succeed
+  Scenario: Time zone change handled correctly
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is logged in
+   ✘  And the current time is "17:00 UTC"
+      Step failed:
+      Defined: tests/features/time_windows.feature:201:5
+      Matched: tests/bdd/src/steps.rs:42:1
+      Step panicked. Captured output: Invalid time format: ParseError(TooLong)
+  Scenario: Manual time change detected
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given a child user is logged in
+   ✔  And the current time is "16:00"
+   ✔  When the system time is manually changed to "10:00"
+   ✘  Then the time change should be detected
+      Step failed:
+      Defined: tests/features/time_windows.feature:214:5
+      Matched: tests/bdd/src/steps.rs:596:1
+      Step panicked. Captured output: Time change detection not implemented
+  Scenario: Different users have different window configurations
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given user "child1" has weekday windows:
+       | start | end   | label   |
+       | 15:00 | 18:00 | evening |
+   ✔  And user "child2" has weekday windows:
+       | start | end   | label   |
+       | 16:00 | 19:00 | evening |
+   ✔  And the current day is "Monday"
+   ✔  And the current time is "15:30"
+   ✔  When "child1" attempts to login
+   ✘  Then login should succeed
+      Step failed:
+      Defined: tests/features/time_windows.feature:231:5
+      Matched: tests/bdd/src/steps.rs:383:1
+      Step panicked. Captured output: Expected login to succeed, but it failed
+  Scenario: Parent user not subject to time windows
+   ✔> Given the time window feature is enabled
+   ✔> And the system time zone is configured correctly
+   ✔  Given the time window feature is enabled
+   ✔  And the current time is outside all configured windows
+   ✔  When a parent user attempts to login
+   ✔  Then the login should succeed
+   ✔  And no time window restrictions should apply
+[Summary]
+2 features
+21 scenarios (12 passed, 9 failed)
+161 steps (152 passed, 9 failed)
+
+thread 'main' (3922458) panicked at /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cucumber-0.21.1/src/cucumber.rs:1287:13:
+9 steps failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `--test time_windows`

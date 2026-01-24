@@ -65,6 +65,9 @@ async fn set_current_time(world: &mut TimeWindowWorld, time: String) {
     };
 
     world.current_time = Some(date.and_time(naive_time).and_local_timezone(chrono::Local).unwrap());
+
+    // Reset login state when time changes so assertions will re-check
+    world.login_succeeded = None;
 }
 
 #[given("weekday windows are configured as:")]
