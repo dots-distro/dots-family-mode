@@ -23,7 +23,50 @@ in {
     default = { };
   };
 
+  # Generate profile initialization script
+  profileInitScript = pkgs.writeShellScript "init-profiles.sh" ''
+    # Wait for daemon to be ready
+    for i in {1..30}; do
+      if ${pkgs.systemd}/bin/busctl status org.dots.FamilyDaemon >/dev/null 2>&1; then
+        echo "Daemon is ready"
+        break
+      fi
+      echo "Waiting for daemon... ($i/30)"
+      sleep 1
+    done
+
+    # Create profiles from NixOS configuration
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (username: profile: ''
+      echo "Creating profile for ${username}..."
+      ${packages.ctl or cfg.ctlPackage}/bin/dots-family-ctl profile create "${profile.name}" "${profile.ageGroup}" --username "${username}" || echo "Profile ${username} may already exist"
+    '') cfg.profiles)}
+    
+    echo "Profile initialization complete"
+  '';
+
+in {
+  options.services.dots-family.internal = lib.mkOption {
+    type = lib.types.attrs;
+    internal = true;
+    default = { };
+  };
+
   config = lib.mkIf cfg.enable {
+    # Profile initialization service - runs after daemon starts
+    systemd.services.dots-family-init-profiles = lib.mkIf (cfg.profiles != {}) {
+      description = "Initialize DOTS Family Mode profiles from configuration";
+      after = [ "dots-family-daemon.service" ];
+      wants = [ "dots-family-daemon.service" ];
+      wantedBy = [ "multi-user.target" ];
+      
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${profileInitScript}";
+        User = "root";
+      };
+    };
+    
     # DOTS Family Daemon - Core Service
     systemd.services.dots-family-daemon = {
       description = "DOTS Family Mode Daemon - Core parental control service";

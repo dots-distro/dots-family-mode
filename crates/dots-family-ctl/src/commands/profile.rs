@@ -1,7 +1,8 @@
-use crate::auth;
 use anyhow::Result;
 use dots_family_proto::daemon::FamilyDaemonProxy;
 use zbus::Connection;
+
+use crate::auth;
 
 pub async fn list() -> Result<()> {
     let conn = Connection::system().await?;
@@ -32,12 +33,12 @@ pub async fn show(_name: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn create(name: &str, age_group: &str) -> Result<()> {
+pub async fn create(name: &str, age_group: &str, username: Option<&str>) -> Result<()> {
     let conn = Connection::system().await?;
     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
     // Try to create profile directly first (for initial setup when no parent password exists)
-    let profile_id = proxy.create_profile(name, age_group).await?;
+    let profile_id = proxy.create_profile(name, age_group, username.unwrap_or("")).await?;
 
     if let Some(error_msg) = profile_id.strip_prefix("error:") {
         // If direct creation failed, it might be due to authentication requirement
@@ -48,13 +49,16 @@ pub async fn create(name: &str, age_group: &str) -> Result<()> {
             println!("Profile creation requires parent authentication.");
             let name = name.to_string();
             let age_group = age_group.to_string();
+            let username = username.map(|s| s.to_string());
 
             auth::require_auth_simple(|| {
                 Box::pin(async move {
                     let conn = Connection::system().await?;
                     let proxy = FamilyDaemonProxy::new(&conn).await?;
 
-                    let profile_id = proxy.create_profile(&name, &age_group).await?;
+                    let profile_id = proxy
+                        .create_profile(&name, &age_group, username.as_deref().unwrap_or(""))
+                        .await?;
 
                     if let Some(error_msg) = profile_id.strip_prefix("error:") {
                         println!("Failed to create profile: {}", error_msg);

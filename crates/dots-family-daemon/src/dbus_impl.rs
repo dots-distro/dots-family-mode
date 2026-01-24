@@ -296,8 +296,11 @@ impl FamilyDaemonService {
         }
     }
 
-    async fn create_profile(&self, name: &str, age_group: &str) -> String {
-        match self.profile_manager.create_profile(name, age_group).await {
+    async fn create_profile(&self, name: &str, age_group: &str, username: &str) -> String {
+        let username_opt = if username.is_empty() { None } else { Some(username.to_string()) };
+
+        match self.profile_manager.create_profile_with_username(name, age_group, username_opt).await
+        {
             Ok(profile_id) => profile_id,
             Err(e) => {
                 warn!("Failed to create profile: {}", e);

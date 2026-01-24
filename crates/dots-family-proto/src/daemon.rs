@@ -26,7 +26,12 @@ pub trait FamilyDaemon {
 
     async fn list_profiles(&self) -> zbus::Result<String>;
 
-    async fn create_profile(&self, name: &str, age_group: &str) -> zbus::Result<String>;
+    async fn create_profile(
+        &self,
+        name: &str,
+        age_group: &str,
+        username: &str,
+    ) -> zbus::Result<String>;
 
     async fn set_active_profile(&self, profile_id: &str) -> zbus::Result<()>;
 

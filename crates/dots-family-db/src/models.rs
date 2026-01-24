@@ -7,6 +7,7 @@ use uuid::Uuid;
 pub struct DbProfile {
     pub id: String,
     pub name: String,
+    pub username: Option<String>,
     pub age_group: String,
     pub birthday: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
@@ -197,6 +198,7 @@ pub struct DbDailySummary {
 pub struct NewProfile {
     pub id: String,
     pub name: String,
+    pub username: Option<String>,
     pub age_group: String,
     pub birthday: Option<NaiveDate>,
     pub config: String,
@@ -204,7 +206,23 @@ pub struct NewProfile {
 
 impl NewProfile {
     pub fn new(name: String, age_group: String, config: String) -> Self {
-        Self { id: Uuid::new_v4().to_string(), name, age_group, birthday: None, config }
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name,
+            username: None,
+            age_group,
+            birthday: None,
+            config,
+        }
+    }
+
+    pub fn with_username(
+        name: String,
+        username: Option<String>,
+        age_group: String,
+        config: String,
+    ) -> Self {
+        Self { id: Uuid::new_v4().to_string(), name, username, age_group, birthday: None, config }
     }
 }
 

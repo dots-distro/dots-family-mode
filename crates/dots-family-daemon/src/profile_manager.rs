@@ -148,7 +148,7 @@ impl ProfileManager {
         Ok(Profile {
             id: Uuid::parse_str(&db_profile.id)?,
             name: db_profile.name.clone(),
-            username: None, // TODO: Add username field to database
+            username: db_profile.username,
             age_group,
             birthday: db_profile
                 .birthday
@@ -228,7 +228,7 @@ impl ProfileManager {
             let profile = Profile {
                 id: Uuid::parse_str(&db_profile.id)?,
                 name: db_profile.name.clone(),
-                username: None, // TODO: Add username field to database
+                username: db_profile.username,
                 age_group,
                 birthday: db_profile
                     .birthday
@@ -246,6 +246,15 @@ impl ProfileManager {
     }
 
     pub async fn create_profile(&self, name: &str, age_group: &str) -> Result<String> {
+        self.create_profile_with_username(name, age_group, None).await
+    }
+
+    pub async fn create_profile_with_username(
+        &self,
+        name: &str,
+        age_group: &str,
+        username: Option<String>,
+    ) -> Result<String> {
         use dots_family_common::types::{
             ApplicationConfig, ApplicationMode, ProfileConfig, ScreenTimeConfig,
             TerminalFilteringConfig, TimeWindow, TimeWindows, WebFilteringConfig,
@@ -317,6 +326,7 @@ impl ProfileManager {
         let new_profile = NewProfile {
             id: Uuid::new_v4().to_string(),
             name: name.to_string(),
+            username, // Use the username parameter
             age_group: age_group.to_string(),
             birthday: None,
             config: config_json,

@@ -1,8 +1,11 @@
-use crate::connection::Database;
-use crate::error::{DbError, Result};
-use crate::models::{DbProfile, NewProfile};
 use chrono::Utc;
 use sqlx::Row;
+
+use crate::{
+    connection::Database,
+    error::{DbError, Result},
+    models::{DbProfile, NewProfile},
+};
 
 pub struct ProfileQueries;
 
@@ -14,12 +17,13 @@ impl ProfileQueries {
 
         let result = sqlx::query(
             r#"
-            INSERT INTO profiles (id, name, age_group, birthday, config, created_at, updated_at, active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO profiles (id, name, username, age_group, birthday, config, created_at, updated_at, active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#
         )
         .bind(&profile.id)
         .bind(&profile.name)
+        .bind(&profile.username)
         .bind(&profile.age_group)
         .bind(profile.birthday)
         .bind(&profile.config)
@@ -129,9 +133,10 @@ impl ProfileQueries {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::tempdir;
+
     use super::*;
     use crate::connection::DatabaseConfig;
-    use tempfile::tempdir;
 
     async fn setup_test_db() -> (Database, tempfile::TempDir) {
         let dir = tempdir().unwrap();

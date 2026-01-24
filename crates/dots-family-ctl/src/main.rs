@@ -35,9 +35,18 @@ enum Commands {
 #[derive(Subcommand)]
 enum ProfileAction {
     List,
-    Show { name: String },
-    Create { name: String, age_group: String },
-    SetActive { profile_id: String },
+    Show {
+        name: String,
+    },
+    Create {
+        name: String,
+        age_group: String,
+        #[arg(short, long, help = "System username for the profile")]
+        username: Option<String>,
+    },
+    SetActive {
+        profile_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -54,8 +63,8 @@ async fn main() -> Result<()> {
         Commands::Profile { action } => match action {
             ProfileAction::List => commands::profile::list().await?,
             ProfileAction::Show { name } => commands::profile::show(&name).await?,
-            ProfileAction::Create { name, age_group } => {
-                commands::profile::create(&name, &age_group).await?
+            ProfileAction::Create { name, age_group, username } => {
+                commands::profile::create(&name, &age_group, username.as_deref()).await?
             }
             ProfileAction::SetActive { profile_id } => {
                 commands::profile::set_active(&profile_id).await?
