@@ -44,6 +44,14 @@ pub struct TimeWindowWorld {
     /// User type (child/parent)
     pub user_type: String,
 
+    /// Current user being tested
+    pub current_user: Option<String>,
+
+    /// Per-user window configurations
+    pub user_weekday_windows: HashMap<String, Vec<TimeWindow>>,
+    pub user_weekend_windows: HashMap<String, Vec<TimeWindow>>,
+    pub user_holiday_windows: HashMap<String, Vec<TimeWindow>>,
+
     /// Has unsaved work?
     pub has_unsaved_work: bool,
 
@@ -70,6 +78,10 @@ impl TimeWindowWorld {
             login_succeeded: None,
             displayed_messages: Vec::new(),
             user_type: "child".to_string(),
+            current_user: None,
+            user_weekday_windows: HashMap::new(),
+            user_weekend_windows: HashMap::new(),
+            user_holiday_windows: HashMap::new(),
             has_unsaved_work: false,
             override_active: false,
             override_duration_minutes: None,
