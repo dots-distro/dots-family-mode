@@ -33,3 +33,10 @@ sqlite:/
 /tests/data/
 ebpf-result
 *.backup
+
+# Temporary session documentation and test scripts
+SESSION*.md
+VM_TEST*.md
+build-and-verify-*.sh
+test-daemon-*.sh
+.engram-session-tracking.json
