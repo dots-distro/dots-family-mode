@@ -660,6 +660,7 @@ mod tests {
         let profile = Profile {
             id: Uuid::new_v4(),
             name: "Test Child".to_string(),
+            username: None,
             age_group: AgeGroup::LateElementary,
             birthday: None,
             created_at: Utc::now(),
@@ -698,6 +699,7 @@ mod tests {
         let original = Profile {
             id: Uuid::new_v4(),
             name: "Alice".to_string(),
+            username: None,
             age_group: AgeGroup::HighSchool,
             birthday: Some(Utc::now()),
             created_at: Utc::now(),

@@ -1685,7 +1685,7 @@ mod tests {
                 daily_limit_minutes: 120,
                 weekend_bonus_minutes: 60,
                 exempt_categories: vec![],
-                windows: TimeWindows { weekday: vec![], weekend: vec![] },
+                windows: TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
             },
             applications: ApplicationConfig {
                 mode: ApplicationMode::Allowlist,
@@ -1706,6 +1706,7 @@ mod tests {
         let new_profile = dots_family_db::models::NewProfile {
             id: uuid::Uuid::new_v4().to_string(),
             name: name.to_string(),
+            username: None,
             age_group: "8-12".to_string(),
             birthday: None,
             config: serde_json::to_string(&profile_config).unwrap(),

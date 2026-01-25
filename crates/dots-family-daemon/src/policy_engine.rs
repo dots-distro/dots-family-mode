@@ -356,6 +356,7 @@ mod tests {
         Profile {
             id: Uuid::new_v4(),
             name: "test-child".to_string(),
+            username: None,
             age_group,
             birthday: None,
             created_at: Utc::now(),
@@ -412,8 +413,8 @@ mod tests {
 
         let profile = create_test_profile(
             AgeGroup::EarlyElementary,
-            60,                                               // 1 hour daily limit
-            TimeWindows { weekday: vec![], weekend: vec![] }, // No time window restrictions
+            60, // 1 hour daily limit
+            TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] }, // No time window restrictions
         );
 
         engine.set_active_profile(profile).await.unwrap();
@@ -439,7 +440,7 @@ mod tests {
         let profile = create_test_profile(
             AgeGroup::EarlyElementary,
             120, // 2 hour daily limit
-            TimeWindows { weekday: vec![], weekend: vec![] },
+            TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
         );
 
         engine.set_active_profile(profile).await.unwrap();
@@ -465,7 +466,7 @@ mod tests {
         let profile = create_test_profile(
             AgeGroup::LateElementary,
             60, // Base 1 hour
-            TimeWindows { weekday: vec![], weekend: vec![] },
+            TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
         );
 
         let weekday_limit = engine.get_daily_limit(&profile);
@@ -482,7 +483,7 @@ mod tests {
         let profile = create_test_profile(
             AgeGroup::EarlyElementary,
             120,
-            TimeWindows { weekday: vec![], weekend: vec![] },
+            TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
         );
 
         engine.set_active_profile(profile).await.unwrap();
@@ -497,6 +498,7 @@ mod tests {
         let mut engine = PolicyEngine::new().await.unwrap();
 
         let profile = Profile {
+            username: None,
             id: Uuid::new_v4(),
             name: "test-child".to_string(),
             age_group: AgeGroup::EarlyElementary,
@@ -535,6 +537,7 @@ mod tests {
         let mut engine = PolicyEngine::new().await.unwrap();
 
         let profile = Profile {
+            username: None,
             id: Uuid::new_v4(),
             name: "test-child".to_string(),
             age_group: AgeGroup::EarlyElementary,
@@ -573,6 +576,7 @@ mod tests {
         let mut engine = PolicyEngine::new().await.unwrap();
 
         let profile = Profile {
+            username: None,
             id: Uuid::new_v4(),
             name: "test-child".to_string(),
             age_group: AgeGroup::LateElementary,
@@ -623,6 +627,7 @@ mod tests {
         let mut engine = PolicyEngine::new().await.unwrap();
 
         let profile = Profile {
+            username: None,
             id: Uuid::new_v4(),
             name: "test-child".to_string(),
             age_group: AgeGroup::EarlyElementary,

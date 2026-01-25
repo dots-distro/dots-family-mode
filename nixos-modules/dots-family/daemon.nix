@@ -15,13 +15,6 @@ let
     "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
     "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
   ];
-  
-in {
-  options.services.dots-family.internal = lib.mkOption {
-    type = lib.types.attrs;
-    internal = true;
-    default = { };
-  };
 
   # Generate profile initialization script
   profileInitScript = pkgs.writeShellScript "init-profiles.sh" ''
@@ -43,7 +36,7 @@ in {
     
     echo "Profile initialization complete"
   '';
-
+  
 in {
   options.services.dots-family.internal = lib.mkOption {
     type = lib.types.attrs;

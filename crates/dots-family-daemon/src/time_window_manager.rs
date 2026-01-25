@@ -219,6 +219,7 @@ mod tests {
         Profile {
             id: Uuid::new_v4(),
             name: "Test Child".to_string(),
+            username: None,
             age_group: AgeGroup::LateElementary,
             birthday: None,
             created_at: chrono::Utc::now(),
