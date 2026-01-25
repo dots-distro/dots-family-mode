@@ -109,6 +109,7 @@ impl TimeWindowEnforcementTask {
     }
 
     /// Send warning notification that window is ending soon
+    #[allow(dead_code)]
     async fn send_warning_notification(&self) -> Result<()> {
         if let Some(warning_message) = self.time_window_manager.get_warning_message().await? {
             info!("Sending time window warning: {}", warning_message);

@@ -113,6 +113,7 @@ impl TimeWindowManager {
     }
 
     /// Send a warning notification
+    #[allow(dead_code)]
     pub async fn send_warning_notification(&self) -> Result<()> {
         if let Some(message) = self.get_warning_message().await? {
             info!("Sending time window warning: {}", message);
@@ -163,6 +164,7 @@ impl TimeWindowManager {
     }
 
     /// Get the next available time window
+    #[allow(dead_code)]
     pub async fn get_next_window(&self) -> Result<Option<TimeWindow>> {
         let enforcer_lock = self.enforcer.read().await;
         let enforcer = match enforcer_lock.as_ref() {
@@ -186,6 +188,7 @@ impl TimeWindowManager {
     }
 
     /// Clear the active profile and enforcer
+    #[allow(dead_code)]
     pub async fn clear_profile(&self) -> Result<()> {
         info!("Clearing active profile from time window manager");
 

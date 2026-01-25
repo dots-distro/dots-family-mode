@@ -1,5 +1,4 @@
 use dots_family_common::types::Profile;
-use futures::StreamExt;
 use gtk4::prelude::*;
 use relm4::{factory::FactoryVecDeque, prelude::*};
 

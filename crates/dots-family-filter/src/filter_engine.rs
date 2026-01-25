@@ -105,6 +105,7 @@ impl FilterEngine {
         Ok(decision)
     }
 
+    #[allow(dead_code)]
     pub async fn rewrite_url_for_safe_search(&self, url: &str) -> Option<String> {
         if !self.config.filtering.safe_search_enforcement {
             return None;

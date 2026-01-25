@@ -38,6 +38,7 @@ pub struct FilterDecision {
     pub reason: String,
     #[allow(dead_code)]
     pub rule_id: Option<String>,
+    #[allow(dead_code)]
     pub category: Option<String>,
 }
 

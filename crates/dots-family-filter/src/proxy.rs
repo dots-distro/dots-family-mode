@@ -1,6 +1,4 @@
 use std::convert::Infallible;
-use std::fs;
-use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -11,7 +9,6 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
-use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info, warn};
 
@@ -32,6 +29,7 @@ impl WebProxy {
     }
 
     /// Create a new web proxy with SSL interception enabled
+    #[allow(dead_code)]
     pub fn with_ssl_intercept(
         filter_engine: FilterEngine,
         ca_cert_path: String,

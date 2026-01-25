@@ -7,6 +7,7 @@ use crate::daemon_client::DaemonClient;
 #[derive(Debug)]
 pub struct PolicyConfig {
     profile: Profile,
+    #[allow(dead_code)]
     daemon_client: DaemonClient,
     application_mode: ApplicationMode,
     daily_time_limit_minutes: u32,

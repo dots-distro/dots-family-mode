@@ -245,6 +245,7 @@ impl ProfileManager {
         Ok(profiles)
     }
 
+    #[allow(dead_code)]
     pub async fn create_profile(&self, name: &str, age_group: &str) -> Result<String> {
         self.create_profile_with_username(name, age_group, None).await
     }
