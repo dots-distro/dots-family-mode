@@ -2,7 +2,7 @@
 #![no_main]
 
 use aya_ebpf::{
-    helpers::bpf_get_current_pid_tgid,
+    helpers::{bpf_get_current_comm, bpf_get_current_pid_tgid},
     macros::{kprobe, map},
     maps::RingBuf,
     programs::ProbeContext,
@@ -13,6 +13,7 @@ use aya_ebpf::{
 pub struct FilesystemEvent {
     pub event_type: u32, // 1 = open, 2 = read, 3 = write, 4 = close
     pub pid: u32,
+    pub comm: [u8; 16], // Process name
     pub fd: u32,
     pub filename: [u8; 255],    // Full file path
     pub bytes_transferred: u64, // For file I/O operations
@@ -25,18 +26,23 @@ static FS_EVENTS: RingBuf = RingBuf::with_byte_size(512 * 1024, 0);
 #[kprobe]
 pub fn trace_do_sys_open(ctx: ProbeContext) -> u32 {
     // bpf_get_current_pid_tgid() returns u64 where high 32 bits = tgid, low 32 bits = pid
-    let pid_tgid = bpf_get_current_pid_tgid();
-    let pid = (pid_tgid & 0xFFFFFFFF) as u32;
+    let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
+    let pid = (pid_tgid >> 32) as u32; // TGID (actual process ID)
+
+    // Get process name
+    let comm = unsafe { bpf_get_current_comm() }.unwrap_or([0u8; 16]);
 
     // Get file descriptor from context (returns Option)
     let fd = ctx.arg::<u32>(0).unwrap_or(0);
 
-    // Simplified filename handling - in real implementation would read from kernel
+    // TODO Phase 2: Extract filename from kernel using bpf_probe_read_kernel_str
+    // The filename pointer is in ctx.arg(1) but needs careful dereferencing
     let filename = [0u8; 255];
 
     let event = FilesystemEvent {
         event_type: 1, // Open event
         pid,
+        comm,
         fd,
         filename,
         bytes_transferred: 0,
@@ -53,8 +59,10 @@ pub fn trace_do_sys_open(ctx: ProbeContext) -> u32 {
 
 #[kprobe]
 pub fn trace_do_sys_read(ctx: ProbeContext) -> u32 {
-    let pid_tgid = bpf_get_current_pid_tgid();
-    let pid = (pid_tgid & 0xFFFFFFFF) as u32;
+    let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
+    let pid = (pid_tgid >> 32) as u32;
+
+    let comm = unsafe { bpf_get_current_comm() }.unwrap_or([0u8; 16]);
 
     // Get file descriptor from context
     let fd = ctx.arg::<u32>(0).unwrap_or(0);
@@ -63,6 +71,7 @@ pub fn trace_do_sys_read(ctx: ProbeContext) -> u32 {
     let event = FilesystemEvent {
         event_type: 2, // Read event
         pid,
+        comm,
         fd,
         filename: [0; 255], // Process reading from file, not filename directly
         bytes_transferred: count,
@@ -79,8 +88,10 @@ pub fn trace_do_sys_read(ctx: ProbeContext) -> u32 {
 
 #[kprobe]
 pub fn trace_do_sys_write(ctx: ProbeContext) -> u32 {
-    let pid_tgid = bpf_get_current_pid_tgid();
-    let pid = (pid_tgid & 0xFFFFFFFF) as u32;
+    let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
+    let pid = (pid_tgid >> 32) as u32;
+
+    let comm = unsafe { bpf_get_current_comm() }.unwrap_or([0u8; 16]);
 
     // Get file descriptor from context
     let fd = ctx.arg::<u32>(0).unwrap_or(0);
@@ -89,6 +100,7 @@ pub fn trace_do_sys_write(ctx: ProbeContext) -> u32 {
     let event = FilesystemEvent {
         event_type: 3, // Write event
         pid,
+        comm,
         fd,
         filename: [0; 255], // Process writing to file, not filename directly
         bytes_transferred: count,
@@ -105,8 +117,10 @@ pub fn trace_do_sys_write(ctx: ProbeContext) -> u32 {
 
 #[kprobe]
 pub fn trace_do_sys_close(ctx: ProbeContext) -> u32 {
-    let pid_tgid = bpf_get_current_pid_tgid();
-    let pid = (pid_tgid & 0xFFFFFFFF) as u32;
+    let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
+    let pid = (pid_tgid >> 32) as u32;
+
+    let comm = unsafe { bpf_get_current_comm() }.unwrap_or([0u8; 16]);
 
     // Get file descriptor from context
     let fd = ctx.arg::<u32>(0).unwrap_or(0);
@@ -114,6 +128,7 @@ pub fn trace_do_sys_close(ctx: ProbeContext) -> u32 {
     let event = FilesystemEvent {
         event_type: 4, // Close event
         pid,
+        comm,
         fd,
         filename: [0; 255], // Process closing file, not filename directly
         bytes_transferred: 0,
