@@ -418,7 +418,9 @@ mod tests {
         );
 
         engine.set_active_profile(profile).await.unwrap();
-        engine.screen_time_tracker.daily_usage_minutes = 70; // Over limit
+        // Set usage above limit. Note: On weekends, the limit is 60 + 30 (weekend bonus) = 90 minutes
+        // So we need to use a value > 90 to ensure blocking works regardless of day
+        engine.screen_time_tracker.daily_usage_minutes = 100; // Over limit even with weekend bonus
 
         let event = ActivityEvent::WindowFocused {
             pid: 1234,
@@ -469,11 +471,19 @@ mod tests {
             TimeWindows { weekday: vec![], weekend: vec![], holiday: vec![] },
         );
 
-        let weekday_limit = engine.get_daily_limit(&profile);
-        assert_eq!(weekday_limit, 60);
+        // The actual limit depends on the current day
+        // On weekdays: 60 minutes
+        // On weekends: 60 + 30 = 90 minutes
+        let daily_limit = engine.get_daily_limit(&profile);
 
-        // Weekend bonus is handled by is_weekend logic in get_daily_limit
-        // This would need date mocking in a real scenario
+        let now = Local::now();
+        let is_weekend = now.weekday().num_days_from_monday() >= 5;
+
+        if is_weekend {
+            assert_eq!(daily_limit, 90, "Weekend should have 60 + 30 bonus = 90");
+        } else {
+            assert_eq!(daily_limit, 60, "Weekday should have base limit of 60");
+        }
     }
 
     #[tokio::test]
@@ -490,7 +500,18 @@ mod tests {
         engine.screen_time_tracker.daily_usage_minutes = 40;
 
         let remaining = engine.get_remaining_screen_time().unwrap();
-        assert_eq!(remaining, 80); // 120 - 40 = 80 minutes remaining
+
+        // The expected value depends on the current day
+        // On weekdays: 120 - 40 = 80 minutes
+        // On weekends: 120 + 30 - 40 = 110 minutes
+        let now = Local::now();
+        let is_weekend = now.weekday().num_days_from_monday() >= 5;
+
+        if is_weekend {
+            assert_eq!(remaining, 110, "Weekend: (120 + 30) - 40 = 110 minutes remaining");
+        } else {
+            assert_eq!(remaining, 80, "Weekday: 120 - 40 = 80 minutes remaining");
+        }
     }
 
     #[tokio::test]

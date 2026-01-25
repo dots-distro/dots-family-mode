@@ -290,8 +290,9 @@ mod tests {
             ..Default::default()
         });
 
-        let time = Local::now()
-            .date_naive()
+        // Use a specific Monday to ensure weekday windows are checked
+        let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 19) // Monday, Jan 19, 2026
+            .unwrap()
             .and_hms_opt(7, 0, 0)
             .unwrap()
             .and_local_timezone(Local)
@@ -308,8 +309,9 @@ mod tests {
             ..Default::default()
         });
 
-        let time = Local::now()
-            .date_naive()
+        // Use a specific Monday to ensure weekday windows are checked
+        let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 19) // Monday, Jan 19, 2026
+            .unwrap()
             .and_hms_opt(10, 0, 0)
             .unwrap()
             .and_local_timezone(Local)
@@ -317,7 +319,12 @@ mod tests {
 
         match enforcer.check_access(time) {
             AccessResult::Denied { reason, next_window } => {
-                assert!(reason.contains("15:00"));
+                // The reason contains the window ranges, and should include "15:00"
+                assert!(
+                    reason.contains("15:00"),
+                    "Expected reason to contain '15:00', got: {}",
+                    reason
+                );
                 assert_eq!(next_window, Some("15:00".to_string()));
             }
             _ => panic!("Expected access to be denied"),
