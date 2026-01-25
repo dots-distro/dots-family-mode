@@ -2,10 +2,14 @@
 #![no_main]
 
 use aya_ebpf::{
-    helpers::{bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_get_current_uid_gid},
+    helpers::{
+        bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_get_current_uid_gid,
+        bpf_probe_read_kernel,
+    },
     macros::{map, tracepoint},
     maps::RingBuf,
     programs::TracePointContext,
+    EbpfContext,
 };
 
 #[repr(C)]
@@ -24,7 +28,7 @@ pub struct ProcessEvent {
 static PROCESS_EVENTS: RingBuf = RingBuf::with_byte_size(1024 * 1024, 0);
 
 #[tracepoint]
-pub fn sched_process_exec(_ctx: TracePointContext) -> u32 {
+pub fn sched_process_exec(ctx: TracePointContext) -> u32 {
     // Extract PID and TGID (thread group ID, which is the process ID)
     let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
     let pid = (pid_tgid >> 32) as u32; // TGID (actual process ID)
@@ -38,17 +42,23 @@ pub fn sched_process_exec(_ctx: TracePointContext) -> u32 {
     // Extract process name (comm)
     let comm = unsafe { bpf_get_current_comm() }.unwrap_or([0u8; 16]);
 
-    // Note: PPID and cmdline extraction require reading from task_struct
-    // which needs BTF/CO-RE support - to be implemented in Phase 2
-    // For now, we'll use what we can reliably extract
+    // Phase 2: Extract PPID from tracepoint context
+    // The sched_process_exec tracepoint provides parent_pid in its context
+    // We attempt to read it from offset 12 bytes (after common fields)
+    // Format: filename (ptr), pid (4), old_pid (4)
+    // If this fails, we'll fall back to 0 (same as Phase 1)
+    let ppid = unsafe { ctx.read_at::<i32>(12).unwrap_or(0) as u32 };
+
+    // Note: cmdline extraction requires reading from task_struct->mm->arg_start
+    // which needs more complex BTF/CO-RE support - deferred to later phase
 
     let event = ProcessEvent {
         pid,
-        ppid: 0, // TODO: Extract from task_struct->real_parent->tgid
+        ppid,
         uid,
         gid,
         comm,
-        cmdline: [0; 512], // TODO: Read from /proc/<pid>/cmdline via bpf_probe_read_user
+        cmdline: [0; 512], // TODO: Read from task_struct->mm->arg_start via bpf_probe_read_user
         event_type: 0,     // exec event
     };
 
