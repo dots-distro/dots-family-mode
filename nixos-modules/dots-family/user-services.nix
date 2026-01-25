@@ -217,10 +217,13 @@ in {
     '';
 
     # User directories for child accounts
+    # Note: /run/user/* directories are created automatically by systemd-logind
+    # We only need to create the temp directories here
+    # Using 'root' as group owner to avoid issues with user-specific groups during boot
     systemd.tmpfiles.rules = lib.flatten (map (user: [
-      # Create user-specific monitoring directories
-      "d /tmp/dots-family-${user} 0755 ${user} ${user}"
-      "d /run/user/%i/dots-family 0755 ${user} ${user}"
+      # Create user-specific monitoring directories in /tmp
+      # Format: d path mode user group age
+      "d /tmp/dots-family-${user} 0755 ${user} users -"
     ]) cfg.childUsers);
 
     # Parent notification setup

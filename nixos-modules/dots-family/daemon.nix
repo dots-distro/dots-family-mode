@@ -9,8 +9,9 @@ let
   ebpfEnvVars = if packages.ebpf or null != null then [
     "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
     "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
-    "BPF_NETWORK_MONITOR_PATH=${packages.ebpf}/target/bpfel-unknown-none/release/network-monitor"
-    "BPF_FILESYSTEM_MONITOR_PATH=${packages.ebpf}/target/bpfel-unknown-none/release/filesystem-monitor"
+    "BPF_PROCESS_MONITOR_PATH=${packages.ebpf}/bin/process-monitor"
+    "BPF_NETWORK_MONITOR_PATH=${packages.ebpf}/bin/network-monitor"
+    "BPF_FILESYSTEM_MONITOR_PATH=${packages.ebpf}/bin/filesystem-monitor"
   ] else [
     "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
     "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
