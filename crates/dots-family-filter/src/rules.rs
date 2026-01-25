@@ -47,6 +47,7 @@ pub struct RuleEngine {
     url_patterns: Vec<(Regex, FilterAction, String)>,
     category_blocks: HashSet<String>,
     category_allows: HashSet<String>,
+    domain_categories: std::collections::HashMap<String, String>,
 }
 
 impl RuleEngine {
@@ -56,25 +57,77 @@ impl RuleEngine {
             url_patterns: Vec::new(),
             category_blocks: HashSet::new(),
             category_allows: HashSet::new(),
+            domain_categories: std::collections::HashMap::new(),
         }
     }
 
     pub fn load_default_rules(&mut self) -> Result<()> {
-        // Add default blocked domains
-        let blocked_domains = [
+        // Add default blocked domains (adult content)
+        let adult_domains = [
             "pornhub.com",
             "xvideos.com",
             "xnxx.com",
             "redtube.com",
+            "youporn.com",
+            "tube8.com",
+            "spankwire.com",
+            "keezmovies.com",
+            "extremetube.com",
+            "onlyfans.com",
+        ];
+
+        for domain in &adult_domains {
+            self.domain_rules.insert(domain.to_string());
+            self.domain_categories.insert(domain.to_string(), "adult".to_string());
+        }
+
+        // Gambling sites
+        let gambling_domains = [
             "gambling.com",
             "casino.com",
             "bet365.com",
-            "4chan.org",
-            "8kun.top",
+            "pokerstars.com",
+            "888casino.com",
+            "betway.com",
+            "draftkings.com",
+            "fanduel.com",
         ];
 
-        for domain in &blocked_domains {
+        for domain in &gambling_domains {
             self.domain_rules.insert(domain.to_string());
+            self.domain_categories.insert(domain.to_string(), "gambling".to_string());
+        }
+
+        // Violent/harmful content
+        let violence_domains = ["4chan.org", "8kun.top", "bestgore.com"];
+
+        for domain in &violence_domains {
+            self.domain_rules.insert(domain.to_string());
+            self.domain_categories.insert(domain.to_string(), "violence".to_string());
+        }
+
+        // Social media (optional blocking)
+        let social_domains =
+            ["facebook.com", "instagram.com", "tiktok.com", "snapchat.com", "twitter.com", "x.com"];
+
+        for domain in &social_domains {
+            self.domain_categories.insert(domain.to_string(), "social".to_string());
+        }
+
+        // Educational sites (always allow)
+        let educational_domains = [
+            "khanacademy.org",
+            "coursera.org",
+            "edx.org",
+            "mit.edu",
+            "stanford.edu",
+            "wikipedia.org",
+            "scratch.mit.edu",
+            "code.org",
+        ];
+
+        for domain in &educational_domains {
+            self.domain_categories.insert(domain.to_string(), "educational".to_string());
         }
 
         // Add default blocked categories
@@ -91,8 +144,12 @@ impl RuleEngine {
         // Add URL pattern rules
         self.add_url_pattern(r"(?i).*porn.*", FilterAction::Block, "Adult content")?;
         self.add_url_pattern(r"(?i).*xxx.*", FilterAction::Block, "Adult content")?;
+        self.add_url_pattern(r"(?i).*sex.*", FilterAction::Block, "Adult content")?;
         self.add_url_pattern(r"(?i).*casino.*", FilterAction::Block, "Gambling")?;
         self.add_url_pattern(r"(?i).*bet.*", FilterAction::Block, "Gambling")?;
+        self.add_url_pattern(r"(?i).*gambling.*", FilterAction::Block, "Gambling")?;
+        self.add_url_pattern(r"(?i).*gore.*", FilterAction::Block, "Violent content")?;
+        self.add_url_pattern(r"(?i).*violence.*", FilterAction::Block, "Violent content")?;
 
         Ok(())
     }
@@ -158,14 +215,42 @@ impl RuleEngine {
 
         let domain = parsed_url.host_str().unwrap_or("");
 
-        // Check domain rules
+        // Check if domain has a category
+        let domain_category = self.domain_categories.get(domain);
+
+        // Check category-based allow list first (highest priority)
+        if let Some(category) = domain_category {
+            if self.category_allows.contains(category) {
+                return FilterDecision {
+                    action: FilterAction::Allow,
+                    reason: format!("Domain {} is in allowed category: {}", domain, category),
+                    rule_id: Some(format!("category-allow:{}", category)),
+                    category: Some(category.clone()),
+                };
+            }
+        }
+
+        // Check explicit domain block rules
         if self.domain_rules.contains(domain) {
+            let category = domain_category.cloned();
             return FilterDecision {
                 action: FilterAction::Block,
-                reason: format!("Domain {} is blocked", domain),
+                reason: format!("Domain {} is explicitly blocked", domain),
                 rule_id: Some(format!("domain:{}", domain)),
-                category: None,
+                category,
             };
+        }
+
+        // Check category-based block list
+        if let Some(category) = domain_category {
+            if self.category_blocks.contains(category) {
+                return FilterDecision {
+                    action: FilterAction::Block,
+                    reason: format!("Domain {} is in blocked category: {}", domain, category),
+                    rule_id: Some(format!("category-block:{}", category)),
+                    category: Some(category.clone()),
+                };
+            }
         }
 
         // Check URL pattern rules
@@ -187,6 +272,64 @@ impl RuleEngine {
             rule_id: None,
             category: None,
         }
+    }
+
+    /// Get the category for a domain, if known
+    pub fn get_domain_category(&self, domain: &str) -> Option<&String> {
+        self.domain_categories.get(domain)
+    }
+
+    /// Add a domain to a specific category
+    pub fn categorize_domain(&mut self, domain: &str, category: &str) {
+        self.domain_categories.insert(domain.to_string(), category.to_string());
+    }
+
+    /// Get all domains in a category
+    pub fn get_domains_in_category(&self, category: &str) -> Vec<&String> {
+        self.domain_categories
+            .iter()
+            .filter(|(_, cat)| cat.as_str() == category)
+            .map(|(domain, _)| domain)
+            .collect()
+    }
+
+    /// Get all blocked domains
+    #[allow(dead_code)]
+    pub fn get_blocked_domains(&self) -> Vec<&String> {
+        self.domain_rules.iter().collect()
+    }
+
+    /// Get all URL patterns
+    #[allow(dead_code)]
+    pub fn get_url_patterns(&self) -> Vec<(&str, &FilterAction, &String)> {
+        self.url_patterns
+            .iter()
+            .map(|(regex, action, reason)| (regex.as_str(), action, reason))
+            .collect()
+    }
+
+    /// Get blocked categories
+    #[allow(dead_code)]
+    pub fn get_blocked_categories(&self) -> Vec<&String> {
+        self.category_blocks.iter().collect()
+    }
+
+    /// Get allowed categories
+    #[allow(dead_code)]
+    pub fn get_allowed_categories(&self) -> Vec<&String> {
+        self.category_allows.iter().collect()
+    }
+
+    /// Check if a category is blocked
+    #[allow(dead_code)]
+    pub fn is_category_blocked(&self, category: &str) -> bool {
+        self.category_blocks.contains(category)
+    }
+
+    /// Check if a category is explicitly allowed
+    #[allow(dead_code)]
+    pub fn is_category_allowed(&self, category: &str) -> bool {
+        self.category_allows.contains(category)
     }
 
     pub fn enforce_safe_search(&self, url: &str) -> Option<String> {
@@ -265,5 +408,78 @@ mod tests {
         let engine = RuleEngine::new();
         let decision = engine.evaluate_url("https://wikipedia.org/");
         matches!(decision.action, FilterAction::Allow);
+    }
+
+    #[test]
+    fn test_category_blocking() {
+        let mut engine = RuleEngine::new();
+
+        // Add domain to adult category
+        engine.categorize_domain("badsite.com", "adult");
+        engine.domain_rules.insert("badsite.com".to_string());
+        engine.category_blocks.insert("adult".to_string());
+
+        let decision = engine.evaluate_url("https://badsite.com/page");
+        matches!(decision.action, FilterAction::Block);
+        assert!(decision.category.is_some());
+        assert_eq!(decision.category.unwrap(), "adult");
+    }
+
+    #[test]
+    fn test_category_allow_override() {
+        let mut engine = RuleEngine::new();
+
+        // Add educational site
+        engine.categorize_domain("khanacademy.org", "educational");
+        engine.category_allows.insert("educational".to_string());
+
+        let decision = engine.evaluate_url("https://khanacademy.org/math");
+        matches!(decision.action, FilterAction::Allow);
+        assert!(decision.reason.contains("educational"));
+    }
+
+    #[test]
+    fn test_load_default_rules() {
+        let mut engine = RuleEngine::new();
+        engine.load_default_rules().unwrap();
+
+        // Verify adult content is blocked
+        let decision = engine.evaluate_url("https://pornhub.com");
+        matches!(decision.action, FilterAction::Block);
+
+        // Verify gambling is blocked
+        let decision = engine.evaluate_url("https://bet365.com");
+        matches!(decision.action, FilterAction::Block);
+
+        // Verify educational sites are categorized
+        assert_eq!(engine.get_domain_category("khanacademy.org"), Some(&"educational".to_string()));
+    }
+
+    #[test]
+    fn test_pattern_matching() {
+        let mut engine = RuleEngine::new();
+        engine.load_default_rules().unwrap();
+
+        // URL with "porn" in path should be blocked
+        let decision = engine.evaluate_url("https://example.com/content/pornographic");
+        matches!(decision.action, FilterAction::Block);
+
+        // URL with "casino" in subdomain should be blocked
+        let decision = engine.evaluate_url("https://casino.example.com/games");
+        matches!(decision.action, FilterAction::Block);
+    }
+
+    #[test]
+    fn test_get_domains_in_category() {
+        let mut engine = RuleEngine::new();
+        engine.load_default_rules().unwrap();
+
+        let adult_domains = engine.get_domains_in_category("adult");
+        assert!(!adult_domains.is_empty());
+        assert!(adult_domains.contains(&&"pornhub.com".to_string()));
+
+        let edu_domains = engine.get_domains_in_category("educational");
+        assert!(!edu_domains.is_empty());
+        assert!(edu_domains.contains(&&"khanacademy.org".to_string()));
     }
 }
