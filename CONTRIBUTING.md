@@ -14,7 +14,7 @@ Thank you for your interest in contributing to DOTS Family Mode! This document p
 
 **How to Sign**:
 1. Read the full agreement: [CONTRIBUTOR_LICENSE_AGREEMENT.md](CONTRIBUTOR_LICENSE_AGREEMENT.md)
-2. Sign via GitHub pull request comment or email: project@dots-family-mode.org
+2. Sign via cla-assistant.io app on GitHub pull request
 3. Include your GitHub username and contribution details
 
 **Purpose**: The CLA ensures proper licensing for both open source and commercial contributions, patent protection, and contribution attribution.

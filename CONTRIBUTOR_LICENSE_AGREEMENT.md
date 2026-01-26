@@ -82,7 +82,7 @@ By submitting a Contribution to the Project, the Contributor agrees to be bound 
 ## Contact Information
 
 **Project Contact**: project@dots-family-mode.org  
-**Legal/Commercial Licensing**: shift@someone.section.me
+**Legal/Commercial Licensing**: commercial@dots-family-mode.org
 
 ## Version
 
