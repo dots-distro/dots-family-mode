@@ -9,13 +9,18 @@ use tokio::{
 };
 use tracing::{error, info, warn};
 
-use crate::ebpf::{FilesystemMonitorEbpf, NetworkMonitorEbpf, ProcessMonitorEbpf};
+use crate::ebpf::{
+    DiskIoMonitorEbpf, FilesystemMonitorEbpf, MemoryMonitorEbpf, NetworkMonitorEbpf,
+    ProcessMonitorEbpf,
+};
 
 #[derive(Clone)]
 pub struct MonitoringService {
     process_monitor: Arc<Mutex<ProcessMonitorEbpf>>,
     network_monitor: Arc<Mutex<NetworkMonitorEbpf>>,
     filesystem_monitor: Arc<Mutex<FilesystemMonitorEbpf>>,
+    memory_monitor: Arc<Mutex<MemoryMonitorEbpf>>,
+    disk_io_monitor: Arc<Mutex<DiskIoMonitorEbpf>>,
     running: Arc<Mutex<bool>>,
 }
 
@@ -25,6 +30,8 @@ impl MonitoringService {
             process_monitor: Arc::new(Mutex::new(ProcessMonitorEbpf::new().await?)),
             network_monitor: Arc::new(Mutex::new(NetworkMonitorEbpf::new())),
             filesystem_monitor: Arc::new(Mutex::new(FilesystemMonitorEbpf::new())),
+            memory_monitor: Arc::new(Mutex::new(MemoryMonitorEbpf::new()?)),
+            disk_io_monitor: Arc::new(Mutex::new(DiskIoMonitorEbpf::new()?)),
             running: Arc::new(Mutex::new(false)),
         })
     }
@@ -99,9 +106,53 @@ impl MonitoringService {
             }
         }
 
+        {
+            let mut memory_monitor = self.memory_monitor.lock().await;
+            let memory_path = if cfg!(feature = "nix-build")
+                || option_env!("BPF_MEMORY_MONITOR_FILE").is_some()
+            {
+                option_env!("BPF_MEMORY_MONITOR_FILE").ok_or_else(|| {
+                    anyhow::anyhow!("BPF_MEMORY_MONITOR_FILE not set at compile time")
+                })?
+            } else {
+                &std::env::var("BPF_MEMORY_MONITOR_PATH").unwrap_or_default()
+            };
+
+            if !memory_path.is_empty() {
+                if let Err(e) = memory_monitor.load(std::path::Path::new(&memory_path)).await {
+                    warn!("Failed to load eBPF memory monitor: {}, continuing without it", e);
+                }
+            } else {
+                warn!("BPF_MEMORY_MONITOR_PATH not set, continuing without memory monitoring");
+            }
+        }
+
+        {
+            let mut disk_io_monitor = self.disk_io_monitor.lock().await;
+            let disk_io_path = if cfg!(feature = "nix-build")
+                || option_env!("BPF_DISK_IO_MONITOR_FILE").is_some()
+            {
+                option_env!("BPF_DISK_IO_MONITOR_FILE").ok_or_else(|| {
+                    anyhow::anyhow!("BPF_DISK_IO_MONITOR_FILE not set at compile time")
+                })?
+            } else {
+                &std::env::var("BPF_DISK_IO_MONITOR_PATH").unwrap_or_default()
+            };
+
+            if !disk_io_path.is_empty() {
+                if let Err(e) = disk_io_monitor.load(std::path::Path::new(&disk_io_path)).await {
+                    warn!("Failed to load eBPF disk I/O monitor: {}, continuing without it", e);
+                }
+            } else {
+                warn!("BPF_DISK_IO_MONITOR_PATH not set, continuing without disk I/O monitoring");
+            }
+        }
+
         let process_monitor_clone = Arc::clone(&self.process_monitor);
         let network_monitor_clone = Arc::clone(&self.network_monitor);
         let filesystem_monitor_clone = Arc::clone(&self.filesystem_monitor);
+        let memory_monitor_clone = Arc::clone(&self.memory_monitor);
+        let disk_io_monitor_clone = Arc::clone(&self.disk_io_monitor);
         let running_clone = Arc::clone(&self.running);
 
         tokio::spawn(async move {
@@ -121,6 +172,8 @@ impl MonitoringService {
                     &process_monitor_clone,
                     &network_monitor_clone,
                     &filesystem_monitor_clone,
+                    &memory_monitor_clone,
+                    &disk_io_monitor_clone,
                 )
                 .await
                 {
@@ -168,11 +221,29 @@ impl MonitoringService {
                 .map_err(|e| anyhow::anyhow!("Filesystem monitor error: {}", e))?
         };
 
+        let memory_data = {
+            let monitor = self.memory_monitor.lock().await;
+            monitor
+                .collect_snapshot()
+                .await
+                .map_err(|e| anyhow::anyhow!("Memory monitor error: {}", e))?
+        };
+
+        let disk_io_data = {
+            let monitor = self.disk_io_monitor.lock().await;
+            monitor
+                .collect_snapshot()
+                .await
+                .map_err(|e| anyhow::anyhow!("Disk I/O monitor error: {}", e))?
+        };
+
         Ok(serde_json::json!({
             "timestamp": chrono::Utc::now().timestamp(),
             "process_monitoring": process_data,
             "network_monitoring": network_data,
-            "filesystem_monitoring": filesystem_data
+            "filesystem_monitoring": filesystem_data,
+            "memory_monitoring": memory_data,
+            "disk_io_monitoring": disk_io_data
         }))
     }
 
@@ -252,7 +323,21 @@ impl MonitoringService {
             monitor.collect_snapshot().await.is_ok()
         };
 
-        Ok(process_healthy && network_healthy && filesystem_healthy)
+        let memory_healthy = {
+            let monitor = self.memory_monitor.lock().await;
+            monitor.collect_snapshot().await.is_ok()
+        };
+
+        let disk_io_healthy = {
+            let monitor = self.disk_io_monitor.lock().await;
+            monitor.collect_snapshot().await.is_ok()
+        };
+
+        Ok(process_healthy
+            && network_healthy
+            && filesystem_healthy
+            && memory_healthy
+            && disk_io_healthy)
     }
 }
 
@@ -260,6 +345,8 @@ async fn collect_monitoring_data(
     process_monitor: &Arc<Mutex<ProcessMonitorEbpf>>,
     network_monitor: &Arc<Mutex<NetworkMonitorEbpf>>,
     filesystem_monitor: &Arc<Mutex<FilesystemMonitorEbpf>>,
+    memory_monitor: &Arc<Mutex<MemoryMonitorEbpf>>,
+    disk_io_monitor: &Arc<Mutex<DiskIoMonitorEbpf>>,
 ) -> Result<()> {
     let process_snapshot = {
         let monitor = process_monitor.lock().await;
@@ -285,11 +372,29 @@ async fn collect_monitoring_data(
             .map_err(|e| anyhow::anyhow!("Filesystem monitor error: {}", e))?
     };
 
+    let memory_snapshot = {
+        let monitor = memory_monitor.lock().await;
+        monitor
+            .collect_snapshot()
+            .await
+            .map_err(|e| anyhow::anyhow!("Memory monitor error: {}", e))?
+    };
+
+    let disk_io_snapshot = {
+        let monitor = disk_io_monitor.lock().await;
+        monitor
+            .collect_snapshot()
+            .await
+            .map_err(|e| anyhow::anyhow!("Disk I/O monitor error: {}", e))?
+    };
+
     info!(
-        "Collected monitoring data - processes: {}, connections: {}, files: {}",
+        "Collected monitoring data - processes: {}, connections: {}, files: {}, memory events: {}, disk I/O events: {}",
         process_snapshot["recent_processes"].as_array().map(|v| v.len()).unwrap_or(0),
         network_snapshot["connections"].as_array().map(|v| v.len()).unwrap_or(0),
-        filesystem_snapshot["recent_file_access"].as_array().map(|v| v.len()).unwrap_or(0)
+        filesystem_snapshot["recent_file_access"].as_array().map(|v| v.len()).unwrap_or(0),
+        memory_snapshot["recent_events"].as_array().map(|v| v.len()).unwrap_or(0),
+        disk_io_snapshot["recent_events"].as_array().map(|v| v.len()).unwrap_or(0)
     );
 
     Ok(())

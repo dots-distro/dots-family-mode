@@ -1,4 +1,10 @@
 use anyhow::Result;
+use aya::Bpf;
+use serde_json::{json, Value};
+use std::{
+    path::Path,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use tracing::{debug, info};
 
 /// Disk I/O event from eBPF program
@@ -52,14 +58,82 @@ impl DiskIoEvent {
 
 /// Disk I/O monitor for eBPF-based I/O tracking
 pub struct DiskIoMonitorEbpf {
-    _marker: std::marker::PhantomData<()>,
+    ebpf: Option<Bpf>,
+    loaded: bool,
 }
 
 impl DiskIoMonitorEbpf {
     /// Create a new disk I/O monitor instance
     pub fn new() -> Result<Self> {
         info!("Initializing eBPF disk I/O monitor");
-        Ok(Self { _marker: std::marker::PhantomData })
+        Ok(Self { ebpf: None, loaded: false })
+    }
+
+    /// Load the eBPF program from a file
+    pub async fn load(&mut self, bpf_path: &Path) -> Result<()> {
+        info!("Loading disk I/O monitor eBPF program from {:?}", bpf_path);
+
+        let elf_bytes = match std::fs::read(bpf_path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Failed to read eBPF program file {:?}: {}",
+                    bpf_path,
+                    e
+                ));
+            }
+        };
+
+        match Bpf::load(&elf_bytes) {
+            Ok(bpf) => {
+                info!(
+                    "Successfully loaded disk I/O monitor eBPF program ({} bytes)",
+                    elf_bytes.len()
+                );
+                self.ebpf = Some(bpf);
+                self.loaded = true;
+                Ok(())
+            }
+            Err(e) => Err(anyhow::anyhow!("Failed to load disk I/O monitor eBPF program: {}", e)),
+        }
+    }
+
+    /// Check if the eBPF program is loaded
+    #[allow(dead_code)]
+    pub fn is_loaded(&self) -> bool {
+        self.loaded
+    }
+
+    /// Collect a snapshot of disk I/O monitoring data
+    pub async fn collect_snapshot(&self) -> Result<Value> {
+        if !self.loaded {
+            return Err(anyhow::anyhow!("Monitor not loaded"));
+        }
+
+        // Return mock disk I/O data for simulation
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+        Ok(json!({
+            "timestamp": timestamp,
+            "recent_events": [
+                {
+                    "pid": 1234,
+                    "device": "8:0",
+                    "event_type": "complete",
+                    "size": 4096,
+                    "latency_ms": 2.5
+                }
+            ]
+        }))
+    }
+
+    /// Cleanup resources
+    #[allow(dead_code)]
+    pub fn cleanup(&mut self) {
+        if let Some(ref mut _ebpf) = self.ebpf {
+            info!("Cleaning up disk I/O monitor eBPF programs");
+        }
+        self.loaded = false;
     }
 
     /// Process a disk I/O event from the eBPF program
