@@ -1,22 +1,75 @@
 # eBPF Monitoring Enhancements
 
-## Current State
+## Implementation Status
 
-The existing eBPF programs provide basic monitoring:
+### Phase 1: Basic Framework (✅ COMPLETED - Session 7)
+- PID, UID, GID extraction using kernel helpers
+- Process name (comm) extraction
+- Ring buffer event submission
+- Basic network and filesystem event capture
+
+### Phase 2: Enhanced Data Extraction (✅ COMPLETED - Sessions 8 & 10)
+- ✅ **PPID extraction** (process-monitor.rs) - Parent process ID from tracepoint context
+- ✅ **Executable path extraction** (process-monitor.rs) - Full binary path from sched_process_exec filename field
+- ✅ **Socket address/port extraction** (network-monitor.rs) - Source/destination IP and ports from struct sock
+- ✅ **Filename extraction** (filesystem-monitor.rs) - Full file paths from user space memory
+
+**Binary Size Changes:**
+- process-monitor: 1.6K → 4.8K (+200%)
+- network-monitor: 1.5K → 2.6K (+73%)
+- filesystem-monitor: 2.4K → 6.8K (+183%)
+
+### Phase 3: Advanced Metrics (🔄 PLANNED)
+- CPU time tracking per process
+- Memory usage monitoring (RSS, VMS, shared)
+- Disk I/O metrics (bytes read/written, latency)
+- Enhanced network metrics (bandwidth, connections)
+- Process scheduling and latency tracking
+
+---
+
+## Current Implementation Details
 
 ### Network Monitor (`network-monitor.rs`)
-- **Current**: TCP connect events only
-- **Issues**: No actual socket data extraction, placeholder values
+- **Features**: TCP connect events with socket information
+- **Data Extracted**: 
+  - Process ID (PID) and name (comm)
+  - Source and destination IP addresses
+  - Source and destination ports
+  - Protocol identification (TCP = 6)
+- **Method**: Read struct sock fields at approximate offsets (24-34 bytes)
+- **Limitations**: Offsets may vary by kernel version (no BTF/CO-RE yet)
 
 ### Process Monitor (`process-monitor.rs`)
-- **Current**: Process exec/exit events
-- **Issues**: No data extraction, all fields zeroed
+- **Features**: Process exec/exit events with full context
+- **Data Extracted**:
+  - Process ID (PID), Parent Process ID (PPID)
+  - User ID (UID), Group ID (GID)
+  - Process name (comm) - 16 bytes
+  - Executable path (cmdline) - 256 bytes
+- **Method**: 
+  - PPID from tracepoint context offset 12
+  - Executable path from __data_loc encoded pointer at offset 8
+  - Per-CPU buffer to avoid stack overflow
+- **Limitations**: Cmdline reduced to 256 bytes due to eBPF 512-byte stack limit
 
 ### Filesystem Monitor (`filesystem-monitor.rs`)
-- **Current**: open/read/write/close events
-- **Issues**: File descriptors captured but no filenames, basic byte counts
+- **Features**: File open/read/write/close events with filenames
+- **Data Extracted**:
+  - Process ID (PID) and name (comm)
+  - File descriptor (FD)
+  - Full filename/path - 255 bytes
+  - Bytes transferred for I/O operations
+  - Operation type (read/write/exec)
+- **Method**: 
+  - Filename from second argument (ctx.arg::<u64>(1))
+  - Read from user space via bpf_probe_read_user_str_bytes
+  - Per-CPU buffer for stack safety
+- **Limitations**: Only captures open events with filename, not all I/O
 
-## Proposed Enhancements
+---
+
+## Phase 3: Proposed Advanced Enhancements
 
 ### 1. Memory Usage Monitoring
 
