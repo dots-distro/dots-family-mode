@@ -1,0 +1,36 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+
+Version 3, 19 November 2007
+
+Copyright (C) 2026 DOTS Family Mode Project
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+## Additional Terms
+
+This license includes the following additional terms to comply with
+ Affero General Public License requirements for network usage:
+
+### Source Distribution Requirement
+If you run a modified version of this program on a server and make
+its functionality available to third parties through a computer network, you must
+make the complete corresponding source code available under the same license.
+
+### Patent Grant
+An additional patent grant is included: The copyright holders grant you
+a non-exclusive, worldwide, royalty-free patent license under any patents
+they necessarily use to make, have made, or sell the software.
+
+For the full license text, see:
+https://www.gnu.org/licenses/agpl-3.0.html
