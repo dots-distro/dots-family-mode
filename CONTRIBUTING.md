@@ -8,6 +8,17 @@ Thank you for your interest in contributing to DOTS Family Mode! This document p
 - **AGPLv3**: For open source and network use (licensing@dots-family-mode.org)
 - **Commercial**: For commercial closed-source deployments (shift@someone.section.me)
 
+## Contributor License Agreement (CLA)
+
+**Required**: All contributors must sign the CLA before contributions are accepted.
+
+**How to Sign**:
+1. Read the full agreement: [CONTRIBUTOR_LICENSE_AGREEMENT.md](CONTRIBUTOR_LICENSE_AGREEMENT.md)
+2. Sign via GitHub pull request comment or email: project@dots-family-mode.org
+3. Include your GitHub username and contribution details
+
+**Purpose**: The CLA ensures proper licensing for both open source and commercial contributions, patent protection, and contribution attribution.
+
 See [LICENSE](LICENSE) for complete details.
 
 ## Getting Started
