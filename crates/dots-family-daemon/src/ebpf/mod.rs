@@ -1,4 +1,6 @@
+pub mod disk_io_monitor;
 pub mod filesystem_monitor;
+pub mod memory_monitor;
 pub mod network_monitor;
 pub mod process_monitor;
 
@@ -6,7 +8,9 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use aya::Bpf;
+pub use disk_io_monitor::DiskIoMonitorEbpf;
 pub use filesystem_monitor::FilesystemMonitorEbpf;
+pub use memory_monitor::MemoryMonitorEbpf;
 pub use network_monitor::NetworkMonitorEbpf;
 pub use process_monitor::ProcessMonitorEbpf;
 use tracing::{error, info, warn};
@@ -56,9 +60,13 @@ impl EbpfManager {
             "filesystem_monitor".to_string(),
             self.programs.contains_key("filesystem_monitor"),
         );
+        program_status
+            .insert("memory_monitor".to_string(), self.programs.contains_key("memory_monitor"));
+        program_status
+            .insert("disk_io_monitor".to_string(), self.programs.contains_key("disk_io_monitor"));
 
         let actually_loaded_programs = program_status.values().filter(|&loaded| *loaded).count();
-        let all_programs_loaded = actually_loaded_programs == 3;
+        let all_programs_loaded = actually_loaded_programs == 5; // Phase 3: All 5 monitors
 
         self.health_status = EbpfHealth {
             programs_loaded: actually_loaded_programs,
@@ -71,11 +79,13 @@ impl EbpfManager {
     pub async fn load_all_programs(&mut self) -> Result<()> {
         info!("Loading eBPF programs");
 
-        // Environment variables for eBPF program paths
+        // Environment variables for eBPF program paths (Phase 3: 5 monitors)
         let env_vars = [
             ("process_monitor", "BPF_PROCESS_MONITOR_PATH"),
             ("network_monitor", "BPF_NETWORK_MONITOR_PATH"),
             ("filesystem_monitor", "BPF_FILESYSTEM_MONITOR_PATH"),
+            ("memory_monitor", "BPF_MEMORY_MONITOR_PATH"),
+            ("disk_io_monitor", "BPF_DISK_IO_MONITOR_PATH"),
         ];
 
         // Use simple fallback monitor when eBPF is not available (to avoid compilation issues)

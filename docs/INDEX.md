@@ -26,6 +26,7 @@ Complete documentation for DOTS Family Mode parental control system.
 ### Implementation
 - **[RUST_APPLICATIONS.md](RUST_APPLICATIONS.md)** - Detailed specifications for all Rust applications
 - **[EBPF_ENHANCEMENTS.md](EBPF_ENHANCEMENTS.md)** - eBPF monitoring implementation (Phase 1-3 complete)
+- **[EBPF_QUICK_REFERENCE.md](EBPF_QUICK_REFERENCE.md)** - Quick reference for all 5 eBPF monitors
 - **[PHASE3_INTEGRATION_PLAN.md](PHASE3_INTEGRATION_PLAN.md)** - Phase 3 eBPF integration testing plan
 
 ## Current Implementation Status
@@ -86,6 +87,7 @@ Complete documentation for DOTS Family Mode parental control system.
 | RUST_APPLICATIONS.md | ✅ Current | 2026-01-12 | Rust applications |
 | VM_TESTING_GUIDE.md | ✅ Current | 2026-01-21 | VM testing |
 | EBPF_ENHANCEMENTS.md | ✅ Current | 2026-01-26 | eBPF Phase 1-3 |
+| EBPF_QUICK_REFERENCE.md | ✅ Current | 2026-01-26 | eBPF quick reference |
 | PHASE3_INTEGRATION_PLAN.md | ✅ Current | 2026-01-26 | Integration testing |
 
 ### Test Evidence
@@ -109,9 +111,10 @@ Complete documentation for DOTS Family Mode parental control system.
 1. README.md - Build and test commands
 2. NIXOS_INTEGRATION.md - Module configuration
 3. ARCHITECTURE.md - Component interaction
-4. EBPF_ENHANCEMENTS.md - eBPF monitoring implementation
-5. PHASE3_INTEGRATION_PLAN.md - eBPF integration testing
-6. Source code in crates/
+4. EBPF_QUICK_REFERENCE.md - eBPF monitor quick reference
+5. EBPF_ENHANCEMENTS.md - eBPF monitoring implementation
+6. PHASE3_INTEGRATION_PLAN.md - eBPF integration testing
+7. Source code in crates/
 
 ### For Testers
 1. README.md - Quick start
