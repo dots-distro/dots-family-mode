@@ -2,10 +2,11 @@
 #![no_main]
 
 use aya_ebpf::{
-    helpers::{bpf_get_current_comm, bpf_get_current_pid_tgid},
+    helpers::{bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_probe_read_kernel},
     macros::{kprobe, map},
     maps::RingBuf,
     programs::ProbeContext,
+    EbpfContext,
 };
 
 #[repr(C)]
@@ -27,7 +28,7 @@ pub struct NetworkEvent {
 static NETWORK_EVENTS: RingBuf = RingBuf::with_byte_size(512 * 1024, 0);
 
 #[kprobe]
-pub fn tcp_connect(_ctx: ProbeContext) -> u32 {
+pub fn tcp_connect(ctx: ProbeContext) -> u32 {
     // Get PID from current process
     // bpf_get_current_pid_tgid() returns u64 where high 32 bits = tgid, low 32 bits = pid
     let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
@@ -36,19 +37,50 @@ pub fn tcp_connect(_ctx: ProbeContext) -> u32 {
     // Get process name
     let comm = unsafe { bpf_get_current_comm() }.unwrap_or([0u8; 16]);
 
-    // Note: Socket address/port extraction requires reading from socket struct
-    // This needs kernel structure definitions and BTF/CO-RE support
-    // For Phase 1, we capture PID and process name which is already valuable
-    // TODO Phase 2: Extract socket info from sk_common or inet_sock structs
+    // Phase 2: Extract socket information from struct sock *
+    // The first argument to tcp_connect is struct sock *sk
+    let mut src_addr: u32 = 0;
+    let mut dst_addr: u32 = 0;
+    let mut src_port: u16 = 0;
+    let mut dst_port: u16 = 0;
+
+    // Try to get the socket pointer from the first argument
+    if let Some(sk_ptr) = ctx.arg::<u64>(0) {
+        if sk_ptr != 0 {
+            // struct sock has a __sk_common field at the beginning
+            // struct sock_common contains network addressing fields
+            // Offsets are approximate and may need adjustment for different kernels
+            // This is a best-effort approach without BTF/CO-RE
+
+            // Try to read source address (skc_rcv_saddr offset ~24 bytes in sock_common)
+            let src_addr_ptr = (sk_ptr + 24) as *const u32;
+            src_addr = unsafe { bpf_probe_read_kernel(src_addr_ptr) }.unwrap_or(0);
+
+            // Try to read destination address (skc_daddr offset ~28 bytes)
+            let dst_addr_ptr = (sk_ptr + 28) as *const u32;
+            dst_addr = unsafe { bpf_probe_read_kernel(dst_addr_ptr) }.unwrap_or(0);
+
+            // Try to read source port (skc_num offset ~32 bytes)
+            let src_port_ptr = (sk_ptr + 32) as *const u16;
+            src_port = unsafe { bpf_probe_read_kernel(src_port_ptr) }.unwrap_or(0);
+
+            // Try to read destination port (skc_dport offset ~34 bytes)
+            let dst_port_ptr = (sk_ptr + 34) as *const u16;
+            dst_port = unsafe { bpf_probe_read_kernel(dst_port_ptr) }.unwrap_or(0);
+
+            // Convert from network byte order (big endian) to host byte order
+            dst_port = u16::from_be(dst_port);
+        }
+    }
 
     let event = NetworkEvent {
         event_type: 1, // TCP connect
         pid,
         comm,
-        src_addr: 0, // TODO: Extract from socket->sk_common.skc_rcv_saddr
-        dst_addr: 0, // TODO: Extract from socket->sk_common.skc_daddr
-        src_port: 0, // TODO: Extract from socket->sk_common.skc_num
-        dst_port: 0, // TODO: Extract from socket->sk_common.skc_dport
+        src_addr,
+        dst_addr,
+        src_port,
+        dst_port,
         protocol: 6, // TCP
         bytes_sent: 0,
         bytes_received: 0,

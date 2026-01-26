@@ -2,9 +2,9 @@
 #![no_main]
 
 use aya_ebpf::{
-    helpers::{bpf_get_current_comm, bpf_get_current_pid_tgid},
+    helpers::{bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_probe_read_user_str_bytes},
     macros::{kprobe, map},
-    maps::RingBuf,
+    maps::{PerCpuArray, RingBuf},
     programs::ProbeContext,
 };
 
@@ -23,6 +23,10 @@ pub struct FilesystemEvent {
 #[map]
 static FS_EVENTS: RingBuf = RingBuf::with_byte_size(512 * 1024, 0);
 
+// Per-CPU buffer to avoid stack overflow
+#[map]
+static FILENAME_BUF: PerCpuArray<[u8; 255]> = PerCpuArray::with_max_entries(1, 0);
+
 #[kprobe]
 pub fn trace_do_sys_open(ctx: ProbeContext) -> u32 {
     // bpf_get_current_pid_tgid() returns u64 where high 32 bits = tgid, low 32 bits = pid
@@ -35,23 +39,36 @@ pub fn trace_do_sys_open(ctx: ProbeContext) -> u32 {
     // Get file descriptor from context (returns Option)
     let fd = ctx.arg::<u32>(0).unwrap_or(0);
 
-    // TODO Phase 2: Extract filename from kernel using bpf_probe_read_kernel_str
-    // The filename pointer is in ctx.arg(1) but needs careful dereferencing
-    let filename = [0u8; 255];
+    // Phase 2: Extract filename from user space
+    // Use per-CPU buffer to avoid stack overflow
+    if let Some(filename_buf) = FILENAME_BUF.get_ptr_mut(0) {
+        let filename_buf = unsafe { &mut *filename_buf };
+        *filename_buf = [0u8; 255];
 
-    let event = FilesystemEvent {
-        event_type: 1, // Open event
-        pid,
-        comm,
-        fd,
-        filename,
-        bytes_transferred: 0,
-        operation: 0, // Read operation
-    };
+        // The second argument is the filename pointer (char __user *)
+        if let Some(filename_ptr) = ctx.arg::<u64>(1) {
+            if filename_ptr != 0 {
+                // Read filename from user space memory
+                let _ = unsafe {
+                    bpf_probe_read_user_str_bytes(filename_ptr as *const u8, filename_buf)
+                };
+            }
+        }
 
-    if let Some(mut buf) = FS_EVENTS.reserve::<FilesystemEvent>(0) {
-        buf.write(event);
-        buf.submit(0);
+        let event = FilesystemEvent {
+            event_type: 1, // Open event
+            pid,
+            comm,
+            fd,
+            filename: *filename_buf,
+            bytes_transferred: 0,
+            operation: 0, // Read operation
+        };
+
+        if let Some(mut buf) = FS_EVENTS.reserve::<FilesystemEvent>(0) {
+            buf.write(event);
+            buf.submit(0);
+        }
     }
 
     0
