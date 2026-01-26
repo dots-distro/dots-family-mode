@@ -1,5 +1,5 @@
-   0.607369244s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)/Check { test: false }/TargetInner { name: "filesystem-monitor", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/filesystem-monitor.rs", Edition2021) }
-   0.607438112s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-05a9428f3349019e/bin-filesystem-monitor`
+   0.143776289s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: false }/TargetInner { name: "filesystem-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/filesystem-monitor.rs", Edition2021) }
+   0.143852177s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-05a9428f3349019e/bin-filesystem-monitor`
 
 Caused by:
     No such file or directory (os error 2)
@@ -41,8 +41,8 @@ Stack backtrace:
   24: __libc_start_call_main
   25: __libc_start_main_alias_1
   26: <unknown>
-   0.666966780s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)/Check { test: true }/TargetInner { name: "filesystem-monitor", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/filesystem-monitor.rs", Edition2021) }
-   0.667027145s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-391ca44270dea37f/test-bin-filesystem-monitor`
+   0.182758049s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: true }/TargetInner { name: "filesystem-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/filesystem-monitor.rs", Edition2021) }
+   0.182823170s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="filesystem-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-391ca44270dea37f/test-bin-filesystem-monitor`
 
 Caused by:
     No such file or directory (os error 2)
@@ -84,8 +84,8 @@ Stack backtrace:
   24: __libc_start_call_main
   25: __libc_start_main_alias_1
   26: <unknown>
-   0.668895580s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)/Check { test: false }/TargetInner { name: "network-monitor", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/network-monitor.rs", Edition2021) }
-   0.668948404s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-66b61498a06f7293/bin-network-monitor`
+   0.184334896s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="memory-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: false }/TargetInner { name: "memory-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/memory-monitor.rs", Edition2021) }
+   0.184387678s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="memory-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-616b0ef38cbb0a03/bin-memory-monitor`
 
 Caused by:
     No such file or directory (os error 2)
@@ -127,8 +127,8 @@ Stack backtrace:
   24: __libc_start_call_main
   25: __libc_start_main_alias_1
   26: <unknown>
-   0.671000973s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)/Check { test: true }/TargetInner { name: "network-monitor", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/network-monitor.rs", Edition2021) }
-   0.671246021s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-6133324b2132eb87/test-bin-network-monitor`
+   0.185750480s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="memory-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: true }/TargetInner { name: "memory-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/memory-monitor.rs", Edition2021) }
+   0.185800978s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="memory-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-ca73027a390e1048/test-bin-memory-monitor`
 
 Caused by:
     No such file or directory (os error 2)
@@ -170,8 +170,8 @@ Stack backtrace:
   24: __libc_start_call_main
   25: __libc_start_main_alias_1
   26: <unknown>
-   0.673626624s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)/Check { test: false }/TargetInner { name: "process-monitor", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/process-monitor.rs", Edition2021) }
-   0.673683965s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-e78aca9892fff3fc/bin-process-monitor`
+   0.187022197s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: false }/TargetInner { name: "network-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/network-monitor.rs", Edition2021) }
+   0.187060479s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-66b61498a06f7293/bin-network-monitor`
 
 Caused by:
     No such file or directory (os error 2)
@@ -213,8 +213,8 @@ Stack backtrace:
   24: __libc_start_call_main
   25: __libc_start_main_alias_1
   26: <unknown>
-   0.675390090s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)/Check { test: true }/TargetInner { name: "process-monitor", doc: true, ..: with_path("/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/process-monitor.rs", Edition2021) }
-   0.675444328s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-f75cbdbefbc2c00b/test-bin-process-monitor`
+   0.188399443s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: true }/TargetInner { name: "network-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/network-monitor.rs", Edition2021) }
+   0.188447490s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="network-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-6133324b2132eb87/test-bin-network-monitor`
 
 Caused by:
     No such file or directory (os error 2)
@@ -256,11 +256,99 @@ Stack backtrace:
   24: __libc_start_call_main
   25: __libc_start_main_alias_1
   26: <unknown>
-    Checking dots-family-ebpf v0.1.0 (/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf)
-error: could not compile `dots-family-ebpf` (bin "network-monitor" test) due to 5 previous errors; 1 warning emitted
+   0.189791689s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: false }/TargetInner { name: "process-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/process-monitor.rs", Edition2021) }
+   0.189855108s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-e78aca9892fff3fc/bin-process-monitor`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+   0.191150115s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint: fingerprint error for dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)/Check { test: true }/TargetInner { name: "process-monitor", doc: true, ..: with_path("/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/src/process-monitor.rs", Edition2021) }
+   0.191192239s  INFO prepare_target{force=false package_id=dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf) target="process-monitor"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf/target/x86_64-unknown-linux-gnu/debug/.fingerprint/dots-family-ebpf-f75cbdbefbc2c00b/test-bin-process-monitor`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: __libc_start_call_main
+  25: __libc_start_main_alias_1
+  26: <unknown>
+    Checking dots-family-ebpf v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-ebpf)
+error: could not compile `dots-family-ebpf` (bin "process-monitor") due to 1 previous error; 8 warnings emitted
 warning: build failed, waiting for other jobs to finish...
-error: could not compile `dots-family-ebpf` (bin "process-monitor") due to 10 previous errors; 2 warnings emitted
-error: could not compile `dots-family-ebpf` (bin "filesystem-monitor") due to 12 previous errors; 1 warning emitted
-error: could not compile `dots-family-ebpf` (bin "network-monitor") due to 7 previous errors; 1 warning emitted
-error: could not compile `dots-family-ebpf` (bin "filesystem-monitor" test) due to 10 previous errors; 1 warning emitted
-error: could not compile `dots-family-ebpf` (bin "process-monitor" test) due to 8 previous errors; 2 warnings emitted
+error: could not compile `dots-family-ebpf` (bin "network-monitor") due to 1 previous error; 3 warnings emitted
+error: could not compile `dots-family-ebpf` (bin "network-monitor" test) due to 1 previous error; 1 warning emitted
+error: could not compile `dots-family-ebpf` (bin "memory-monitor" test) due to 1 previous error
+error: could not compile `dots-family-ebpf` (bin "filesystem-monitor" test) due to 1 previous error
+error: could not compile `dots-family-ebpf` (bin "filesystem-monitor") due to 1 previous error; 8 warnings emitted
+error: could not compile `dots-family-ebpf` (bin "memory-monitor") due to 1 previous error
+error: could not compile `dots-family-ebpf` (bin "process-monitor" test) due to 1 previous error; 1 warning emitted

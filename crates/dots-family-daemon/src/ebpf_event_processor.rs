@@ -51,9 +51,11 @@ impl EbpfEventProcessor {
             timestamp,
         };
 
-        // TODO: Call database insert function once integrated
-        // dots_family_db::queries::ebpf_metrics::insert_memory_event(&self.db, &new_event).await?;
-        debug!("Processed memory event: {:?}", new_event);
+        // Insert into database
+        let pool = self.db.pool()?;
+        dots_family_db::queries::ebpf_metrics::insert_memory_event(pool, new_event).await?;
+
+        debug!("Stored memory event for PID {} in database", event.pid);
 
         Ok(())
     }
@@ -100,9 +102,11 @@ impl EbpfEventProcessor {
             timestamp,
         };
 
-        // TODO: Call database insert function once integrated
-        // dots_family_db::queries::ebpf_metrics::insert_disk_io_event(&self.db, &new_event).await?;
-        debug!("Processed disk I/O event: {:?}", new_event);
+        // Insert into database
+        let pool = self.db.pool()?;
+        dots_family_db::queries::ebpf_metrics::insert_disk_io_event(pool, new_event).await?;
+
+        debug!("Stored disk I/O event for PID {} in database", event.pid);
 
         Ok(())
     }
