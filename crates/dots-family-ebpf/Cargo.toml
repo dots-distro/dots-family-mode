@@ -18,6 +18,14 @@ path = "src/network-monitor.rs"
 name = "filesystem-monitor"
 path = "src/filesystem-monitor.rs"
 
+[[bin]]
+name = "memory-monitor"
+path = "src/memory-monitor.rs"
+
+[[bin]]
+name = "disk-io-monitor"
+path = "src/disk-io-monitor.rs"
+
 [dependencies]
 aya-ebpf = "0.1"
 aya-log-ebpf = "0.1"
