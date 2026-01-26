@@ -25,6 +25,8 @@ Complete documentation for DOTS Family Mode parental control system.
 
 ### Implementation
 - **[RUST_APPLICATIONS.md](RUST_APPLICATIONS.md)** - Detailed specifications for all Rust applications
+- **[EBPF_ENHANCEMENTS.md](EBPF_ENHANCEMENTS.md)** - eBPF monitoring implementation (Phase 1-3 complete)
+- **[PHASE3_INTEGRATION_PLAN.md](PHASE3_INTEGRATION_PLAN.md)** - Phase 3 eBPF integration testing plan
 
 ## Current Implementation Status
 
@@ -43,7 +45,7 @@ Complete documentation for DOTS Family Mode parental control system.
 
 ### 🚧 In Progress
 
-- eBPF kernel programs optimization
+- Phase 3 eBPF integration testing (monitors ready, userspace integration pending)
 - GUI dashboard (dots-family-gui - disabled due to compilation)
 - Enhanced reporting features
 
@@ -83,6 +85,8 @@ Complete documentation for DOTS Family Mode parental control system.
 | NIXOS_INTEGRATION.md | ✅ Current | 2026-01-21 | NixOS modules |
 | RUST_APPLICATIONS.md | ✅ Current | 2026-01-12 | Rust applications |
 | VM_TESTING_GUIDE.md | ✅ Current | 2026-01-21 | VM testing |
+| EBPF_ENHANCEMENTS.md | ✅ Current | 2026-01-26 | eBPF Phase 1-3 |
+| PHASE3_INTEGRATION_PLAN.md | ✅ Current | 2026-01-26 | Integration testing |
 
 ### Test Evidence
 | Document | Status | Description |
@@ -105,7 +109,9 @@ Complete documentation for DOTS Family Mode parental control system.
 1. README.md - Build and test commands
 2. NIXOS_INTEGRATION.md - Module configuration
 3. ARCHITECTURE.md - Component interaction
-4. Source code in crates/
+4. EBPF_ENHANCEMENTS.md - eBPF monitoring implementation
+5. PHASE3_INTEGRATION_PLAN.md - eBPF integration testing
+6. Source code in crates/
 
 ### For Testers
 1. README.md - Quick start
@@ -176,6 +182,14 @@ When updating documentation:
 
 ## Changelog
 
+- **2026-01-26**: Phase 3 eBPF monitoring complete
+  - Added 5 eBPF monitors (16 probes total, 27.4KB)
+  - memory-monitor: kernel allocations tracking
+  - disk-io-monitor: block I/O latency monitoring
+  - network-monitor: TCP bandwidth tracking (enhanced)
+  - Created PHASE3_INTEGRATION_PLAN.md
+  - Updated DEVELOPMENT.md with advanced patterns
+
 - **2026-01-21**: Updated for Phase 8 completion
   - README.md comprehensive updates
   - VM testing guide added
@@ -189,6 +203,6 @@ When updating documentation:
 
 ---
 
-**Last Updated**: January 21, 2026
-**Status**: Phase 8 Complete - Production Ready
+**Last Updated**: January 26, 2026
+**Status**: Phase 3 eBPF Complete - Integration Testing Phase
 **Version**: 0.1.0

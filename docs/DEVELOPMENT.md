@@ -358,22 +358,69 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 See [EBPF_ENHANCEMENTS.md](./EBPF_ENHANCEMENTS.md) for detailed roadmap.
 
-**Phase 1 (Complete):**
+**Phase 1 (✅ Complete):**
 - PID, UID, GID extraction
 - Process name (comm) extraction
 - Basic network and filesystem monitoring
 
-**Phase 2 (In Progress):**
-- PPID extraction (✅ completed)
-- Executable path extraction (✅ completed)
-- Socket address/port extraction (TODO)
-- Filename extraction (TODO)
+**Phase 2 (✅ Complete):**
+- PPID extraction (parent process tracking)
+- Executable path extraction (__data_loc pointer parsing)
+- Socket address/port extraction (struct sock access)
+- Filename extraction (user space memory reads)
 
-**Phase 3 (Planned):**
-- CPU time tracking
-- Memory usage monitoring
-- Disk I/O metrics
-- Enhanced network metrics
+**Phase 3 (✅ Complete):**
+- Memory monitoring (kmalloc/kfree, page alloc/free)
+- Disk I/O with latency tracking (HashMap-based)
+- Enhanced network metrics (tcp_sendmsg/recvmsg bandwidth)
+- 5 production monitors, 16 probe functions, 27.4KB total
+
+### Phase 3 Advanced eBPF Patterns
+
+**Pattern 1: HashMap for Stateful Tracking**
+```rust
+#[map]
+static PENDING_IO: HashMap<u64, u64> = HashMap::with_max_entries(10240, 0);
+
+// Store start time on I/O issue
+unsafe { PENDING_IO.insert(&request_id, &timestamp, 0); }
+
+// Calculate latency on I/O complete
+let start = unsafe { PENDING_IO.get(&request_id).copied().unwrap_or(0) };
+let latency = current_time.saturating_sub(start);
+
+// Cleanup
+unsafe { PENDING_IO.remove(&request_id); }
+```
+
+**Pattern 2: Dynamic Size Calculations**
+```rust
+// Read page order from tracepoint
+let order: u32 = unsafe { ctx.read_at(16).unwrap_or(0) };
+
+// Calculate actual size: (2^order) * PAGE_SIZE
+let size = (1u64 << order) * 4096;
+```
+
+**Pattern 3: Multiple Probes Per Monitor**
+```rust
+// network-monitor.rs has 3 kprobes:
+#[kprobe] pub fn tcp_connect()   // Connection establishment
+#[kprobe] pub fn tcp_sendmsg()   // TX bandwidth tracking
+#[kprobe] pub fn tcp_recvmsg()   // RX bandwidth tracking
+```
+
+**Pattern 4: Bandwidth Tracking**
+```rust
+// Extract bytes from function arguments
+let bytes_sent = ctx.arg::<u64>(2).unwrap_or(0);
+
+let event = NetworkEvent {
+    bytes_sent,
+    bytes_received: 0,
+    // ... other fields
+};
+```
 
 ### Debugging eBPF Programs
 
