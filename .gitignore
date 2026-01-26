@@ -40,3 +40,8 @@ VM_TEST*.md
 build-and-verify-*.sh
 test-daemon-*.sh
 .engram-session-tracking.json
+QUICK_START.md
+test-output*.txt
+
+# eBPF debug files
+*.d
