@@ -4,6 +4,7 @@ pub mod approval_requests;
 pub mod audit;
 pub mod custom_rules;
 pub mod daily_summaries;
+pub mod ebpf_metrics; // Phase 3 eBPF metrics
 pub mod events;
 pub mod exceptions;
 pub mod filter_lists;
@@ -13,7 +14,7 @@ pub mod policy_cache;
 pub mod policy_versions;
 pub mod profiles;
 pub mod sessions;
-// pub mod terminal;  // Disabled due to missing table migrations
+// pub mod terminal;  // Disabled due to schema mismatch
 pub mod terminal_activity;
 pub mod weekly_summaries;
 

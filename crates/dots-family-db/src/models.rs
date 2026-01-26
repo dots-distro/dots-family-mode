@@ -321,3 +321,95 @@ pub struct NewPolicyVersion {
     pub changed_by: String,
     pub reason: Option<String>,
 }
+
+// Phase 3 eBPF Metrics Models
+
+/// Memory event from eBPF monitoring
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbMemoryEvent {
+    pub id: i64,
+    pub profile_id: i64,
+    pub pid: i32,
+    pub comm: String,
+    pub event_type: i32,         // 0=kmalloc, 1=kfree, 2=page_alloc, 3=page_free
+    pub size: i64,               // Size in bytes
+    pub page_order: Option<i32>, // Page order (for page events)
+    pub timestamp: i64,          // Unix timestamp in milliseconds
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewMemoryEvent {
+    pub profile_id: i64,
+    pub pid: i32,
+    pub comm: String,
+    pub event_type: i32,
+    pub size: i64,
+    pub page_order: Option<i32>,
+    pub timestamp: i64,
+}
+
+/// Disk I/O event from eBPF monitoring
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbDiskIoEvent {
+    pub id: i64,
+    pub profile_id: i64,
+    pub pid: i32,
+    pub comm: String,
+    pub device_major: i32,
+    pub device_minor: i32,
+    pub sector: i64,
+    pub nr_sectors: i32,
+    pub event_type: i32,         // 0=issue, 1=complete, 2=bio_queue
+    pub latency_ns: Option<i64>, // Latency in nanoseconds (for complete events)
+    pub timestamp: i64,          // Unix timestamp in milliseconds
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewDiskIoEvent {
+    pub profile_id: i64,
+    pub pid: i32,
+    pub comm: String,
+    pub device_major: i32,
+    pub device_minor: i32,
+    pub sector: i64,
+    pub nr_sectors: i32,
+    pub event_type: i32,
+    pub latency_ns: Option<i64>,
+    pub timestamp: i64,
+}
+
+/// Hourly memory statistics
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbMemoryStatsHourly {
+    pub id: i64,
+    pub profile_id: i64,
+    pub pid: i32,
+    pub comm: String,
+    pub hour_timestamp: i64,
+    pub total_allocated_bytes: i64,
+    pub total_freed_bytes: i64,
+    pub net_allocation_bytes: i64,
+    pub peak_allocation_bytes: i64,
+    pub allocation_count: i64,
+    pub free_count: i64,
+}
+
+/// Hourly disk I/O statistics
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct DbDiskIoStatsHourly {
+    pub id: i64,
+    pub profile_id: i64,
+    pub pid: i32,
+    pub comm: String,
+    pub device_major: i32,
+    pub device_minor: i32,
+    pub hour_timestamp: i64,
+    pub total_read_bytes: i64,
+    pub total_write_bytes: i64,
+    pub read_count: i64,
+    pub write_count: i64,
+    pub total_latency_ns: i64,
+    pub min_latency_ns: Option<i64>,
+    pub max_latency_ns: Option<i64>,
+    pub avg_latency_ns: Option<i64>,
+}
