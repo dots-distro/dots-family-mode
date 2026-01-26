@@ -1,4 +1,21 @@
-GNU AFFERO GENERAL PUBLIC LICENSE
+DOTS FAMILY MODE DUAL LICENSE
+
+## Overview
+
+DOTS Family Mode is dual-licensed under the following licenses:
+
+1. **GNU Affero General Public License v3 (AGPLv3)** - For open source and network use
+2. **Commercial License** - For commercial closed-source deployments
+
+You may choose to use this software under either license.
+
+---
+
+## GNU AFFERO GENERAL PUBLIC LICENSE v3 (AGPLv3)
+
+For open source use, network deployments, or when you wish to modify and redistribute.
+
+**Contact for AGPLv3 licensing**: licensing@dots-family-mode.org
 
 Version 3, 19 November 2007
 
@@ -17,12 +34,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-## Additional Terms
-
-This license includes the following additional terms to comply with
- Affero General Public License requirements for network usage:
-
-### Source Distribution Requirement
+### Network Use Notice
 If you run a modified version of this program on a server and make
 its functionality available to third parties through a computer network, you must
 make the complete corresponding source code available under the same license.
@@ -34,3 +46,59 @@ they necessarily use to make, have made, or sell the software.
 
 For the full license text, see:
 https://www.gnu.org/licenses/agpl-3.0.html
+
+---
+
+## COMMERCIAL LICENSE
+
+For commercial closed-source deployments where you do not wish to comply with AGPLv3 source distribution requirements.
+
+**Contact for Commercial licensing**: shift@someone.section.me
+
+Copyright (c) 2026 DOTS Family Mode Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, Publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## License Selection Guide
+
+### Use AGPLv3 When:
+- You want to modify and redistribute the software
+- You are deploying to software on a server or in a network environment
+- You wish to contribute to the open source project
+- You are a researcher, educator, or hobbyist developer
+
+### Use Commercial License When:
+- You are creating a commercial closed-source product
+- You do not want to distribute your modifications
+- You are embedding the software in proprietary systems
+- You prefer not to share your source code
+
+### Getting a Commercial License
+1. **Email**: shift@someone.section.me
+2. **Include**: Company name, intended use case, and deployment description
+3. **Commercial licenses are granted case-by-case**
+4. **Reasonable fees may apply** for commercial use
+
+For questions about licensing, please contact: licensing@dots-family-mode.org
+
+---
+
+**This dual licensing model provides maximum flexibility for both open source community adoption and commercial usage.**

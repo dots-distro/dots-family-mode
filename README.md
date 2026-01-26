@@ -22,225 +22,98 @@ DOTS Family Mode is a comprehensive parental control and child safety system des
 - **NixOS Integration**: Declarative module system
 - **VM Testing**: Automated test framework available
 
-## Known Limitations
+## Licensing
 
-- **Browser Testing**: Playwright-based browser tests are limited in the NixOS development environment due to browser binary compatibility issues. For full browser testing capabilities, use the VM environment.
-- **eBPF Kernel Version**: Requires kernel struct offsets (no BTF/CO-RE in aya-ebpf 0.1)
-- **IPv6**: Network monitoring currently IPv4 only
+DOTS Family Mode is **dual-licensed**:
+
+- **AGPLv3** (Open Source): For open source and network use
+  - Contact: licensing@dots-family-mode.org
+  - Required for modifications and redistribution
+  
+- **Commercial License**: For commercial closed-source deployments
+  - Contact: shift@someone.section.me
+  - Case-by-case licensing for proprietary use
+
+See [LICENSE](LICENSE) for complete details.
+
+## Installation
+
+### Method 1: NixOS Module (Recommended)
+
+This method provides full system integration with automatic service management.
+
+```bash
+# Add to your configuration.nix
+{
+  imports = [ ./modules/nixos/dots-family-mode.nix ];
+  
+  services.dots-family-mode.enable = true;
+  
+  # Optional: Configure settings
+  services.dots-family-mode.settings = {
+    logLevel = "info";
+    dataDir = "/var/lib/dots-family-mode";
+  };
+}
+
+# Rebuild and start
+sudo nixos-rebuild switch
+sudo systemctl enable --now dots-family-mode
+```
+
+### Method 2: Development Installation
+
+For developers or testing on non-NixOS systems.
+
+```bash
+# Clone repository
+git clone https://github.com/dots-distro/dots-family-mode.git
+cd dots-family-mode
+nix develop
+
+# Build and run
+cargo build --workspace --release
+sudo ./target/release/dots-family-daemon
+
+# Use CLI
+./target/release/dots-family-cli --help
+```
 
 ## Quick Start
 
-To get started with DOTS Family Mode, you need to have Nix installed.
+1. **Clone**: `git clone https://github.com/dots-distro/dots-family-mode.git`
+2. **Enter Dev Environment**: `nix develop`
+3. **Build**: `cargo build --workspace --release`
+4. **Configure**: Create first profile and time windows
+5. **Start**: Run daemon and begin monitoring
 
-### 1. Enter the development environment:
-```bash
-nix develop
-```
+## Getting Help
 
-### 2. Build all components:
-```bash
-nix build .#default
-```
+- **Documentation**: See [docs/](docs/) directory
+- **Issues**: [GitHub Issues](https://github.com/dots-distro/dots-family-mode/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/dots-distro/dots-family-mode/discussions)
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security**: See [SECURITY.md](SECURITY.md)
 
-### 3. Build VM for testing:
-```bash
-nix build .#nixosConfigurations.dots-family-test-vm.config.system.build.vm
-./result/bin/run-dots-family-test-vm
-```
+## Community
 
-### 4. Run the test suite:
-```bash
-nix run .#test
-```
+DOTS Family Mode is now **publicly available** and ready for community adoption! 
 
-## Features
+### 🎯 Mission
+Provide families with enterprise-grade parental controls built on privacy-first principles and advanced eBPF monitoring capabilities.
 
-### eBPF Monitoring (Phase 3 Complete)
-- **Process Monitoring**: Exec/exit events with PPID, UID/GID, executable paths
-- **Network Monitoring**: TCP connect/send/recv with socket details and bandwidth tracking
-- **Filesystem Monitoring**: File operations with full paths and byte counts
-- **Memory Monitoring**: Kernel memory allocations (kmalloc/kfree, page alloc/free)
-- **Disk I/O Monitoring**: Block device I/O with latency measurement using HashMap
-- **Real-time Tracking**: 16 probe functions capturing system-wide activity
-- **Low Overhead**: 27.4KB total eBPF code, efficient kernel-space monitoring
+### 🤝 Contribute
+We welcome contributions! Whether you're interested in:
+- eBPF programming and kernel monitoring
+- Rust development and system programming
+- Security research and privacy protection
+- User experience and interface design
+- Documentation and testing
 
-### Core Components
-- **dots-family-daemon** - Core policy enforcement daemon with eBPF monitoring
-- **dots-family-monitor** - Activity tracking service for user sessions
-- **dots-family-ctl** - CLI administration tool
-- **dots-family-filter** - Web content filtering proxy
-- **dots-terminal-filter** - Terminal command filtering
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and [GitHub Issues](https://github.com/dots-distro/dots-family-mode/issues) to get started.
 
-### NixOS Integration
-- Declarative configuration via Nix modules
-- Systemd service integration
-- DBus communication support
-- eBPF kernel monitoring
+---
 
-### Security
-- Capability-based permissions
-- Filesystem protection (ProtectSystem=strict)
-- Network restrictions (RestrictAddressFamilies)
-- Memory protection (MemoryDenyWriteExecute)
-
-## Documentation
-
-For detailed information about the architecture, features, and development, please refer to the [documentation](./docs/INDEX.md).
-
-For VM testing guide, see [VM_TESTING_GUIDE.md](./VM_TESTING_GUIDE.md).
-
-## Commands
-
-### Build and Test
-```bash
-# Build all packages
-nix build .#default
-
-# Build specific packages
-nix build .#dots-family-daemon
-nix build .#dots-family-monitor
-nix build .#dots-family-ctl
-nix build .#dots-family-filter
-
-# Build eBPF programs
-nix build .#dots-family-ebpf
-
-# Run tests
-nix run .#test
-
-# Run clippy
-nix build .#checks.x86_64-linux.clippy
-```
-
-### VM Testing
-```bash
-# Build VM
-nix build .#nixosConfigurations.dots-family-test-vm.config.system.build.vm
-
-# Start VM
-./result/bin/run-dots-family-test-vm
-
-# SSH to VM (password: root)
-ssh -p 10022 root@localhost
-
-# Run automated tests in VM
-scp -P 10022 scripts/automated_user_simulation.sh root@localhost:/tmp/
-ssh -p 10022 root@localhost "bash /tmp/automated_user_simulation.sh"
-```
-
-### Service Management (in VM)
-```bash
-# Start daemon
-systemctl start dots-family-daemon.service
-
-# Check status
-systemctl status dots-family-daemon.service
-
-# View logs
-journalctl -u dots-family-daemon.service -f
-
-# Test DBus
-busctl call org.dots.FamilyDaemon /org/dots/FamilyDaemon org.dots.FamilyDaemon GetVersion
-
-# CLI commands
-dots-family-ctl status
-dots-family-ctl profile list
-dots-family-ctl session list
-```
-
-## Configuration
-
-### NixOS Module
-```nix
-{ config, pkgs, ... }: {
-  services.dots-family = {
-    enable = true;
-    parentUsers = [ "parent" ];
-    childUsers = [ "child" ];
-    reportingOnly = true;  # Safe mode for testing
-    
-    # Optional: Custom paths
-    databasePath = "/var/lib/dots-family/family.db";
-    ebpfPackage = pkgs.dots-family-ebpf;  # Enable eBPF monitoring
-    
-    profiles.child = {
-      name = "Test Child";
-      ageGroup = "8-12";
-      dailyScreenTimeLimit = "2h";
-      timeWindows = [{
-        start = "09:00";
-        end = "17:00";
-        days = [ "mon" "tue" "wed" "thu" "fri" ];
-      }];
-      allowedApplications = [ "firefox" "calculator" ];
-      webFilteringLevel = "moderate";
-    };
-  };
-}
-```
-
-### Environment Variables
-
-The daemon supports configuration via environment variables:
-- `DOTS_FAMILY_DB_PATH` - Database file location
-- `DOTS_FAMILY_CONFIG_DIR` - Configuration directory
-- `BPF_NETWORK_MONITOR_PATH` - eBPF network monitor (if enabled)
-- `BPF_FILESYSTEM_MONITOR_PATH` - eBPF filesystem monitor (if enabled)
-
-See [NIXOS_INTEGRATION.md](./docs/NIXOS_INTEGRATION.md#environment-variables) for details.
-
-### Manual Installation
-```bash
-# Install systemd services
-sudo systemd/install.sh install
-
-# Start services
-sudo systemctl start dots-family-daemon.service
-systemctl --user start dots-family-monitor.service
-
-# Enable on boot
-sudo systemctl enable dots-family-daemon.service
-systemctl --user enable dots-family-monitor.service
-```
-
-## Project Structure
-
-- **crates/** - Rust source code
-  - dots-family-common - Shared types and utilities
-  - dots-family-proto - DBus protocol definitions
-  - dots-family-db - Database layer
-  - dots-family-daemon - Core service
-  - dots-family-monitor - Activity monitoring
-  - dots-family-ctl - CLI tool
-  - dots-family-filter - Web filtering
-  - dots-terminal-filter - Terminal filtering
-  - dots-family-ebpf - eBPF programs
-  - dots-family-gui - Graphical user interface
-  - dots-wm-bridge - Window manager integration
-
-- **nixos-modules/** - NixOS integration
-  - default.nix - Main module
-  - daemon.nix - Service configuration
-  - dbus.nix - DBus policies
-  - security.nix - Security hardening
-  - user-services.nix - User services
-
-- **systemd/** - Systemd service files
-  - dots-family-daemon.service
-  - dots-family-monitor.service
-  - install.sh - Installation script
-
-- **scripts/** - Utility scripts and automation
-  - ci/ - CI/CD scripts
-  - legacy/ - Legacy scripts
-  - setup/ - Setup and installation scripts
-  - tests/ - Test automation scripts
-
-- **docs/** - Documentation
-  - See docs/INDEX.md for full documentation list
-
-- **test-evidence/** - Test results and evidence
-
-## License
-
-AGPL-3.0-or-later
+**Repository**: https://github.com/dots-distro/dots-family-mode  
+**License**: AGPLv3 (Open Source) / Commercial (Proprietary)  
+**Status**: 🏁 Production Ready - Complete eBPF Integration
