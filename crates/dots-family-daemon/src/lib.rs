@@ -3,6 +3,7 @@ pub mod config;
 pub mod daemon;
 pub mod dbus_impl;
 pub mod ebpf;
+pub mod ebpf_event_processor;
 pub mod edge_case_handler;
 pub mod enforcement;
 pub mod monitoring_service;
