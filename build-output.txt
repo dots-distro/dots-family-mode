@@ -1,0 +1,26 @@
+   Compiling tokio-util v0.7.18
+   Compiling h2 v0.4.13
+   Compiling hyper v1.8.1
+   Compiling hyper-util v0.1.19
+   Compiling hyper-tls v0.6.0
+   Compiling reqwest v0.12.28
+   Compiling dots-family-filter v0.1.0 (/home/shift/code/dots-distro/dots-family-mode/crates/dots-family-filter)
+warning: methods `get_domain_category`, `categorize_domain`, and `get_domains_in_category` are never used
+   --> crates/dots-family-filter/src/rules.rs:278:12
+    |
+ 53 | impl RuleEngine {
+    | --------------- methods in this implementation
+...
+278 |     pub fn get_domain_category(&self, domain: &str) -> Option<&String> {
+    |            ^^^^^^^^^^^^^^^^^^^
+...
+283 |     pub fn categorize_domain(&mut self, domain: &str, category: &str) {
+    |            ^^^^^^^^^^^^^^^^^
+...
+288 |     pub fn get_domains_in_category(&self, category: &str) -> Vec<&String> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `dots-family-filter` (bin "dots-family-filter") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 26.21s

@@ -1,0 +1,37 @@
+tokio v1.49.0
+├── bytes v1.11.0
+├── libc v0.2.180
+├── mio v1.1.1
+│   └── libc v0.2.180
+├── parking_lot v0.12.5
+│   ├── lock_api v0.4.14
+│   │   └── scopeguard v1.2.0
+│   └── parking_lot_core v0.9.12
+│       ├── cfg-if v1.0.4
+│       ├── libc v0.2.180
+│       └── smallvec v1.15.1
+├── pin-project-lite v0.2.16
+├── signal-hook-registry v1.4.8
+│   ├── errno v0.3.14
+│   │   └── libc v0.2.180
+│   └── libc v0.2.180
+├── socket2 v0.6.1
+│   └── libc v0.2.180
+└── tokio-macros v2.6.0 (proc-macro)
+    ├── proc-macro2 v1.0.105
+    │   └── unicode-ident v1.0.22
+    ├── quote v1.0.43
+    │   └── proc-macro2 v1.0.105 (*)
+    └── syn v2.0.114
+        ├── proc-macro2 v1.0.105 (*)
+        ├── quote v1.0.43 (*)
+        └── unicode-ident v1.0.22
+
+tokio v1.49.0
+├── bytes v1.11.0
+├── libc v0.2.180
+├── mio v1.1.1
+│   └── libc v0.2.180
+├── pin-project-lite v0.2.16
+└── socket2 v0.6.1
+    └── libc v0.2.180

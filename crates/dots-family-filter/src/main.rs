@@ -6,6 +6,7 @@ mod config;
 mod filter_engine;
 mod proxy;
 mod rules;
+mod shuttle;
 
 #[derive(Parser, Debug)]
 #[command(name = "dots-family-filter")]

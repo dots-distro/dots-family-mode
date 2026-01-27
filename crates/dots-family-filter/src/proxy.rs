@@ -446,7 +446,7 @@ impl WebProxy {
 
     /// Establish a CONNECT tunnel to the target server
     async fn establish_tunnel(
-        _req: Request<Incoming>,
+        req: Request<Incoming>,
         host: &str,
         port: u16,
         _ca_cert_path: Option<String>,
@@ -454,14 +454,38 @@ impl WebProxy {
     ) -> Result<()> {
         let target_addr = format!("{}:{}", host, port);
 
-        // Connect to the target server
-        let _target_stream =
-            TcpStream::connect(&target_addr).await.context("Failed to connect to target server")?;
+        // Wait for the upgraded connection from hyper
+        tokio::spawn(async move {
+            match hyper::upgrade::on(req).await {
+                Ok(upgraded) => {
+                    debug!("Connection upgraded for {}", target_addr);
 
-        // In a real implementation we would upgrade the connection and tunnel traffic
-        // But for this prototype we are simplifying
+                    // Connect to remote server
+                    match TcpStream::connect(&target_addr).await {
+                        Ok(server_stream) => {
+                            debug!("Connected to target {}", target_addr);
 
-        debug!("Tunnel established to {}", target_addr);
+                            // No CA paths provided: do raw TCP bridge for now
+                            let _ = tokio::spawn(async move {
+                                if let Err(e) =
+                                    crate::shuttle::bridge_upgraded_to_tcp(upgraded, server_stream)
+                                        .await
+                                {
+                                    error!("Bridge error for {}: {}", target_addr, e);
+                                }
+                            });
+                        }
+                        Err(e) => {
+                            error!("Failed to connect to target {}: {}", target_addr, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Upgrade error for {}: {}", target_addr, e);
+                }
+            }
+        });
+
         Ok(())
     }
 }
