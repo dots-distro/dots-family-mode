@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::info;
 
+mod certificate_manager;
 mod config;
 mod filter_engine;
 mod proxy;

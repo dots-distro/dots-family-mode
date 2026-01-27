@@ -12,6 +12,7 @@ use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info, warn};
 
+use crate::certificate_manager::generate_acceptor_for_host;
 use crate::filter_engine::FilterEngine;
 use crate::rules::FilterAction;
 
@@ -465,15 +466,102 @@ impl WebProxy {
                         Ok(server_stream) => {
                             debug!("Connected to target {}", target_addr);
 
-                            // No CA paths provided: do raw TCP bridge for now
-                            let _ = tokio::spawn(async move {
-                                if let Err(e) =
-                                    crate::shuttle::bridge_upgraded_to_tcp(upgraded, server_stream)
-                                        .await
-                                {
-                                    error!("Bridge error for {}: {}", target_addr, e);
-                                }
-                            });
+                            // If CA paths provided, attempt MITM TLS interception
+                            if let (Some(ca_cert_path), Some(ca_key_path)) =
+                                (_ca_cert_path.clone(), _ca_key_path.clone())
+                            {
+                                let upgraded_for_mitm = upgraded;
+                                let host_for_mitm = host.to_string();
+                                let ca_cert_path = ca_cert_path.clone();
+                                let ca_key_path = ca_key_path.clone();
+
+                                let _ = tokio::spawn(async move {
+                                    // Generate acceptor for the host
+                                    match generate_acceptor_for_host(
+                                        &host_for_mitm,
+                                        &ca_cert_path,
+                                        &ca_key_path,
+                                    ) {
+                                        Ok(acceptor) => {
+                                            // Wrap upgraded into Tokio IO and accept TLS from client
+                                            let client_io =
+                                                hyper_util::rt::TokioIo::new(upgraded_for_mitm);
+                                            match tokio_openssl::accept(&acceptor, client_io).await
+                                            {
+                                                Ok(mut client_tls) => {
+                                                    debug!(
+                                                        "MITM: accepted TLS from client for {}",
+                                                        target_addr
+                                                    );
+                                                    // Build connector for upstream TLS
+                                                    let mut connector_builder =
+                                                        openssl::ssl::SslConnector::builder(
+                                                            openssl::ssl::SslMethod::tls(),
+                                                        )
+                                                        .unwrap();
+                                                    let connector = connector_builder.build();
+
+                                                    match tokio_openssl::connect(
+                                                        &connector,
+                                                        &host_for_mitm,
+                                                        server_stream,
+                                                    )
+                                                    .await
+                                                    {
+                                                        Ok(mut server_tls) => {
+                                                            debug!("MITM: connected to upstream TLS for {}", target_addr);
+                                                            let _ = tokio::io::copy_bidirectional(
+                                                                &mut client_tls,
+                                                                &mut server_tls,
+                                                            )
+                                                            .await;
+                                                        }
+                                                        Err(e) => {
+                                                            error!("MITM upstream connect failed for {}: {}", target_addr, e);
+                                                            // Fallback
+                                                            let _ = crate::shuttle::bridge_upgraded_to_tcp(upgraded_for_mitm, server_stream).await;
+                                                        }
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    error!(
+                                                        "MITM accept failed for {}: {}",
+                                                        target_addr, e
+                                                    );
+                                                    let _ = crate::shuttle::bridge_upgraded_to_tcp(
+                                                        upgraded_for_mitm,
+                                                        server_stream,
+                                                    )
+                                                    .await;
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!(
+                                                "Failed to generate acceptor for {}: {}",
+                                                host_for_mitm, e
+                                            );
+                                            let _ = crate::shuttle::bridge_upgraded_to_tcp(
+                                                upgraded_for_mitm,
+                                                server_stream,
+                                            )
+                                            .await;
+                                        }
+                                    }
+                                });
+                            } else {
+                                // No CA paths provided: do raw TCP bridge for now
+                                let _ = tokio::spawn(async move {
+                                    if let Err(e) = crate::shuttle::bridge_upgraded_to_tcp(
+                                        upgraded,
+                                        server_stream,
+                                    )
+                                    .await
+                                    {
+                                        error!("Bridge error for {}: {}", target_addr, e);
+                                    }
+                                });
+                            }
                         }
                         Err(e) => {
                             error!("Failed to connect to target {}: {}", target_addr, e);
