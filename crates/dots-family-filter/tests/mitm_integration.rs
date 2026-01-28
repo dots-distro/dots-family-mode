@@ -82,15 +82,11 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
     let client = tokio::spawn(async move {
         let stream = TcpStream::connect(addr).await.unwrap();
 
-        // Build an SslConnector with the generated CA as trust anchor
+        // Build an SslConnector and configure it to trust the generated CA
         let mut connector_builder = SslConnector::builder(openssl::ssl::SslMethod::tls()).unwrap();
-        // Load CA cert and configure the connector to trust it
         let ca_cert_der =
             openssl::x509::X509::from_pem(&std::fs::read(&ca_cert_path).unwrap()).unwrap();
-        connector_builder
-            .set_ca_file(&ca_cert_path)
-            .set_certificate_anchor_file(&ca_cert_path)
-            .set_verify(openssl::ssl::SslVerifyMode::PEER);
+        connector_builder.set_ca_file(&ca_cert_path).set_verify(openssl::ssl::SslVerifyMode::PEER);
 
         let connector = connector_builder.build();
         let ctx = connector.context();
