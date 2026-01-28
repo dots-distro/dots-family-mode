@@ -1,9 +1,9 @@
-mod certificate_manager;
-mod config;
-mod filter_engine;
-mod proxy;
-mod rules;
-mod shuttle;
+pub mod certificate_manager;
+pub mod config;
+pub mod filter_engine;
+pub mod proxy;
+pub mod rules;
+pub mod shuttle;
 
 pub use certificate_manager::*;
 pub use config::*;
