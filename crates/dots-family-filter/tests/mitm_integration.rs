@@ -82,16 +82,14 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         let stream = TcpStream::connect(addr).await.unwrap();
 
         // Load CA cert from file and configure connector to trust it
-        let ca_cert =
-            openssl::x509::X509::from_pem(&std::fs::read_to_string(&ca_cert_path).unwrap())
-                .unwrap();
+        let ca_cert_pem = std::fs::read_to_string(&ca_cert_path).unwrap();
+        let ca_cert = openssl::x509::X509::from_pem(ca_cert_pem.as_bytes()).unwrap();
+
         let mut connector_builder =
             openssl::ssl::SslConnector::builder(openssl::ssl::SslMethod::tls()).unwrap();
-        let ca_store = openssl::x509::store::X509StoreBuilder::build().unwrap();
-        ca_store.add_cert(ca_cert, openssl::x509::X509StoreContext::CLIENT).unwrap();
-        let mut ctx = openssl::x509::X509StoreContextBuilder::new().unwrap();
-        ctx.set_verify_cert(openssl::ssl::SslVerifyMode::PEER);
-        let connector = connector_builder.set_cert_store(ca_store).build();
+        connector_builder.set_verify(openssl::ssl::SslVerifyMode::PEER);
+
+        let connector = connector_builder.build();
 
         let ctx = connector.context();
         let mut ssl = openssl::ssl::Ssl::new(ctx).unwrap();
