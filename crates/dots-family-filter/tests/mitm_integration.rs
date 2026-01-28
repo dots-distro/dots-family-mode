@@ -2,6 +2,7 @@ use openssl::asn1::Asn1Time;
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::rsa::Rsa;
+use openssl::ssl::SslConnector;
 use openssl::x509::X509Builder;
 use std::fs;
 use std::net::SocketAddr;
@@ -68,19 +69,29 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         // Pin for async methods
         let mut tls = Pin::new(&mut tls);
         tls.as_mut().accept().await.unwrap();
-        // Read data and echo
+        // Read data and echo with "pong"
         let mut buf = [0u8; 16];
         let n = tls.read(&mut buf).await.unwrap_or(0);
         if n > 0 {
-            tls.write_all(&buf[..n]).await.unwrap();
+            let response = b"pong";
+            tls.write_all(response).await.unwrap();
         }
     });
 
-    // Client connects and performs TLS handshake to the acceptor
+    // Client connects and performs TLS handshake to the acceptor, trusting the generated CA
     let client = tokio::spawn(async move {
         let stream = TcpStream::connect(addr).await.unwrap();
-        let mut connector_builder =
-            openssl::ssl::SslConnector::builder(openssl::ssl::SslMethod::tls()).unwrap();
+
+        // Build an SslConnector with the generated CA as trust anchor
+        let mut connector_builder = SslConnector::builder(openssl::ssl::SslMethod::tls()).unwrap();
+        // Load CA cert and configure the connector to trust it
+        let ca_cert_der =
+            openssl::x509::X509::from_pem(&std::fs::read(&ca_cert_path).unwrap()).unwrap();
+        connector_builder
+            .set_ca_file(&ca_cert_path)
+            .set_certificate_anchor_file(&ca_cert_path)
+            .set_verify(openssl::ssl::SslVerifyMode::PEER);
+
         let connector = connector_builder.build();
         let ctx = connector.context();
         let mut ssl = openssl::ssl::Ssl::new(ctx).unwrap();
@@ -90,11 +101,12 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         // Pin for async handshake
         let mut tls = Pin::new(&mut tls);
         tls.as_mut().connect().await.unwrap();
-        // Send a short message and expect echo
+
+        // Send a short message and expect echo ("pong")
         tls.write_all(b"ping").await.unwrap();
         let mut buf = [0u8; 8];
         let n = tls.read(&mut buf).await.unwrap();
-        assert_eq!(&buf[..n], b"ping");
+        assert_eq!(&buf[..n], b"pong");
     });
 
     let _ = tokio::join!(server, client);
