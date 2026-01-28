@@ -1,10 +1,11 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use hyper::upgrade::Upgraded;
 use hyper_util::rt::TokioIo;
 use tokio::io::DuplexStream;
 use tokio::net::TcpStream;
 
 /// Create a tokio DuplexStream endpoint for use by the MITM TLS stack.
+#[allow(dead_code)]
 pub async fn create_shuttle() -> DuplexStream {
     let (client_side, _server_side) = tokio::io::duplex(64 * 1024);
     client_side
@@ -24,6 +25,7 @@ pub async fn bridge_upgraded_to_tcp(upgraded: Upgraded, mut tcp: TcpStream) -> R
 /// Bridge any tokio AsyncRead+AsyncWrite object to a TcpStream. Useful when the
 /// caller already wrapped an upgraded connection in a Tokio-compatible adapter
 /// (for example `hyper_util::rt::TokioIo`) or has an async TLS stream.
+#[allow(dead_code)]
 pub async fn bridge_io_to_tcp<RW>(mut client: RW, mut tcp: TcpStream) -> Result<()>
 where
     RW: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
