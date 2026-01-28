@@ -45,6 +45,9 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
     fs::write(&ca_cert_path, &ca_cert_pem).unwrap();
     fs::write(&ca_key_path, &ca_key_pem).unwrap();
 
+    // Clone paths for use in spawned client closure
+    let ca_cert_path_clone = ca_cert_path.clone();
+
     // Generate acceptor for host
     let host = "example.local";
     let acceptor = get_or_generate_acceptor_cached(
@@ -83,7 +86,7 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
 
         // Build an SslConnector, set CA file for verification, and allow peer certificate chain (no hostname verification)
         let ca_cert_der =
-            openssl::x509::X509::from_pem(&std::fs::read(&ca_cert_path).unwrap()).unwrap();
+            openssl::x509::X509::from_pem(&std::fs::read(&ca_cert_path_clone).unwrap()).unwrap();
         let mut connector_builder =
             openssl::ssl::SslConnector::builder(openssl::ssl::SslMethod::tls()).unwrap();
         let _ = connector_builder.set_ca_file(&ca_cert_path);
