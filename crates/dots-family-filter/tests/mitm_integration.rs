@@ -5,7 +5,10 @@ use openssl::rsa::Rsa;
 use openssl::x509::X509Builder;
 use std::fs;
 use std::net::SocketAddr;
+use std::pin::Pin;
 
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 
 use dots_family_filter::certificate_manager::get_or_generate_acceptor_cached;
@@ -62,16 +65,18 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         let mut ssl = openssl::ssl::Ssl::new(ctx).unwrap();
         ssl.set_accept_state();
         let mut tls = tokio_openssl::SslStream::new(ssl, stream).unwrap();
-        let _ = futures::executor::block_on(tls.accept());
+        // Pin the stream for async handshake methods
+        let mut tls = Pin::new(&mut tls);
+        tls.as_mut().accept().await.unwrap();
         // Read data and echo
         let mut buf = [0u8; 16];
-        let n = futures::executor::block_on(tls.read(&mut buf)).unwrap_or(0);
+        let n = tls.read(&mut buf).await.unwrap_or(0);
         if n > 0 {
-            let _ = futures::executor::block_on(tls.write_all(&buf[..n]));
+            tls.write_all(&buf[..n]).await.unwrap();
         }
     });
 
-    // Client connects and performs TLS handshake to the acceptor
+    // Client connects and performs TLS handshake to acceptor
     let client = tokio::spawn(async move {
         let stream = TcpStream::connect(addr).await.unwrap();
         let mut connector_builder =
@@ -82,7 +87,9 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         ssl.set_connect_state();
         ssl.set_hostname(host).ok();
         let mut tls = tokio_openssl::SslStream::new(ssl, stream).unwrap();
-        tls.connect().await.unwrap();
+        // Pin for async handshake
+        let mut tls = Pin::new(&mut tls);
+        tls.as_mut().connect().await.unwrap();
         // Send a short message and expect echo
         tls.write_all(b"ping").await.unwrap();
         let mut buf = [0u8; 8];
@@ -90,7 +97,7 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         assert_eq!(&buf[..n], b"ping");
     });
 
-    let _ = futures::future::join(server, client).await;
+    let _ = tokio::join!(server, client);
 
     let _ = fs::remove_file(&ca_cert_path);
     let _ = fs::remove_file(&ca_key_path);
