@@ -960,6 +960,7 @@ dependencies = [
  "dirs",
  "dots-family-common",
  "dots-family-proto",
+ "futures",
  "http-body-util",
  "hyper",
  "hyper-util",

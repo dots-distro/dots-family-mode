@@ -65,7 +65,7 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         let mut ssl = openssl::ssl::Ssl::new(ctx).unwrap();
         ssl.set_accept_state();
         let mut tls = tokio_openssl::SslStream::new(ssl, stream).unwrap();
-        // Pin the stream for async handshake methods
+        // Pin for async methods
         let mut tls = Pin::new(&mut tls);
         tls.as_mut().accept().await.unwrap();
         // Read data and echo
@@ -76,7 +76,7 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
         }
     });
 
-    // Client connects and performs TLS handshake to acceptor
+    // Client connects and performs TLS handshake to the acceptor
     let client = tokio::spawn(async move {
         let stream = TcpStream::connect(addr).await.unwrap();
         let mut connector_builder =
