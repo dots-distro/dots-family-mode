@@ -1,2 +1,2 @@
                                             Ok(mut client_tls) => {
-                                                let client_tls = tokio::io::TokioIo::new(client_tls);
+                                                tokio::pin!(let mut client_tls = client_tls)
