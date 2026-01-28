@@ -12,7 +12,7 @@ use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, error, info, warn};
 
-use crate::certificate_manager::generate_acceptor_for_host;
+use crate::certificate_manager::get_or_generate_acceptor_cached as generate_acceptor_for_host;
 use crate::filter_engine::FilterEngine;
 use crate::rules::FilterAction;
 
@@ -455,6 +455,9 @@ impl WebProxy {
     ) -> Result<()> {
         let target_addr = format!("{}:{}", host, port);
 
+        // Convert host to owned String to avoid borrowing across await/spawn
+        let host_owned = host.to_string();
+
         // Wait for the upgraded connection from hyper
         tokio::spawn(async move {
             match hyper::upgrade::on(req).await {
@@ -470,8 +473,8 @@ impl WebProxy {
                             if let (Some(ca_cert_path), Some(ca_key_path)) =
                                 (_ca_cert_path.clone(), _ca_key_path.clone())
                             {
-                                let upgraded_for_mitm = upgraded;
-                                let host_for_mitm = host.to_string();
+                                let mut upgraded_for_mitm = Some(upgraded);
+                                let host_for_mitm = host_owned.clone();
                                 let ca_cert_path = ca_cert_path.clone();
                                 let ca_key_path = ca_key_path.clone();
 
@@ -483,16 +486,48 @@ impl WebProxy {
                                         &ca_key_path,
                                     ) {
                                         Ok(acceptor) => {
-                                            // Wrap upgraded into Tokio IO and accept TLS from client
-                                            let client_io =
-                                                hyper_util::rt::TokioIo::new(upgraded_for_mitm);
-                                            match tokio_openssl::accept(&acceptor, client_io).await
-                                            {
+                                            // Wrap upgraded into Tokio IO and accept TLS from client using tokio-openssl
+                                            // Note: Upgraded is not Send/Sync and cannot be moved into multiple closures.
+                                            // We will wrap it for tokio-compat and then move the wrapped stream into
+                                            // the tokio-openssl SslStream constructors which consume the underlying
+                                            // IO. Use TokioIo wrapper which implements tokio AsyncRead/Write.
+                                            let client_io = hyper_util::rt::TokioIo::new(
+                                                upgraded_for_mitm.take().unwrap(),
+                                            );
+
+                                            // Build an Ssl from the acceptor context and perform an async accept
+                                            match (|| -> Result<_, anyhow::Error> {
+                                                let ctx = acceptor.context();
+                                                let mut ssl = openssl::ssl::Ssl::new(ctx).context(
+                                                    "creating Ssl from acceptor context",
+                                                )?;
+                                                ssl.set_accept_state();
+                                                let client_tls = tokio_openssl::SslStream::new(ssl, client_io)
+                                                    .context("constructing tokio-openssl SslStream for client")?;
+                                                Ok(client_tls)
+                                            })() {
                                                 Ok(mut client_tls) => {
+                                                    // need to pin the stream to call the async handshake methods
+                                                    let mut client_tls = Box::pin(client_tls);
+
+                                                    // Perform client TLS handshake. If it fails we must abort the MITM attempt.
+                                                    // The upgraded stream is consumed once wrapped in the SslStream, so we
+                                                    // cannot reliably fall back to a raw TCP tunnel after this point.
+                                                    if let Err(e) =
+                                                        client_tls.as_mut().accept().await
+                                                    {
+                                                        error!(
+                                                            "MITM accept failed for {}: {}",
+                                                            target_addr, e
+                                                        );
+                                                        return;
+                                                    }
+
                                                     debug!(
                                                         "MITM: accepted TLS from client for {}",
                                                         target_addr
                                                     );
+
                                                     // Build connector for upstream TLS
                                                     let mut connector_builder =
                                                         openssl::ssl::SslConnector::builder(
@@ -501,38 +536,64 @@ impl WebProxy {
                                                         .unwrap();
                                                     let connector = connector_builder.build();
 
-                                                    match tokio_openssl::connect(
-                                                        &connector,
-                                                        &host_for_mitm,
-                                                        server_stream,
-                                                    )
-                                                    .await
-                                                    {
+                                                    // Create an Ssl for the upstream and perform async connect
+                                                    match (|| -> Result<_, anyhow::Error> {
+                                                        let ctx = connector.context();
+                                                        let mut ssl = openssl::ssl::Ssl::new(ctx)
+                                                            .context(
+                                                            "creating Ssl for upstream connect",
+                                                        )?;
+                                                        // set SNI/hostname for the upstream connection
+                                                        ssl.set_hostname(&host_for_mitm).ok();
+                                                        ssl.set_connect_state();
+                                                        let server_tls = tokio_openssl::SslStream::new(ssl, server_stream)
+                                                            .context("constructing tokio-openssl SslStream for server")?;
+                                                        Ok(server_tls)
+                                                    })(
+                                                    ) {
                                                         Ok(mut server_tls) => {
-                                                            debug!("MITM: connected to upstream TLS for {}", target_addr);
-                                                            let _ = tokio::io::copy_bidirectional(
-                                                                &mut client_tls,
-                                                                &mut server_tls,
-                                                            )
-                                                            .await;
+                                                            let mut server_tls =
+                                                                Box::pin(server_tls);
+                                                            match server_tls
+                                                                .as_mut()
+                                                                .connect()
+                                                                .await
+                                                            {
+                                                                Ok(()) => {
+                                                                    debug!("MITM: connected to upstream TLS for {}", target_addr);
+                                                                    // Proxy between client and server TLS streams
+                                                                    let _ = tokio::io::copy_bidirectional(&mut *client_tls, &mut *server_tls).await;
+                                                                }
+                                                                Err(e) => {
+                                                                    error!("MITM upstream connect failed for {}: {}", target_addr, e);
+                                                                    // Upstream TLS connect failed after client handshake; close both sides.
+                                                                }
+                                                            }
                                                         }
                                                         Err(e) => {
-                                                            error!("MITM upstream connect failed for {}: {}", target_addr, e);
-                                                            // Fallback
-                                                            let _ = crate::shuttle::bridge_upgraded_to_tcp(upgraded_for_mitm, server_stream).await;
+                                                            error!("MITM upstream setup failed for {}: {}", target_addr, e);
+                                                            // Upstream setup failed after client handshake; close both sides.
                                                         }
                                                     }
                                                 }
                                                 Err(e) => {
                                                     error!(
-                                                        "MITM accept failed for {}: {}",
+                                                        "Failed preparing client TLS for {}: {}",
                                                         target_addr, e
                                                     );
-                                                    let _ = crate::shuttle::bridge_upgraded_to_tcp(
-                                                        upgraded_for_mitm,
-                                                        server_stream,
-                                                    )
-                                                    .await;
+                                                    // Preparing client TLS failed before handshake; fallback to raw TCP
+                                                    if let Err(e) =
+                                                        crate::shuttle::bridge_upgraded_to_tcp(
+                                                            upgraded_for_mitm.take().unwrap(),
+                                                            server_stream,
+                                                        )
+                                                        .await
+                                                    {
+                                                        error!(
+                                                            "Fallback bridge failed for {}: {}",
+                                                            target_addr, e
+                                                        );
+                                                    }
                                                 }
                                             }
                                         }
@@ -541,11 +602,18 @@ impl WebProxy {
                                                 "Failed to generate acceptor for {}: {}",
                                                 host_for_mitm, e
                                             );
-                                            let _ = crate::shuttle::bridge_upgraded_to_tcp(
-                                                upgraded_for_mitm,
+                                            // Could not generate acceptor; fallback to raw TCP
+                                            if let Err(e) = crate::shuttle::bridge_upgraded_to_tcp(
+                                                upgraded_for_mitm.take().unwrap(),
                                                 server_stream,
                                             )
-                                            .await;
+                                            .await
+                                            {
+                                                error!(
+                                                    "Fallback bridge failed for {}: {}",
+                                                    target_addr, e
+                                                );
+                                            }
                                         }
                                     }
                                 });

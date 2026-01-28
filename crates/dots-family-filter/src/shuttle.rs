@@ -20,3 +20,16 @@ pub async fn bridge_upgraded_to_tcp(upgraded: Upgraded, mut tcp: TcpStream) -> R
         Err(e) => Err(anyhow::anyhow!(e)),
     }
 }
+
+/// Bridge any tokio AsyncRead+AsyncWrite object to a TcpStream. Useful when the
+/// caller already wrapped an upgraded connection in a Tokio-compatible adapter
+/// (for example `hyper_util::rt::TokioIo`) or has an async TLS stream.
+pub async fn bridge_io_to_tcp<RW>(mut client: RW, mut tcp: TcpStream) -> Result<()>
+where
+    RW: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    match tokio::io::copy_bidirectional(&mut client, &mut tcp).await {
+        Ok((_c2s, _s2c)) => Ok(()),
+        Err(e) => Err(anyhow::anyhow!(e)),
+    }
+}
