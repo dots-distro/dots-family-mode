@@ -45,9 +45,6 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
     fs::write(&ca_cert_path, &ca_cert_pem).unwrap();
     fs::write(&ca_key_path, &ca_key_pem).unwrap();
 
-    // Clone paths for use in spawned client closure
-    let ca_cert_path_clone = ca_cert_path.clone();
-
     // Generate acceptor for host
     let host = "example.local";
     let acceptor = get_or_generate_acceptor_cached(
@@ -84,15 +81,18 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
     let client = tokio::spawn(async move {
         let stream = TcpStream::connect(addr).await.unwrap();
 
-        // Build an SslConnector, set CA file for verification, and allow peer certificate chain (no hostname verification)
-        let ca_cert_der =
-            openssl::x509::X509::from_pem(&std::fs::read(&ca_cert_path_clone).unwrap()).unwrap();
+        // Load CA cert from file and configure connector to trust it
+        let ca_cert =
+            openssl::x509::X509::from_pem(&std::fs::read_to_string(&ca_cert_path).unwrap())
+                .unwrap();
         let mut connector_builder =
             openssl::ssl::SslConnector::builder(openssl::ssl::SslMethod::tls()).unwrap();
-        let _ = connector_builder.set_ca_file(&ca_cert_path);
-        connector_builder.set_verify(openssl::ssl::SslVerifyMode::PEER);
+        let ca_store = openssl::x509::store::X509StoreBuilder::build().unwrap();
+        ca_store.add_cert(ca_cert, openssl::x509::X509StoreContext::CLIENT).unwrap();
+        let mut ctx = openssl::x509::X509StoreContextBuilder::new().unwrap();
+        ctx.set_verify_cert(openssl::ssl::SslVerifyMode::PEER);
+        let connector = connector_builder.set_cert_store(ca_store).build();
 
-        let connector = connector_builder.build();
         let ctx = connector.context();
         let mut ssl = openssl::ssl::Ssl::new(ctx).unwrap();
         ssl.set_connect_state();
