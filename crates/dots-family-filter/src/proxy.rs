@@ -1,2 +1,2 @@
                                             Ok(mut client_tls) => {
-                                                let mut client_tls = Box::pin(client_tls);
+                                                let client_tls = Box::pin(tokio_openssl::SslStream<TokioIo<hyper::upgrade::Upgraded>>);
