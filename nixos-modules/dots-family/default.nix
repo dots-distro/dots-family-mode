@@ -3,44 +3,53 @@
 let
   cfg = config.services.dots-family;
   
-  # Fallback package builder when packages aren't available in pkgs
-  buildDotsPackage = pname: args:
-    pkgs.rustPlatform.buildRustPackage ({
-      inherit pname;
-      version = "0.1.0";
-      
-      src = ../../.;  # Project root
-      
-      cargoLock = {
-        lockFile = ../../Cargo.lock;
-      };
-      
-      # Common native build inputs
-      nativeBuildInputs = with pkgs; [
-        pkg-config
-        makeWrapper
-      ];
-      
-      # Common build inputs for all packages
-      buildInputs = with pkgs; [
-        openssl
-        sqlite
-        sqlx-cli
-      ] ++ lib.optionals stdenv.isLinux [
-        systemd  # For systemd integration
-      ];
-      
-      # Disable tests for production builds (run in CI instead)
-      doCheck = false;
-      
-      # Common meta
-      meta = {
-        description = "DOTS Family Mode ${pname}";
-        homepage = "https://github.com/dots-distro/dots-family-mode";
-        license = lib.licenses.mit;
-        platforms = lib.platforms.linux;
-      };
-    } // args);
+   # Fallback package builder when packages aren't available in pkgs
+   buildDotsPackage = pname: args:
+     pkgs.rustPlatform.buildRustPackage ({
+       inherit pname;
+       version = "0.1.0";
+       
+       src = ../../.;  # Project root
+       
+       cargoLock = {
+         lockFile = ../../Cargo.lock;
+       };
+       
+       # Common native build inputs
+       nativeBuildInputs = with pkgs; [
+         pkg-config
+         makeWrapper
+       ];
+       
+       # Common build inputs for all packages
+       buildInputs = with pkgs; [
+         openssl
+         sqlite
+         sqlx-cli
+       ] ++ lib.optionals stdenv.isLinux [
+         systemd  # For systemd integration
+       ];
+       
+       # Propagate build inputs for system flake integration
+       propagatedBuildInputs = with pkgs; [
+         openssl
+         sqlite
+         sqlx-cli
+       ] ++ lib.optionals stdenv.isLinux [
+         systemd
+       ];
+       
+       # Disable tests for production builds (run in CI instead)
+       doCheck = false;
+       
+       # Common meta
+       meta = {
+         description = "DOTS Family Mode ${pname}";
+         homepage = "https://github.com/dots-distro/dots-family-mode";
+         license = lib.licenses.mit;
+         platforms = lib.platforms.linux;
+       };
+     } // args);
   
   # Package definitions with fallbacks
   defaultDotsPackages = {

@@ -131,51 +131,56 @@
           };
         };
 
-        # Helper function to build user-space crate packages with eBPF support
-        buildCrateWithEbpf = { pname, subdir ? "crates/${pname}", doCheck ? false, hasEbpf ? false }: 
-          craneLib.buildPackage {
-            inherit pname doCheck;
-            version = "0.1.0";
+         # Helper function to build user-space crate packages with eBPF support
+         buildCrateWithEbpf = { pname, subdir ? "crates/${pname}", doCheck ? false, hasEbpf ? false }: 
+           craneLib.buildPackage {
+             inherit pname doCheck;
+             version = "0.1.0";
 
-            src = src;
+             src = src;
 
-            buildAndTestSubdir = subdir;
+             buildAndTestSubdir = subdir;
 
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs ++ runtimeDependencies;
-            
-            # Allow SQLx to work without cached queries for development
-            SQLX_OFFLINE = "false";
-            
-            # eBPF compilation environment for user-space
-            KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
-            LIBBPF_INCLUDE_PATH = "${pkgs.libbpf}/include";
-            LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
-            BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
+             nativeBuildInputs = nativeBuildInputs;
+             buildInputs = buildInputs ++ runtimeDependencies;
+             
+             # Propagate runtime dependencies so they're available when the package is used
+             # This is critical for system flake integration
+             propagatedBuildInputs = buildInputs ++ runtimeDependencies;
+             
+             # Allow SQLx to work without cached queries for development
+             SQLX_OFFLINE = "false";
+             
+             # eBPF compilation environment for user-space
+             KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
+             LIBBPF_INCLUDE_PATH = "${pkgs.libbpf}/include";
+             LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
+             BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
 
-            # Rust compiler flags to disable Rust 2024 compatibility warnings
-            RUSTFLAGS = "-A rust_2024_compatibility";
+             # Rust compiler flags to disable Rust 2024 compatibility warnings
+             RUSTFLAGS = "-A rust_2024_compatibility";
 
-            # Inject eBPF ELF paths for daemon
-            BPF_PROCESS_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/process-monitor" else "";
-            BPF_NETWORK_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/network-monitor" else "";
-            BPF_FILESYSTEM_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/filesystem-monitor" else "";
+             # Inject eBPF ELF paths for daemon
+             BPF_PROCESS_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/process-monitor" else "";
+             BPF_NETWORK_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/network-monitor" else "";
+             BPF_FILESYSTEM_MONITOR_PATH = if hasEbpf then "${dots-family-ebpf}/bin/filesystem-monitor" else "";
 
-            postInstall = ''
-              # Wrap binaries with runtime dependencies
-              for bin in $out/bin/*; do
-                wrapProgram $bin \
-                  --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
-              done
-            '';
+             postInstall = ''
+               # Wrap binaries with runtime dependencies
+               for bin in $out/bin/*; do
+                 wrapProgram $bin \
+                   --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies} \
+                   --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}
+               done
+             '';
 
-            meta = with pkgs.lib; {
-              description = "${pname} component for DOTS Family Mode";
-              homepage = "https://github.com/dots-distro/dots-family-mode";
-              license = licenses.agpl3Plus;
-              maintainers = [ ];
-            };
-          };
+             meta = with pkgs.lib; {
+               description = "${pname} component for DOTS Family Mode";
+               homepage = "https://github.com/dots-distro/dots-family-mode";
+               license = licenses.agpl3Plus;
+               maintainers = [ ];
+             };
+           };
 
       in
       {
@@ -190,48 +195,53 @@
           dots-family-gui = buildCrateWithEbpf { pname = "dots-family-gui"; doCheck = false; };
           dots-terminal-filter = buildCrateWithEbpf { pname = "dots-terminal-filter"; doCheck = false; };
           
-          # Default package builds all workspace members
-          default = craneLib.buildPackage {
-            pname = "dots-family-mode";
-            version = "0.1.0";
+           # Default package builds all workspace members
+           default = craneLib.buildPackage {
+             pname = "dots-family-mode";
+             version = "0.1.0";
 
-            src = src;
+             src = src;
 
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs ++ runtimeDependencies;
-            
-            # Disable SQLx compile-time checks
-            SQLX_OFFLINE = "true";
-            
-            # eBPF compilation environment
-            KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
-            LIBBPF_INCLUDE_PATH = "${pkgs.libbpf}/include";
-            LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
-            BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
-            
-            # Inject eBPF ELF paths
-            BPF_PROCESS_MONITOR_PATH = "${dots-family-ebpf}/bin/process-monitor";
-            BPF_NETWORK_MONITOR_PATH = "${dots-family-ebpf}/bin/network-monitor";
-            BPF_FILESYSTEM_MONITOR_PATH = "${dots-family-ebpf}/bin/filesystem-monitor";
-            
-            # Skip tests for full workspace build (some are integration tests)
-            doCheck = false;
+             nativeBuildInputs = nativeBuildInputs;
+             buildInputs = buildInputs ++ runtimeDependencies;
+             
+             # Propagate runtime dependencies so they're available when the package is used
+             # This is critical for system flake integration
+             propagatedBuildInputs = buildInputs ++ runtimeDependencies;
+             
+             # Disable SQLx compile-time checks
+             SQLX_OFFLINE = "true";
+             
+             # eBPF compilation environment
+             KERNEL_HEADERS = "${pkgs.linuxHeaders}/include";
+             LIBBPF_INCLUDE_PATH = "${pkgs.libbpf}/include";
+             LIBBPF_LIB_PATH = "${pkgs.libbpf}/lib";
+             BPF_CLANG_PATH = "${pkgs.clang}/bin/clang";
+             
+             # Inject eBPF ELF paths
+             BPF_PROCESS_MONITOR_PATH = "${dots-family-ebpf}/bin/process-monitor";
+             BPF_NETWORK_MONITOR_PATH = "${dots-family-ebpf}/bin/network-monitor";
+             BPF_FILESYSTEM_MONITOR_PATH = "${dots-family-ebpf}/bin/filesystem-monitor";
+             
+             # Skip tests for full workspace build (some are integration tests)
+             doCheck = false;
 
-            postInstall = ''
-              # Wrap all binaries with runtime dependencies
-              for bin in $out/bin/*; do
-                wrapProgram $bin \
-                  --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
-              done
-            '';
+             postInstall = ''
+               # Wrap all binaries with runtime dependencies
+               for bin in $out/bin/*; do
+                 wrapProgram $bin \
+                   --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies} \
+                   --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}
+               done
+             '';
 
-            meta = with pkgs.lib; {
-              description = "Family safety and parental controls for dots NixOS";
-              homepage = "https://github.com/dots-distro/dots-family-mode";
-              license = licenses.agpl3Plus;
-              maintainers = [ ];
-            };
-          };
+             meta = with pkgs.lib; {
+               description = "Family safety and parental controls for dots NixOS";
+               homepage = "https://github.com/dots-distro/dots-family-mode";
+               license = licenses.agpl3Plus;
+               maintainers = [ ];
+             };
+           };
         };
 
         devShells.default = pkgs.mkShell {
