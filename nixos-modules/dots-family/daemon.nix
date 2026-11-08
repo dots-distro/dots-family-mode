@@ -5,17 +5,19 @@ let
   internal = cfg.internal or { };
   packages = internal.packages or { };
   
-  # eBPF program paths - only set if ebpf package is provided
-  ebpfEnvVars = if packages.ebpf or null != null then [
-    "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
-    "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
+  # eBPF program paths. These are omitted entirely when no eBPF package is
+  # configured: an empty-string environment variable would be read as a path,
+  # so leaving it unset lets the daemon take its degraded monitoring path.
+  ebpfEnvVars = lib.optionals (packages.ebpf or null != null) [
     "BPF_PROCESS_MONITOR_PATH=${packages.ebpf}/bin/process-monitor"
     "BPF_NETWORK_MONITOR_PATH=${packages.ebpf}/bin/network-monitor"
     "BPF_FILESYSTEM_MONITOR_PATH=${packages.ebpf}/bin/filesystem-monitor"
-  ] else [
+  ];
+
+  daemonEnvVars = [
     "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
     "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
-  ];
+  ] ++ ebpfEnvVars;
 
   # Generate profile initialization script
   profileInitScript = pkgs.writeShellScript "init-profiles.sh" ''
@@ -74,7 +76,7 @@ in {
         Type = "dbus";
         BusName = "org.dots.FamilyDaemon";
         ExecStart = "${packages.daemon or cfg.package}/bin/dots-family-daemon";
-        Environment = ebpfEnvVars;
+        Environment = daemonEnvVars;
         
         # User configuration
         DynamicUser = false;

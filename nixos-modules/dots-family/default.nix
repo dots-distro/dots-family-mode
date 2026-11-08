@@ -120,7 +120,15 @@ in {
     ebpfPackage = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = null;
-      description = "The dots-family-ebpf package to use for eBPF monitoring programs";
+      description = ''
+        The dots-family-ebpf package to use for eBPF monitoring programs.
+
+        The default (null) installs no eBPF program package. The daemon then
+        starts without kernel-level process, network or filesystem monitoring:
+        it logs a warning for each missing program and continues with its
+        userspace fallbacks where they exist. Set this to the
+        `dots-family-ebpf` package to enable kernel monitoring.
+      '';
     };
 
     databasePath = lib.mkOption {

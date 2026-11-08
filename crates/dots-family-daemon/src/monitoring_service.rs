@@ -54,23 +54,20 @@ impl MonitoringService {
 
         {
             let mut network_monitor = self.network_monitor.lock().await;
-            // Use compile-time path from build.rs if available (Nix build)
-            // Otherwise fall back to runtime environment variable (local development)
-            let network_path = if cfg!(feature = "nix-build")
-                || option_env!("BPF_NETWORK_MONITOR_FILE").is_some()
-            {
-                option_env!("BPF_NETWORK_MONITOR_FILE").ok_or_else(|| {
-                    anyhow::anyhow!("BPF_NETWORK_MONITOR_FILE not set at compile time")
-                })?
-            } else {
-                &std::env::var("BPF_NETWORK_MONITOR_PATH").map_err(|_| {
-                    anyhow::anyhow!(
-                        "BPF_NETWORK_MONITOR_PATH not set - eBPF network monitoring required"
-                    )
-                })?
-            };
+            // Use the compile-time path from build.rs if available (Nix build).
+            // Otherwise fall back to the runtime environment variable (local development).
+            let network_path = option_env!("BPF_NETWORK_MONITOR_FILE")
+                .map(str::to_owned)
+                .or_else(|| std::env::var("BPF_NETWORK_MONITOR_PATH").ok())
+                .unwrap_or_default();
 
-            if let Err(e) = network_monitor.load(std::path::Path::new(&network_path)).await {
+            if network_path.is_empty() {
+                warn!(
+                    "BPF_NETWORK_MONITOR_PATH not set, continuing without network monitoring"
+                );
+            } else if let Err(e) =
+                network_monitor.load(std::path::Path::new(&network_path)).await
+            {
                 return Err(anyhow::anyhow!(
                     "Failed to load eBPF network monitor from {}: {}",
                     network_path,
@@ -81,23 +78,20 @@ impl MonitoringService {
 
         {
             let mut filesystem_monitor = self.filesystem_monitor.lock().await;
-            // Use compile-time path from build.rs if available (Nix build)
-            // Otherwise fall back to runtime environment variable (local development)
-            let filesystem_path = if cfg!(feature = "nix-build")
-                || option_env!("BPF_FILESYSTEM_MONITOR_FILE").is_some()
-            {
-                option_env!("BPF_FILESYSTEM_MONITOR_FILE").ok_or_else(|| {
-                    anyhow::anyhow!("BPF_FILESYSTEM_MONITOR_FILE not set at compile time")
-                })?
-            } else {
-                &std::env::var("BPF_FILESYSTEM_MONITOR_PATH").map_err(|_| {
-                    anyhow::anyhow!(
-                        "BPF_FILESYSTEM_MONITOR_PATH not set - eBPF filesystem monitoring required"
-                    )
-                })?
-            };
+            // Use the compile-time path from build.rs if available (Nix build).
+            // Otherwise fall back to the runtime environment variable (local development).
+            let filesystem_path = option_env!("BPF_FILESYSTEM_MONITOR_FILE")
+                .map(str::to_owned)
+                .or_else(|| std::env::var("BPF_FILESYSTEM_MONITOR_PATH").ok())
+                .unwrap_or_default();
 
-            if let Err(e) = filesystem_monitor.load(std::path::Path::new(&filesystem_path)).await {
+            if filesystem_path.is_empty() {
+                warn!(
+                    "BPF_FILESYSTEM_MONITOR_PATH not set, continuing without filesystem monitoring"
+                );
+            } else if let Err(e) =
+                filesystem_monitor.load(std::path::Path::new(&filesystem_path)).await
+            {
                 return Err(anyhow::anyhow!(
                     "Failed to load eBPF filesystem monitor from {}: {}",
                     filesystem_path,

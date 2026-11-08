@@ -111,6 +111,13 @@
           
           installPhase = ''
             mkdir -p $out/bin
+
+            # Fail the build if a prebuilt blob does not match its recorded
+            # checksum, rather than installing a corrupted or replaced binary.
+            # SHA256SUMS paths are relative to the repository root
+            # (prebuilt-ebpf/<binary>); strip that prefix for the source root.
+            sed 's|  prebuilt-ebpf/|  |' SHA256SUMS | sha256sum -c -
+
             cp process-monitor $out/bin/
             cp network-monitor $out/bin/
             cp filesystem-monitor $out/bin/
