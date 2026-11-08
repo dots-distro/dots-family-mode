@@ -78,11 +78,14 @@ async fn integration_mitm_accepts_tls_with_generated_cert() {
     });
 
     // Client connects and performs TLS handshake to the acceptor, trusting the generated CA
+    // The spawned task owns its copy of the path so the cleanup at the end of this
+    // function can still remove the file.
+    let client_ca_path = ca_cert_path.clone();
     let client = tokio::spawn(async move {
         let stream = TcpStream::connect(addr).await.unwrap();
 
         // Load CA cert from file and configure connector to trust it
-        let ca_cert_pem = std::fs::read_to_string(&ca_cert_path).unwrap();
+        let ca_cert_pem = std::fs::read_to_string(&client_ca_path).unwrap();
         let ca_cert = openssl::x509::X509::from_pem(ca_cert_pem.as_bytes()).unwrap();
 
         let mut connector_builder =
