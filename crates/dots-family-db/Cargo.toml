@@ -7,6 +7,8 @@ edition = "2021"
 dots-family-common = { path = "../dots-family-common" }
 
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros", "migrate", "chrono", "uuid"] }
+# Dependency only for feature unification: makes sqlx-sqlite link SQLCipher.
+libsqlite3-sys.workspace = true
 tokio = { version = "1", features = ["full"] }
 thiserror = "2"
 anyhow = "1"

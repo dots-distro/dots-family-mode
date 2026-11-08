@@ -545,9 +545,18 @@ impl ProfileManager {
 
         // Derive encryption key from password
         let encryption_key = EncryptionKey::derive_from_password(&password_secret, None);
+        let key = encryption_key.as_sqlcipher_key();
 
         self.config.auth.parent_password_hash = Some(password_hash);
-        self.config.database.encryption_key = Some(encryption_key.as_sqlcipher_key());
+
+        // The key must never be written to the TOML config, which is readable and
+        // contains no secret material. Store it in a separate root-only file and
+        // keep only the in-memory copy for this process.
+        self.config
+            .database
+            .write_encryption_key(&key)
+            .map_err(|e| anyhow!("Failed to persist database key file: {}", e))?;
+        self.config.database.encryption_key = Some(key);
 
         // Save configuration to disk
         if let Err(e) = self.config.save() {
@@ -555,7 +564,10 @@ impl ProfileManager {
             return Err(anyhow!("Failed to persist configuration: {}", e));
         }
 
-        info!("Parent password set successfully - configuration saved to disk");
+        info!(
+            "Parent password set successfully - key stored in {}",
+            self.config.database.encryption_key_path().display()
+        );
         warn!("Database encryption key derived but requires daemon restart to apply");
 
         Ok(())
@@ -563,7 +575,11 @@ impl ProfileManager {
 
     #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub fn get_database_encryption_key(&self) -> Option<String> {
-        self.config.database.encryption_key.clone()
+        self.config
+            .database
+            .encryption_key
+            .clone()
+            .or_else(|| self.config.database.read_encryption_key())
     }
 
     pub async fn send_heartbeat(&self, monitor_id: &str) -> Result<()> {
