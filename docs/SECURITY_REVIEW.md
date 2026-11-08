@@ -29,13 +29,14 @@ Line references are the working tree at the time of review.
    `/run/wrappers/bin/dots-family-daemon` and obtain CAP_SYS_ADMIN/CAP_BPF, i.e. root-equivalent.
 2. **The filter crate does not build at HEAD, so nothing filters anything** —
    `crates/dots-family-filter/src/proxy.rs` is committed as a single fragment
-   starting mid-match (`Ok(mut client_tls) => {`, blob `429d1e9`, introduced by
-   the merge `592ba7d`), so `WebProxy` is undefined and the crate cannot compile.
-   The binary is also not packaged (`flake.nix:199-203`), no NixOS unit starts it,
-   and there is no redirect (`security.nix:222-231`). Web filtering is bypassable
-   by doing nothing. A full 698-line proxy exists in the working tree as an
-   uncommitted replacement; until that is committed and verified, the shipped
-   state has no proxy at all.
+   starting mid-match (`Ok(mut client_tls) => {`). The last version that parses is
+   `0d8a8ff` (2026-01-28, 697 lines); the next commit, `5b354dc` ("fix(proxy):
+   Box::pin SslStream client_tls …"), replaced it with one line and every commit
+   since carries that. `WebProxy` is therefore undefined, so the crate cannot
+   compile. No other crate depends on `dots-family-filter` and the flake does not
+   package it (`flake.nix:199-203`), so `nix build` and the NixOS module still
+   succeed while shipping no content filter at all. There is also no redirect
+   (`security.nix:222-231`), so filtering is bypassable by doing nothing.
 3. **Enforcement is fail-open by construction** — no active profile, network events, policy
    errors and daemon unavailability all resolve to "allow" (B3 evidence).
 4. **Enforcement dies with the daemon** — no watchdog, restart burst capped at 3, monitor
