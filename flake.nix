@@ -21,6 +21,7 @@
         dots-family-monitor = self.packages.${final.system}.dots-family-monitor;
         dots-family-ctl = self.packages.${final.system}.dots-family-ctl;
         dots-family-gui = self.packages.${final.system}.dots-family-gui;
+        dots-family-filter = self.packages.${final.system}.dots-family-filter;
         dots-terminal-filter = self.packages.${final.system}.dots-terminal-filter;
       };
     
@@ -200,6 +201,7 @@
           dots-family-monitor = buildCrateWithEbpf { pname = "dots-family-monitor"; doCheck = false; };
           dots-family-ctl = buildCrateWithEbpf { pname = "dots-family-ctl"; doCheck = false; };
           dots-family-gui = buildCrateWithEbpf { pname = "dots-family-gui"; doCheck = false; };
+          dots-family-filter = buildCrateWithEbpf { pname = "dots-family-filter"; };
           dots-terminal-filter = buildCrateWithEbpf { pname = "dots-terminal-filter"; doCheck = false; };
           
            # Default package builds all workspace members
@@ -384,6 +386,7 @@ clippy = craneLib.cargoClippy {
                   dots-family-daemon = self.packages.x86_64-linux.dots-family-daemon;
                   dots-family-monitor = self.packages.x86_64-linux.dots-family-monitor;
                   dots-family-ctl = self.packages.x86_64-linux.dots-family-ctl;
+                  dots-family-filter = self.packages.x86_64-linux.dots-family-filter;
                   dots-terminal-filter = self.packages.x86_64-linux.dots-terminal-filter;
                 })
               ];
@@ -429,6 +432,7 @@ clippy = craneLib.cargoClippy {
                   dots-family-daemon = self.packages.x86_64-linux.dots-family-daemon;
                   dots-family-monitor = self.packages.x86_64-linux.dots-family-monitor;
                   dots-family-ctl = self.packages.x86_64-linux.dots-family-ctl;
+                  dots-family-filter = self.packages.x86_64-linux.dots-family-filter;
                   dots-terminal-filter = self.packages.x86_64-linux.dots-terminal-filter;
                 })
               ];

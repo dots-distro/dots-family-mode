@@ -602,6 +602,23 @@ busctl --system call org.dots.FamilyDaemon \
 # Should DENY with permission error
 ```
 
+## Web Filtering Proxy (filter.nix)
+
+`services.dots-family.filter.enable` (default `false`) starts
+`dots-family-filter.service`, which runs `dots-family-filter` from the
+`dots-family-filter` flake package. The unit is a normal `simple` service using
+`DynamicUser`, `ProtectSystem=strict`, `ProtectHome=read-only` and an empty
+capability bounding set (no `CAP_SYS_ADMIN`); it restarts on failure and is
+wanted by `multi-user.target`.
+
+The proxy binds `filter.bindAddress` (default `127.0.0.1`) on `filter.port`
+(default `8080`), and the module writes its TOML configuration with
+`pkgs.writeText` and passes it with `--config-path`
+(`--bind-address`/`--port` are the other arguments). **No traffic is
+redirected to this proxy.** The module installs no transparent-proxy,
+firewall, PAC-file or client setting; until a client is configured to use the
+proxy address and port, the service filters nothing.
+
 ## Next Steps
 
 1. ⏳ Implement heartbeat mechanism in daemon (Task 6)

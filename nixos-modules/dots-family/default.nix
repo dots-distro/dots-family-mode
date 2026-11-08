@@ -82,7 +82,9 @@ let
     });
     
     ctl = pkgs.dots-family-ctl or (buildDotsPackage "dots-family-ctl" {});
-    
+
+    filter = pkgs.dots-family-filter or (buildDotsPackage "dots-family-filter" {});
+
     terminal-filter = pkgs.dots-terminal-filter or (buildDotsPackage "dots-terminal-filter" {});
   };
   
@@ -93,6 +95,7 @@ in {
     ./security.nix
     ./user-services.nix
     ./ssl-intercept.nix
+    ./filter.nix
   ];
 
   options.services.dots-family = {
@@ -115,6 +118,12 @@ in {
       type = lib.types.package;
       default = defaultDotsPackages.ctl;
       description = "The dots-family-ctl package to use";
+    };
+
+    filterPackage = lib.mkOption {
+      type = lib.types.package;
+      default = defaultDotsPackages.filter;
+      description = "The dots-family-filter package to use";
     };
 
     ebpfPackage = lib.mkOption {
@@ -326,6 +335,7 @@ in {
         daemon = cfg.package;
         monitor = cfg.monitorPackage;
         ctl = cfg.ctlPackage;
+        filter = cfg.filterPackage;
         ebpf = cfg.ebpfPackage;
       };
       config = cfg;
