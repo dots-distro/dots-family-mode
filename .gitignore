@@ -45,3 +45,14 @@ test-output*.txt
 
 # eBPF debug files
 *.d
+
+# Build artifacts and generated logs that must never be tracked again
+target/
+result
+result-*
+*.rlib
+*.rmeta
+build-output.txt
+cargo-tree-*.txt
+test_output.txt
+test_results.txt

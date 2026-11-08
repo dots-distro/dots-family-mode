@@ -1,1 +1,0 @@
-/home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/target/bpfel-unknown-none/debug/network-monitor: /home/shift/code/endpoint-agent/dots-detection/dots-familt-mode/dots-family-ebpf/src/network-monitor.rs
