@@ -56,3 +56,7 @@ build-output.txt
 cargo-tree-*.txt
 test_output.txt
 test_results.txt
+
+# agentic-loop harness state (store, worktrees, evidence)
+.agentic-loop/
+.workspaces/
