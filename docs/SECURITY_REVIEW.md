@@ -27,12 +27,15 @@ Line references are the working tree at the time of review.
 
 1. **World-executable CAP_SYS_ADMIN wrapper** (`security.nix:9-14`) — a child can execute
    `/run/wrappers/bin/dots-family-daemon` and obtain CAP_SYS_ADMIN/CAP_BPF, i.e. root-equivalent.
-2. **HTTPS interception is never switched on** — the interception path exists
-   (`proxy.rs:35-46`, `with_ssl_intercept`, inside a 698-line proxy with HTTP and
-   CONNECT filtering), but nothing constructs it: `main.rs:49` calls `WebProxy::new`,
-   so CONNECT is tunnelled blind and TLS content is never inspected. The filter crate
-   is not packaged (`flake.nix:199-203`) and no NixOS unit starts it, so web filtering
-   is bypassable by doing nothing.
+2. **The filter crate does not build at HEAD, so nothing filters anything** —
+   `crates/dots-family-filter/src/proxy.rs` is committed as a single fragment
+   starting mid-match (`Ok(mut client_tls) => {`, blob `429d1e9`, introduced by
+   the merge `592ba7d`), so `WebProxy` is undefined and the crate cannot compile.
+   The binary is also not packaged (`flake.nix:199-203`), no NixOS unit starts it,
+   and there is no redirect (`security.nix:222-231`). Web filtering is bypassable
+   by doing nothing. A full 698-line proxy exists in the working tree as an
+   uncommitted replacement; until that is committed and verified, the shipped
+   state has no proxy at all.
 3. **Enforcement is fail-open by construction** — no active profile, network events, policy
    errors and daemon unavailability all resolve to "allow" (B3 evidence).
 4. **Enforcement dies with the daemon** — no watchdog, restart burst capped at 3, monitor
