@@ -62,12 +62,8 @@ impl MonitoringService {
                 .unwrap_or_default();
 
             if network_path.is_empty() {
-                warn!(
-                    "BPF_NETWORK_MONITOR_PATH not set, continuing without network monitoring"
-                );
-            } else if let Err(e) =
-                network_monitor.load(std::path::Path::new(&network_path)).await
-            {
+                warn!("BPF_NETWORK_MONITOR_PATH not set, continuing without network monitoring");
+            } else if let Err(e) = network_monitor.load(std::path::Path::new(&network_path)).await {
                 return Err(anyhow::anyhow!(
                     "Failed to load eBPF network monitor from {}: {}",
                     network_path,
