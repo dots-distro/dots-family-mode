@@ -153,6 +153,7 @@ in {
       
       # Prevent children from accessing config files
       "z /var/lib/dots-family/daemon.toml 0640 dots-family dots-family-parents"
+      "z /var/lib/dots-family/config/daemon.toml 0640 dots-family dots-family-parents"
       "z /var/lib/dots-family/*.db* 0640 dots-family dots-family-parents"
     ];
 

@@ -323,6 +323,7 @@ in {
           certGenerationScript = pkgs.writeScriptBin "generate-dots-family-ca" ''
             #!/bin/bash
             set -euo pipefail
+            umask 077
 
             CERT_DIR="${cfg.sslIntercept.certPath}"
             CA_KEY="$CERT_DIR/ca.key"
