@@ -228,7 +228,7 @@ test_dbus_configuration() {
 test_user_groups() {
     echo -e "\n=== User Group Tests ===" | tee -a "$TEST_REPORT"
     
-    local required_groups=("dots-family" "dots-parents")
+    local required_groups=("dots-family" "dots-family-parents")
     
     for group in "${required_groups[@]}"; do
         if getent group "$group" >/dev/null 2>&1; then

@@ -107,7 +107,7 @@ audit_dbus_security() {
         fi
         
         # Check for role-based access
-        if grep -q "group=\"dots-parents\"" /etc/dbus-1/system.d/org.dots.FamilyDaemon.conf; then
+        if grep -q "group=\"dots-family-parents\"" /etc/dbus-1/system.d/org.dots.FamilyDaemon.conf; then
             log "PASS" "Role-based access control configured"
         else
             log "HIGH" "No role-based access control"
@@ -129,7 +129,7 @@ audit_user_groups() {
     echo -e "\n=== User Group Security Audit ===" | tee -a "$AUDIT_REPORT"
     
     # Check required groups exist
-    for group in dots-family dots-parents; do
+    for group in dots-family dots-family-parents; do
         if getent group "$group" >/dev/null 2>&1; then
             log "PASS" "Group $group exists"
             
@@ -139,11 +139,11 @@ audit_user_groups() {
                 log "INFO" "Group $group members: $members"
                 
                 # Validate parent group is not empty for production
-                if [[ "$group" == "dots-parents" ]]; then
+                if [[ "$group" == "dots-family-parents" ]]; then
                     log "PASS" "Parent group has members"
                 fi
             else
-                if [[ "$group" == "dots-parents" ]]; then
+                if [[ "$group" == "dots-family-parents" ]]; then
                     log "CRITICAL" "Parent group has no members"
                 else
                     log "INFO" "Group $group is empty"
