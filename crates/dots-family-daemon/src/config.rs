@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DaemonConfig {
     #[serde(default)]
     pub database: DatabaseConfig,
@@ -24,6 +24,50 @@ pub struct DaemonConfig {
 
     #[serde(default)]
     pub dry_run: Option<bool>,
+
+    /// Users allowed to call mutating D-Bus methods.
+    ///
+    /// This mirrors the NixOS `services.dots-family.parentUsers` option. The
+    /// daemon uses it as a second gate behind the D-Bus policy: root and these
+    /// users pass, every other caller is refused. Names are resolved to UIDs
+    /// at start; a name that does not resolve grants nothing.
+    ///
+    /// Read from `DOTS_FAMILY_PARENT_USERS` (comma separated) when the key is
+    /// absent from the configuration file.
+    ///
+    /// SECURITY: an empty list means only root may call mutating methods. It
+    /// fails closed on purpose. A deployment that manages profiles must
+    /// configure its parents.
+    #[serde(default = "parent_users_from_env", alias = "parentUsers")]
+    pub parent_users: Vec<String>,
+}
+
+impl Default for DaemonConfig {
+    fn default() -> Self {
+        Self {
+            database: DatabaseConfig::default(),
+            auth: AuthConfig::default(),
+            dbus: DbusConfig::default(),
+            dry_run: None,
+            parent_users: parent_users_from_env(),
+        }
+    }
+}
+
+/// Read the parent user names from `DOTS_FAMILY_PARENT_USERS`.
+///
+/// The value is a comma-separated list. Empty entries are ignored.
+fn parent_users_from_env() -> Vec<String> {
+    std::env::var("DOTS_FAMILY_PARENT_USERS")
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

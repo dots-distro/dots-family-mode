@@ -1718,6 +1718,7 @@ mod tests {
                 use_session_bus: false,
             },
             dry_run: Some(false),
+            parent_users: Vec::new(),
         };
 
         let db_config = dots_family_db::DatabaseConfig {

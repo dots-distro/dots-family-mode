@@ -10,6 +10,7 @@ mod edge_case_handler;
 mod enforcement;
 mod monitoring_service;
 mod notification_manager;
+mod peer_auth;
 mod policy_engine;
 mod profile_manager;
 mod reports;

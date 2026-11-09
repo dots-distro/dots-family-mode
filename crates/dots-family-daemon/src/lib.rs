@@ -8,6 +8,7 @@ pub mod edge_case_handler;
 pub mod enforcement;
 pub mod monitoring_service;
 pub mod notification_manager;
+pub mod peer_auth;
 pub mod policy_engine;
 pub mod profile_manager;
 pub mod reports;
