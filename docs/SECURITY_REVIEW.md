@@ -19,7 +19,7 @@ Line references are the working tree at the time of review.
 | # | Question | Verdict | Evidence |
 |---|----------|---------|----------|
 | B1 | Daemon death ⇒ silent loss of enforcement? | broken | `daemon.nix:121-124`: `Restart=on-failure`, `RestartSec=5`, `StartLimitBurst=3`/300s — after three failures systemd gives up, and a clean exit (normal shutdown, `daemon.rs:298-327`) is never restarted. No `WatchdogSec`/`sd_notify` anywhere. eBPF is monitor-only and its fds die with the process (`ebpf/mod.rs:79-127`); load failure is only logged (`daemon.rs:168-192`, `:227-231`). Tamper heartbeat code is dead: `check_monitor_health`/`is_tampered` have no non-test caller (`profile_manager.rs:586-614`). |
-| B2 | Can a child stop the service or reach a mutating D-Bus method? | broken | D-Bus itself denies children: they are in `dots-family-children` (`default.nix:338,347`), not the allowed groups, and the trailing default deny matches all (`dbus.nix:131-135`). But `security.wrappers.dots-family-daemon` grants `cap_bpf,cap_sys_admin` with no `permissions` restriction (`security.nix:9-14`), so the default world-executable wrapper lets **any** user run it with CAP_SYS_ADMIN. The daemon also does no peer-credential check: `create_profile`, `set_active_profile`, `lock_session`, `process_activity_for_policy` take no token (`dbus_impl.rs:299,330,709,573`). Group names are mismatched (`dots-parents` at `dbus.nix:95,187` vs `dots-family-parents`), so admins are denied too. |
+| B2 | Can a child stop the service or reach a mutating D-Bus method? | broken | D-Bus itself denies children: they are in `dots-family-children` (`default.nix:338,347`), not the allowed groups, and the trailing default deny matches all (`dbus.nix:131-135`). But `security.wrappers.dots-family-daemon` grants `cap_bpf,cap_sys_admin` with no `permissions` restriction (`security.nix:9-14`), so the default world-executable wrapper lets **any** user run it with CAP_SYS_ADMIN. The daemon also does no peer-credential check: `create_profile`, `set_active_profile`, `lock_session`, `process_activity_for_policy` take no token (`dbus_impl.rs:299,330,709,573`). Group names are mismatched (`dots-parents` at `dbus.nix:95,187` vs `dots-family-parents`), so admins are denied too. The `security.wrappers.dots-family-daemon` entry has since been removed (see ranked finding 1); the D-Bus peer-credential and group-name issues remain. |
 | B3 | Does a DB/policy error fail open? | broken | Explicit fail-open branches: no active profile ⇒ allow (`policy_engine.rs:94-101`), network activity ⇒ allow (`:118-124`), no enforcer ⇒ allow (`time_window_manager.rs:60-67`), no profile ⇒ no-op (`time_window_enforcement_task.rs:321-326`), policy error ⇒ `"blocked":false` (`dbus_impl.rs:543-569`, `:586-595`), activity read error ⇒ only `warn!` (`daemon.rs:388` + `:262-267`). The app query itself fails closed on DB error (`dbus_impl.rs:55-60`), but the caller ignores that error and continues (`filter_engine.rs:71-77`). |
 | B4 | Is the parent hash readable by non-parents, and is login rate-limited? | weak | Only the Argon2 hash is in TOML now; the DB key moved to `db.key` 0600 (`config.rs:34-81`, `profile_manager.rs:550-560`). But `config.rs:215` writes the TOML with no explicit mode, and `security.nix:155` hardens the wrong path until this review (real path is `/var/lib/dots-family/config/daemon.toml`, `daemon.nix:18`). Login has no rate limit: `authenticate_parent` has no attempt counter (`profile_manager.rs:457-499`), and the existing `RateLimiter` (`common/src/security.rs:143-181`) is never constructed. |
 
@@ -27,6 +27,9 @@ Line references are the working tree at the time of review.
 
 1. **World-executable CAP_SYS_ADMIN wrapper** (`security.nix:9-14`) — a child can execute
    `/run/wrappers/bin/dots-family-daemon` and obtain CAP_SYS_ADMIN/CAP_BPF, i.e. root-equivalent.
+   **Resolved:** the wrapper was removed entirely. The systemd unit already grants
+   `CAP_SYS_ADMIN` through `AmbientCapabilities` (and `CAP_SYS_ADMIN` satisfies the
+   kernel's CAP_BPF checks), so `/run/wrappers/bin/dots-family-daemon` no longer exists.
 2. **The filter crate does not build at HEAD, so nothing filters anything** —
    `crates/dots-family-filter/src/proxy.rs` is committed as a single fragment
    starting mid-match (`Ok(mut client_tls) => {`). The last version that parses is
@@ -47,7 +50,8 @@ Line references are the working tree at the time of review.
 
 ## Fix order
 
-1. Remove `capabilities` from the wrapper (or make it `0700`); systemd already grants the same caps.
+1. ~~Remove `capabilities` from the wrapper (or make it `0700`)~~ — done: the wrapper was
+   removed; systemd already grants the same caps via `AmbientCapabilities`.
 2. Implement the MITM proxy or stop shipping `sslIntercept`/CA generation until it exists.
 3. Make every policy error, missing profile and missing enforcer fail closed for configured children.
 4. Use `Restart=always` + `WatchdogSec`/`sd_notify`, alert on start-limit trip, and schedule `check_monitor_health`.

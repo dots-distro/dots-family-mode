@@ -5,13 +5,16 @@ let
   
 in {
   config = lib.mkIf cfg.enable {
-    # eBPF capabilities for daemon - proper NixOS approach using security.wrappers
-    security.wrappers.dots-family-daemon = {
-      owner = "root";
-      group = "dots-family";
-      capabilities = "cap_bpf+ep,cap_sys_admin+ep";
-      source = "${cfg.internal.packages.daemon}/bin/dots-family-daemon";
-    };
+    # Deliberately no security.wrappers entry for dots-family-daemon.
+    #
+    # The daemon gets its eBPF capabilities from the systemd unit
+    # (daemon.nix: `CapabilityBoundingSet` and `AmbientCapabilities`), which
+    # includes CAP_SYS_ADMIN; CAP_SYS_ADMIN also satisfies the kernel's
+    # CAP_BPF checks, so no wrapper is needed. A wrapper would be dangerous:
+    # a world-executable binary carrying cap_sys_admin lets *any* user
+    # (including a child) become root-equivalent. If one is ever reintroduced
+    # it must be owner root, group dots-family-parents (the parent group, never
+    # the child group) and mode r-x------.
 
     # Polkit rules for parent authentication
     security.polkit.extraConfig = ''
