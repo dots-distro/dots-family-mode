@@ -8,6 +8,7 @@ use zbus::Connection;
 
 use crate::config::TerminalConfig;
 use crate::educational::EducationalSystem;
+use crate::policy::profile_verdict;
 use crate::risk_analyzer::{RecommendedAction, RiskAnalyzer, RiskLevel};
 
 pub struct ShellWrapper {
@@ -326,38 +327,6 @@ impl ShellWrapper {
             if let Err(e) = proxy.report_activity(&activity_json).await {
                 warn!("Failed to log command activity: {}", e);
             }
-        }
-    }
-}
-
-/// Turn the daemon's profile answer into a terminal verdict.
-///
-/// The daemon is the policy authority, so not getting an answer is not
-/// permission. `Ok(true)` allows the command and `Ok(false)` blocks it. `None`
-/// means no proxy was established (the daemon is unreachable) and `Some(Err)`
-/// means the query failed; both deny, with a reason naming the cause, instead
-/// of silently falling back to allow.
-fn profile_verdict(command: &str, answer: Option<zbus::Result<bool>>) -> Result<bool> {
-    match answer {
-        Some(Ok(true)) => Ok(true),
-        Some(Ok(false)) => {
-            warn!("Command '{}' blocked by active profile", command);
-            Ok(false)
-        }
-        Some(Err(e)) => {
-            warn!("Failed to check profile restrictions for '{}': {}", command, e);
-            anyhow::bail!(
-                "Policy could not be checked for command '{}': daemon unreachable ({})",
-                command,
-                e
-            )
-        }
-        None => {
-            warn!("Command '{}' cannot be checked: no daemon proxy", command);
-            anyhow::bail!(
-                "Policy could not be checked for command '{}': no daemon proxy",
-                command
-            )
         }
     }
 }
