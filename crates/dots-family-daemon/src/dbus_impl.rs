@@ -7,7 +7,8 @@ use zbus::interface;
 
 use crate::{
     config::DaemonConfig, daemon::Daemon, enforcement::EnforcementEngine,
-    monitoring_service::MonitoringService, peer_auth::CallerPolicy, profile_manager::ProfileManager,
+    monitoring_service::MonitoringService, peer_auth::CallerPolicy,
+    profile_manager::ProfileManager,
 };
 
 pub struct FamilyDaemonService {

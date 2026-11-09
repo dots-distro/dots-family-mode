@@ -180,10 +180,7 @@ impl TerminalConfig {
     /// Check if a command is explicitly allowed
     pub fn is_allowed_command(&self, command: &str) -> bool {
         // A compound command must never take the fast path; let the risk analyzer see it.
-        if [";", "&&", "||", "|", "$(", "`"]
-            .iter()
-            .any(|op| command.contains(*op))
-        {
+        if [";", "&&", "||", "|", "$(", "`"].iter().any(|op| command.contains(*op)) {
             return false;
         }
         // Extract the first word (the actual command)

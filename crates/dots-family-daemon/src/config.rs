@@ -328,7 +328,6 @@ mod tests {
         assert_eq!(config.encryption_key_path(), PathBuf::from("/var/lib/dots-family/db.key"));
     }
 
-
     #[cfg(unix)]
     #[test]
     fn the_config_file_is_written_owner_only() {
@@ -337,10 +336,7 @@ mod tests {
         let unique = format!(
             "dots-family-daemon-config-test-{}-{}.toml",
             std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
         );
         let path = std::env::temp_dir().join(unique);
 

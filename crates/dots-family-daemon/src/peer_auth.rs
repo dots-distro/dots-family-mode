@@ -66,9 +66,7 @@ impl CallerPolicy {
         }
 
         if parent_uids.is_empty() {
-            warn!(
-                "No parent users resolved: only root may call mutating D-Bus methods"
-            );
+            warn!("No parent users resolved: only root may call mutating D-Bus methods");
         }
 
         Self { parent_uids }
@@ -118,9 +116,7 @@ pub async fn require_parent_caller(
     }
 
     warn!(caller_uid = uid, "Refusing mutating D-Bus call from a non-parent caller");
-    Err(FdoError::AccessDenied(format!(
-        "uid {uid} is not root or a configured parent"
-    )))
+    Err(FdoError::AccessDenied(format!("uid {uid} is not root or a configured parent")))
 }
 
 #[cfg(test)]
@@ -145,10 +141,7 @@ mod tests {
         // Even with no configured parents, root is always allowed.
         let policy = CallerPolicy::from_uids([]);
 
-        assert!(
-            policy.permits_mutation(ROOT_UID),
-            "root must be allowed to call create_profile"
-        );
+        assert!(policy.permits_mutation(ROOT_UID), "root must be allowed to call create_profile");
     }
 
     #[test]

@@ -409,8 +409,8 @@ mod tests {
 
     #[test]
     fn no_daemon_proxy_denies_the_terminal_command() {
-        let verdict = profile_verdict("ls", None)
-            .expect_err("a missing proxy must deny the command");
+        let verdict =
+            profile_verdict("ls", None).expect_err("a missing proxy must deny the command");
 
         assert!(verdict.to_string().contains("Policy could not be checked"));
         assert!(verdict.to_string().contains("no daemon proxy"));

@@ -289,12 +289,7 @@ impl ScriptInspector {
     ///
     /// An absent, unreadable or undecodable script is itself a critical finding,
     /// so callers cannot treat an empty finding list as "safe".
-    fn inspection_failure(
-        &self,
-        file_path: &str,
-        file_size: usize,
-        cause: &str,
-    ) -> ScriptAnalysis {
+    fn inspection_failure(&self, file_path: &str, file_size: usize, cause: &str) -> ScriptAnalysis {
         warn!("Cannot inspect script {}: {}", file_path, cause);
 
         ScriptAnalysis {
@@ -306,9 +301,7 @@ impl ScriptInspector {
                 pattern: "script_inspection_failure".to_string(),
                 description: format!("Script could not be inspected: {cause}"),
                 context: PatternContext::Any,
-                suggestion: Some(
-                    "Do not run this script until it can be inspected".to_string(),
-                ),
+                suggestion: Some("Do not run this script until it can be inspected".to_string()),
             }],
             command_count: 0,
             analyzed_at: chrono::Utc::now(),
@@ -703,9 +696,7 @@ mod tests {
         temp_file.write_all(b"#!/bin/sh\n\xff\xfe\n").unwrap();
         temp_file.flush().unwrap();
 
-        let analysis = inspector
-            .analyze_script(temp_file.path().to_str().unwrap())
-            .unwrap();
+        let analysis = inspector.analyze_script(temp_file.path().to_str().unwrap()).unwrap();
 
         assert_eq!(analysis.risk_level, RiskLevel::Critical);
         let finding = analysis

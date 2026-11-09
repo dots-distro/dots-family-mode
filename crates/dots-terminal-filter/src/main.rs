@@ -278,8 +278,10 @@ mod tests {
         assert_eq!(exit_code_for(result.outcome), EXIT_UNDETERMINABLE);
         assert_ne!(EXIT_UNDETERMINABLE, EXIT_ALLOWED);
         assert_ne!(EXIT_UNDETERMINABLE, EXIT_DENIED);
-        assert!(
-            result.reason.as_deref().unwrap_or_default().contains("Policy could not be checked")
-        );
+        assert!(result
+            .reason
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Policy could not be checked"));
     }
 }
