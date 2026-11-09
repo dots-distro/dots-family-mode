@@ -294,25 +294,16 @@ impl ShellWrapper {
     }
 
     async fn check_profile_restrictions(&self, command: &str) -> Result<bool> {
-        if let Some(ref proxy) = self.daemon_proxy {
-            let cmd_parts: Vec<&str> = command.split_whitespace().collect();
-            let app_name = cmd_parts.first().unwrap_or(&"unknown");
-
-            match proxy.check_application_allowed(app_name).await {
-                Ok(allowed) => {
-                    if !allowed {
-                        warn!("Command '{}' blocked by active profile", command);
-                    }
-                    Ok(allowed)
-                }
-                Err(e) => {
-                    warn!("Failed to check profile restrictions: {}", e);
-                    Ok(true)
-                }
+        let answer = match self.daemon_proxy {
+            Some(ref proxy) => {
+                let cmd_parts: Vec<&str> = command.split_whitespace().collect();
+                let app_name = cmd_parts.first().unwrap_or(&"unknown");
+                Some(proxy.check_application_allowed(app_name).await)
             }
-        } else {
-            Ok(true)
-        }
+            None => None,
+        };
+
+        profile_verdict(command, answer)
     }
 
     async fn log_command_activity(&self, command: &str, action: &str) {
@@ -335,6 +326,38 @@ impl ShellWrapper {
             if let Err(e) = proxy.report_activity(&activity_json).await {
                 warn!("Failed to log command activity: {}", e);
             }
+        }
+    }
+}
+
+/// Turn the daemon's profile answer into a terminal verdict.
+///
+/// The daemon is the policy authority, so not getting an answer is not
+/// permission. `Ok(true)` allows the command and `Ok(false)` blocks it. `None`
+/// means no proxy was established (the daemon is unreachable) and `Some(Err)`
+/// means the query failed; both deny, with a reason naming the cause, instead
+/// of silently falling back to allow.
+fn profile_verdict(command: &str, answer: Option<zbus::Result<bool>>) -> Result<bool> {
+    match answer {
+        Some(Ok(true)) => Ok(true),
+        Some(Ok(false)) => {
+            warn!("Command '{}' blocked by active profile", command);
+            Ok(false)
+        }
+        Some(Err(e)) => {
+            warn!("Failed to check profile restrictions for '{}': {}", command, e);
+            anyhow::bail!(
+                "Policy could not be checked for command '{}': daemon unreachable ({})",
+                command,
+                e
+            )
+        }
+        None => {
+            warn!("Command '{}' cannot be checked: no daemon proxy", command);
+            anyhow::bail!(
+                "Policy could not be checked for command '{}': no daemon proxy",
+                command
+            )
         }
     }
 }
@@ -393,5 +416,34 @@ mod tests {
         let config = TerminalConfig::default();
         let risk_analyzer = RiskAnalyzer::new(&config);
         let _wrapper = ShellWrapper::new(config, risk_analyzer).await.unwrap();
+    }
+
+    #[test]
+    fn an_unreachable_daemon_denies_the_terminal_command() {
+        let answer = Err(zbus::Error::Failure("daemon unreachable".to_string()));
+
+        let verdict = profile_verdict("curl http://example.com", Some(answer))
+            .expect_err("a failed query must deny the command");
+
+        assert!(verdict.to_string().contains("Policy could not be checked"));
+        assert!(verdict.to_string().contains("daemon unreachable"));
+    }
+
+    #[test]
+    fn a_daemon_answer_is_still_honoured() {
+        // The allow path is unchanged when the daemon answers true.
+        assert!(profile_verdict("ls", Some(Ok(true))).expect("an allow must succeed"));
+
+        // An explicit deny from the daemon still blocks the command.
+        assert!(!profile_verdict("ls", Some(Ok(false))).expect("a deny must produce a verdict"));
+    }
+
+    #[test]
+    fn no_daemon_proxy_denies_the_terminal_command() {
+        let verdict = profile_verdict("ls", None)
+            .expect_err("a missing proxy must deny the command");
+
+        assert!(verdict.to_string().contains("Policy could not be checked"));
+        assert!(verdict.to_string().contains("no daemon proxy"));
     }
 }
