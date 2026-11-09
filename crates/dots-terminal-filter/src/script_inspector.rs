@@ -8,6 +8,14 @@ use crate::command_parser::{CommandParser, RiskPattern};
 use crate::config::TerminalConfig;
 use crate::risk_analyzer::{RecommendedAction, RiskAnalyzer, RiskAssessment, RiskLevel};
 
+fn read_error_cause(error: &std::io::Error) -> String {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "not found".to_string(),
+        std::io::ErrorKind::PermissionDenied => "unreadable (permission denied)".to_string(),
+        _ => format!("unreadable: {error}"),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ScriptInspector {
     config: ScriptInspectionConfig,
@@ -221,18 +229,39 @@ impl ScriptInspector {
         }
 
         let path = Path::new(file_path);
-        if !path.exists() {
-            return Err("Script file does not exist".into());
-        }
 
-        let metadata = fs::metadata(path)?;
+        let metadata = match fs::metadata(path) {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                return Ok(self.inspection_failure(file_path, 0, &read_error_cause(&error)));
+            }
+        };
         let file_size = metadata.len() as usize;
 
         if file_size > self.config.max_file_size {
-            return Err("Script file too large for analysis".into());
+            return Ok(self.inspection_failure(file_path, file_size, "too large to inspect"));
         }
 
-        let content = fs::read_to_string(path)?;
+        let bytes = match fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Ok(self.inspection_failure(
+                    file_path,
+                    file_size,
+                    &read_error_cause(&error),
+                ));
+            }
+        };
+        let content = match String::from_utf8(bytes) {
+            Ok(content) => content,
+            Err(error) => {
+                return Ok(self.inspection_failure(
+                    file_path,
+                    file_size,
+                    &format!("invalid UTF-8: {}", error.utf8_error()),
+                ));
+            }
+        };
         let file_hash = format!("{:x}", md5::compute(&content));
 
         // Check cache first
@@ -254,6 +283,38 @@ impl ScriptInspector {
         }
 
         Ok(analysis)
+    }
+
+    /// Build a fail-closed analysis for a script that could not be inspected.
+    ///
+    /// An absent, unreadable or undecodable script is itself a critical finding,
+    /// so callers cannot treat an empty finding list as "safe".
+    fn inspection_failure(
+        &self,
+        file_path: &str,
+        file_size: usize,
+        cause: &str,
+    ) -> ScriptAnalysis {
+        warn!("Cannot inspect script {}: {}", file_path, cause);
+
+        ScriptAnalysis {
+            file_path: file_path.to_string(),
+            risk_level: RiskLevel::Critical,
+            findings: vec![ScriptFinding {
+                line_number: 0,
+                risk_level: RiskLevel::Critical,
+                pattern: "script_inspection_failure".to_string(),
+                description: format!("Script could not be inspected: {cause}"),
+                context: PatternContext::Any,
+                suggestion: Some(
+                    "Do not run this script until it can be inspected".to_string(),
+                ),
+            }],
+            command_count: 0,
+            analyzed_at: chrono::Utc::now(),
+            file_size,
+            file_hash: String::new(),
+        }
     }
 
     fn perform_analysis(
@@ -440,16 +501,24 @@ impl ScriptInspector {
 
         // Look for script execution patterns
         if let Some(script_path) = self.extract_script_path(command) {
-            if let Ok(analysis) = self.analyze_script(&script_path) {
-                analyses.push(analysis);
+            match self.analyze_script(&script_path) {
+                Ok(analysis) => analyses.push(analysis),
+                Err(error) => {
+                    let cause = format!("analysis failed: {error}");
+                    analyses.push(self.inspection_failure(&script_path, 0, &cause));
+                }
             }
         }
 
         // Look for downloaded scripts
         if self.config.inspect_downloads && self.is_download_command(command) {
             if let Some(temp_script) = self.extract_downloaded_script(command) {
-                if let Ok(analysis) = self.analyze_script(&temp_script) {
-                    analyses.push(analysis);
+                match self.analyze_script(&temp_script) {
+                    Ok(analysis) => analyses.push(analysis),
+                    Err(error) => {
+                        let cause = format!("analysis failed: {error}");
+                        analyses.push(self.inspection_failure(&temp_script, 0, &cause));
+                    }
                 }
             }
         }
@@ -594,5 +663,56 @@ mod tests {
         let _analysis2 = inspector.analyze_script(path).unwrap();
         let (entries, _) = inspector.get_cache_stats();
         assert_eq!(entries, 1);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn an_unreadable_script_produces_a_finding() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let config = TerminalConfig::default();
+        let mut inspector = ScriptInspector::new(&config);
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        writeln!(temp_file, "#!/bin/bash").unwrap();
+        writeln!(temp_file, "echo 'hello'").unwrap();
+        temp_file.flush().unwrap();
+
+        let path = temp_file.path().to_path_buf();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o000);
+        fs::set_permissions(&path, permissions).unwrap();
+
+        let analysis = inspector.analyze_script(path.to_str().unwrap()).unwrap();
+
+        assert_eq!(analysis.risk_level, RiskLevel::Critical);
+        let finding = analysis
+            .findings
+            .iter()
+            .find(|finding| finding.description.to_lowercase().contains("unreadable"))
+            .expect("an unreadable script must produce an unreadable finding");
+        assert_eq!(finding.risk_level, RiskLevel::Critical);
+    }
+
+    #[test]
+    fn a_binary_script_produces_a_finding() {
+        let config = TerminalConfig::default();
+        let mut inspector = ScriptInspector::new(&config);
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(b"#!/bin/sh\n\xff\xfe\n").unwrap();
+        temp_file.flush().unwrap();
+
+        let analysis = inspector
+            .analyze_script(temp_file.path().to_str().unwrap())
+            .unwrap();
+
+        assert_eq!(analysis.risk_level, RiskLevel::Critical);
+        let finding = analysis
+            .findings
+            .iter()
+            .find(|finding| finding.description.contains("invalid UTF-8"))
+            .expect("a binary script must name the decode failure");
+        assert_eq!(finding.risk_level, RiskLevel::Critical);
     }
 }
