@@ -71,7 +71,15 @@ in {
       after = [ "network.target" "dbus.service" ];
       wants = [ "dbus.service" ];
       wantedBy = [ "multi-user.target" ];
-      
+
+      # Start limiting belongs to the [Unit] section. Setting these inside
+      # serviceConfig emits them into [Service], where systemd 258 ignores
+      # them ("Unknown key ... ignoring", confirmed with systemd-analyze
+      # verify), so the restart burst would silently stay at the default.
+      # See the trade-off comment in serviceConfig below.
+      startLimitBurst = 20;
+      startLimitIntervalSec = 600;
+
       serviceConfig = {
         Type = "dbus";
         BusName = "org.dots.FamilyDaemon";
@@ -117,11 +125,37 @@ in {
         MemoryDenyWriteExecute = true;
         LockPersonality = true;
         
-        # Restart policy
-        Restart = "on-failure";
+        # Restart policy.
+        #
+        # "always", not "on-failure": a clean exit must not end enforcement.
+        # With "on-failure" the daemon could be stopped for good simply by
+        # making it exit 0 (or by systemd reaping a normal shutdown), so the
+        # child would only have to wait for the service to be down.
+        #
+        # Trade-off: rate limiting is deliberately loose so a transient crash
+        # loop (e.g. a monitor restarting) does not leave the service
+        # permanently disabled after 3 failures in 5 minutes. It is still
+        # bounded, because an unbounded "always" would spin on a persistent
+        # configuration error and fill the journal. If the burst is exhausted
+        # systemd still gives up; noticing that requires external alerting
+        # (see docs/SECURITY_REVIEW.md B1 and ranked finding 4).
+        Restart = "always";
         RestartSec = 5;
-        StartLimitBurst = 3;
-        StartLimitIntervalSec = 300;
+
+        # No WatchdogSec here on purpose. The daemon does **not** call
+        # sd_notify / sd_notify_barrier and does not read NOTIFY_SOCKET (it
+        # uses Type=dbus, whose readiness notification is D-Bus, not a
+        # watchdog ping). Adding WatchdogSec without an application-side
+        # heartbeat would kill a healthy daemon on the first interval, so it
+        # must wait for sd_notify support in the daemon. See
+        # docs/SECURITY_REVIEW.md B1 for the residual gap.
+        #
+        # KillMode and TimeoutStopSec are left at their systemd defaults
+        # (control-group, 90 s): the daemon handles SIGTERM/SIGINT explicitly
+        # (crates/dots-family-daemon/src/daemon.rs) and stops the monitoring
+        # service before exiting, and control-group kill also tears down the
+        # eBPF monitor children it spawned. There is no evidence here that a
+        # different value is needed, so none is added.
         
         # Logging
         StandardOutput = "journal";
