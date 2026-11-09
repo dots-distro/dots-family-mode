@@ -208,8 +208,15 @@ impl DaemonConfig {
 
         let config_content = toml::to_string_pretty(self)
             .with_context(|| "Failed to serialize configuration to TOML")?;
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        options.mode(0o600);
 
-        fs::write(config_path, config_content)
+        let mut file = options
+            .open(config_path)
+            .with_context(|| format!("Failed to write config file: {:?}", config_path))?;
+        file.write_all(config_content.as_bytes())
             .with_context(|| format!("Failed to write config file: {:?}", config_path))?;
 
         info!("Saved daemon configuration to {:?}", config_path);
@@ -275,5 +282,30 @@ mod tests {
         };
 
         assert_eq!(config.encryption_key_path(), PathBuf::from("/var/lib/dots-family/db.key"));
+    }
+
+
+    #[cfg(unix)]
+    #[test]
+    fn the_config_file_is_written_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let unique = format!(
+            "dots-family-daemon-config-test-{}-{}.toml",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let path = std::env::temp_dir().join(unique);
+
+        DaemonConfig::default().save_to_path(&path).unwrap();
+
+        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+
+        fs::remove_file(&path).unwrap();
+
+        assert_eq!(mode, 0o600, "config file mode was {:o}", mode);
     }
 }
