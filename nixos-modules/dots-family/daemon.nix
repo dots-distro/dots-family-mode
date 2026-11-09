@@ -14,10 +14,22 @@ let
     "BPF_FILESYSTEM_MONITOR_PATH=${packages.ebpf}/bin/filesystem-monitor"
   ];
 
+  # Parent users must be passed to the daemon, not only written into the
+  # D-Bus/group configuration. The daemon's second gate accepts only root and
+  # the UIDs in `DaemonConfig.parent_users`; an empty list denies every parent,
+  # so this variable has to follow `cfg.parentUsers`. The daemon parses
+  # `DOTS_FAMILY_PARENT_USERS` as a comma-separated list (config.rs,
+  # `parent_users_from_env`), and the environment is used when the TOML key is
+  # absent. The module does not generate `daemon.toml`, so the variable is the
+  # only place this value reaches the service.
+  parentUsersEnv = [
+    "DOTS_FAMILY_PARENT_USERS=${lib.concatStringsSep "," cfg.parentUsers}"
+  ];
+
   daemonEnvVars = [
     "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
     "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
-  ] ++ ebpfEnvVars;
+  ] ++ parentUsersEnv ++ ebpfEnvVars;
 
   # Generate profile initialization script
   profileInitScript = pkgs.writeShellScript "init-profiles.sh" ''
