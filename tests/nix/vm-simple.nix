@@ -49,9 +49,6 @@
     };
   };
 
-  # Open firewall port for SSH (though VM firewall is disabled)
-  networking.firewall.allowedTCPPorts = [ 22 ];
-
   # Enable QEMU guest agent for better VM communication
   services.qemuGuest.enable = true;
 
@@ -133,7 +130,9 @@
   networking = {
     hostName = "dots-family-test";
     networkmanager.enable = true;
-    firewall.enable = false;  # Disabled for testing
+    # Open firewall port for SSH (the VM firewall is disabled for testing)
+    firewall.allowedTCPPorts = [ 22 ];
+    firewall.enable = false;
   };
 
   # Allow sudo without password for wheel users (development)
