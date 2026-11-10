@@ -179,6 +179,10 @@ impl TerminalConfig {
 
     /// Check if a command is explicitly allowed
     pub fn is_allowed_command(&self, command: &str) -> bool {
+        // A compound command must never take the fast path; let the risk analyzer see it.
+        if [";", "&&", "||", "|", "$(", "`"].iter().any(|op| command.contains(*op)) {
+            return false;
+        }
         // Extract the first word (the actual command)
         let cmd = command.split_whitespace().next().unwrap_or("");
         self.allowed_commands.contains(cmd)
@@ -220,6 +224,15 @@ mod tests {
         assert!(config.is_allowed_command("ls"));
         assert!(config.is_allowed_command("cd /home"));
         assert!(!config.is_allowed_command("sudo"));
+    }
+
+    #[test]
+    fn is_allowed_command_rejects_shell_chaining() {
+        let config = TerminalConfig::default();
+
+        assert!(!config.is_allowed_command("ls; rm -rf /"));
+        assert!(!config.is_allowed_command("ls && rm -rf /"));
+        assert!(config.is_allowed_command("ls -la"));
     }
 
     #[test]

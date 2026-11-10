@@ -45,3 +45,18 @@ test-output*.txt
 
 # eBPF debug files
 *.d
+
+# Build artifacts and generated logs that must never be tracked again
+target/
+result
+result-*
+*.rlib
+*.rmeta
+build-output.txt
+cargo-tree-*.txt
+test_output.txt
+test_results.txt
+
+# agentic-loop harness state (store, worktrees, evidence)
+.agentic-loop/
+.workspaces/

@@ -151,6 +151,38 @@ impl RateLimiter {
         Self { attempts: Vec::new(), max_attempts: 5, window_minutes: 15 }
     }
 
+    /// Number of failed attempts that block further attempts within the window
+    pub fn max_attempts(&self) -> usize {
+        self.max_attempts
+    }
+
+    /// Number of failed attempts currently inside the window
+    pub fn failed_attempt_count(&self) -> usize {
+        self.attempts.iter().filter(|attempt| !attempt.successful).count()
+    }
+
+    /// Seconds until the oldest failed attempt leaves the window and an attempt
+    /// is allowed again. Returns `None` when no failed attempt is recorded.
+    pub fn retry_after_seconds(&self) -> Option<u64> {
+        let cutoff = chrono::Utc::now() - chrono::Duration::minutes(self.window_minutes);
+        let oldest_failure = self
+            .attempts
+            .iter()
+            .filter(|attempt| !attempt.successful && attempt.timestamp > cutoff)
+            .map(|attempt| attempt.timestamp)
+            .min()?;
+
+        let unlocks_at = oldest_failure + chrono::Duration::minutes(self.window_minutes);
+        let remaining_seconds = (unlocks_at - chrono::Utc::now()).num_seconds();
+
+        Some(remaining_seconds.max(0) as u64)
+    }
+
+    /// Clear the attempt history, for example after a successful authentication
+    pub fn reset(&mut self) {
+        self.attempts.clear();
+    }
+
     /// Check if authentication attempt should be allowed
     pub fn check_rate_limit(&mut self, ip_address: Option<String>) -> bool {
         // Clean up old attempts outside the window

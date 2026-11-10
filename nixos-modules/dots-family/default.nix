@@ -82,7 +82,9 @@ let
     });
     
     ctl = pkgs.dots-family-ctl or (buildDotsPackage "dots-family-ctl" {});
-    
+
+    filter = pkgs.dots-family-filter or (buildDotsPackage "dots-family-filter" {});
+
     terminal-filter = pkgs.dots-terminal-filter or (buildDotsPackage "dots-terminal-filter" {});
   };
   
@@ -93,6 +95,7 @@ in {
     ./security.nix
     ./user-services.nix
     ./ssl-intercept.nix
+    ./filter.nix
   ];
 
   options.services.dots-family = {
@@ -117,10 +120,24 @@ in {
       description = "The dots-family-ctl package to use";
     };
 
+    filterPackage = lib.mkOption {
+      type = lib.types.package;
+      default = defaultDotsPackages.filter;
+      description = "The dots-family-filter package to use";
+    };
+
     ebpfPackage = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = null;
-      description = "The dots-family-ebpf package to use for eBPF monitoring programs";
+      description = ''
+        The dots-family-ebpf package to use for eBPF monitoring programs.
+
+        The default (null) installs no eBPF program package. The daemon then
+        starts without kernel-level process, network or filesystem monitoring:
+        it logs a warning for each missing program and continues with its
+        userspace fallbacks where they exist. Set this to the
+        `dots-family-ebpf` package to enable kernel monitoring.
+      '';
     };
 
     databasePath = lib.mkOption {
@@ -318,6 +335,7 @@ in {
         daemon = cfg.package;
         monitor = cfg.monitorPackage;
         ctl = cfg.ctlPackage;
+        filter = cfg.filterPackage;
         ebpf = cfg.ebpfPackage;
       };
       config = cfg;

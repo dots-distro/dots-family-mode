@@ -1,119 +1,150 @@
 # DOTS Family Mode
 
-DOTS Family Mode is a comprehensive parental control and child safety system designed for Linux desktop environments. Built natively in Rust, it provides robust content filtering, application controls, time management, and activity monitoring while maintaining privacy through local-only operation.
+DOTS Family Mode is a parental control and child safety system for Linux
+desktops. It is written in Rust and stores its data locally. It provides
+content filtering, application controls, time management and activity
+monitoring.
 
-## Current Status: Phase 4 Complete - Production Ready
+## Status
 
-### eBPF Monitoring System ✅
-- **5 Production eBPF Monitors** (27.4KB total)
-  - `process-monitor` (4.8K): Process exec/exit with PPID and executable paths
-  - `filesystem-monitor` (6.8K): File open/read/write/close with full paths
-  - `network-monitor` (5.5K): TCP connect/send/recv with bandwidth tracking
-  - `memory-monitor` (5.7K): Memory allocations (kmalloc/kfree, page alloc/free)
-  - `disk-io-monitor` (4.6K): Block I/O with nanosecond latency tracking
-- **16 Probe Functions**: Tracepoints and kprobes for comprehensive monitoring
-- **Full Userspace Integration**: eBPF → Monitor → Event Processor → SQLite Database
-- **All Tests Passing**: 222 unit tests (100% pass rate)
+Early beta. The workspace builds, and the daemon starts and registers
+`org.dots.FamilyDaemon` on the D-Bus system bus. It is not production ready.
+CI is red for formatting, clippy, build and tests: of 27 recorded runs between
+2026-01-26 and 2026-02-07, all 27 failed, and the last run failed Build, Clippy,
+Test Suite, Rustfmt and Coverage. No test result is reported here as passing.
+The eBPF monitors are prebuilt binaries in `prebuilt-ebpf/`; CI does not build
+them from source.
 
-### Core System
-- **Daemon**: Fully functional with complete eBPF monitoring integration
-- **Monitor**: Activity tracking service with database storage
-- **CLI**: Complete administration tool
-- **NixOS Integration**: Declarative module system
-- **VM Testing**: Automated test framework available
+## Architecture
 
-## Licensing
+The repository is a Cargo workspace. The main components are:
 
-DOTS Family Mode is **dual-licensed**:
+- **dots-family-daemon** — core service. Owns the policy engine, serves
+  `org.dots.FamilyDaemon` on the system bus and writes to SQLite.
+- **dots-family-monitor** — per-user activity and window tracking.
+- **dots-family-filter** — HTTP/HTTPS content filtering proxy.
+- **dots-terminal-filter** — shell command filtering.
+- **dots-family-ctl** — command-line administration tool.
+- **dots-family-gui** — GTK4 parent dashboard (present in the workspace, not
+  enabled by the NixOS module).
+- **dots-wm-bridge** — window manager integration for Niri, Sway and Hyprland.
 
-- **AGPLv3** (Open Source): For open source and network use
-  - Contact: licensing@dots-family-mode.org
-  - Required for modifications and redistribution
-  
-- **Commercial License**: For commercial closed-source deployments
-  - Contact: shift@someone.section.me
-  - Case-by-case licensing for proprietary use
+Supporting crates hold the protocol definitions (`dots-family-proto`), shared
+types (`dots-family-common`) and the SQLite layer (`dots-family-db`).
 
-See [LICENSE](LICENSE) for complete details.
+The eBPF monitors (`process-monitor`, `filesystem-monitor`, `network-monitor`,
+`memory-monitor`, `disk-io-monitor`) are separate binaries. They are shipped
+prebuilt and are not compiled by CI.
 
 ## Installation
 
-### Method 1: NixOS Module (Recommended)
+### NixOS flake
 
-This method provides full system integration with automatic service management.
+Add the repository as a flake input:
 
-```bash
-# Add to your configuration.nix
+```nix
 {
-  imports = [ ./modules/nixos/dots-family-mode.nix ];
-  
-  services.dots-family-mode.enable = true;
-  
-  # Optional: Configure settings
-  services.dots-family-mode.settings = {
-    logLevel = "info";
-    dataDir = "/var/lib/dots-family-mode";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    dots-family-mode.url = "github:dots-distro/dots-family-mode";
+  };
+
+  outputs = { self, nixpkgs, dots-family-mode, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./configuration.nix
+        dots-family-mode.nixosModules.default
+      ];
+    };
   };
 }
-
-# Rebuild and start
-sudo nixos-rebuild switch
-sudo systemctl enable --now dots-family-mode
 ```
 
-### Method 2: Development Installation
+The module is `nixos-modules/dots-family/default.nix`. Its option namespace is
+`services.dots-family`; there is no `services.dots-family-mode` namespace.
+Minimal configuration:
 
-For developers or testing on non-NixOS systems.
+```nix
+{ ... }:
+{
+  services.dots-family = {
+    enable = true;
+
+    # Accounts that already exist in this configuration.
+    parentUsers = [ "mom" "dad" ];
+    childUsers = [ "alice" ];
+
+    databasePath = "/var/lib/dots-family/family.db";
+    reportingOnly = true;       # log activity, do not enforce limits yet
+    enableWebFiltering = true;
+
+    profiles.alice = {
+      name = "Alice";
+      ageGroup = "8-12";
+      dailyScreenTimeLimit = "2h30m";
+      timeWindows = [
+        {
+          start = "15:00";
+          end = "17:30";
+          days = [ "mon" "tue" "wed" "thu" "fri" ];
+        }
+      ];
+    };
+  };
+}
+```
+
+Apply it with:
 
 ```bash
-# Clone repository
+sudo nixos-rebuild switch
+```
+
+The module creates the `dots-family-daemon` systemd service and the D-Bus
+service files itself, so no manual `systemctl enable` is needed.
+
+If the module directory is vendored into your configuration rather than used
+as a flake input, import it by path:
+
+```nix
+{ imports = [ ./nixos-modules/dots-family ]; }
+```
+
+### Development build
+
+```bash
 git clone https://github.com/dots-distro/dots-family-mode.git
 cd dots-family-mode
 nix develop
-
-# Build and run
 cargo build --workspace --release
-sudo ./target/release/dots-family-daemon
-
-# Use CLI
-./target/release/dots-family-cli --help
 ```
+
+The binaries are written to `target/release/`, for example
+`target/release/dots-family-daemon` and `target/release/dots-family-ctl`.
 
 ## Quick Start
 
-1. **Clone**: `git clone https://github.com/dots-distro/dots-family-mode.git`
-2. **Enter Dev Environment**: `nix develop`
-3. **Build**: `cargo build --workspace --release`
-4. **Configure**: Create first profile and time windows
-5. **Start**: Run daemon and begin monitoring
+1. Clone the repository and enter the development shell: `nix develop`.
+2. Build: `cargo build --workspace --release`.
+3. Create a profile and time windows with `dots-family-ctl`.
+4. Start the daemon and begin monitoring.
 
 ## Getting Help
 
-- **Documentation**: See [docs/](docs/) directory
-- **Issues**: [GitHub Issues](https://github.com/dots-distro/dots-family-mode/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/dots-distro/dots-family-mode/discussions)
-- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Security**: See [SECURITY.md](SECURITY.md)
+- **Documentation**: [docs/INDEX.md](docs/INDEX.md)
+- **Issues**: https://github.com/dots-distro/dots-family-mode/issues
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security**: [SECURITY.md](SECURITY.md)
 
-## Community
+## Licensing
 
-DOTS Family Mode is now **publicly available** and ready for community adoption! 
-
-### 🎯 Mission
-Provide families with enterprise-grade parental controls built on privacy-first principles and advanced eBPF monitoring capabilities.
-
-### 🤝 Contribute
-We welcome contributions! Whether you're interested in:
-- eBPF programming and kernel monitoring
-- Rust development and system programming
-- Security research and privacy protection
-- User experience and interface design
-- Documentation and testing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and [GitHub Issues](https://github.com/dots-distro/dots-family-mode/issues) to get started.
+The workspace declares `AGPL-3.0-or-later` (`Cargo.toml`). The full licence
+text is in [LICENSE](LICENSE). The dual-licence summary and the commercial
+contact are in [LICENSING.md](LICENSING.md).
 
 ---
 
-**Repository**: https://github.com/dots-distro/dots-family-mode  
-**License**: AGPLv3 (Open Source) / Commercial (Proprietary)  
-**Status**: 🏁 Production Ready - Complete eBPF Integration
+**Repository**: https://github.com/dots-distro/dots-family-mode
+**License**: AGPL-3.0-or-later; commercial licensing available
+**Status**: early beta — see [Status](#status)

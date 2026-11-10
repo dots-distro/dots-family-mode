@@ -67,21 +67,9 @@ impl FilterEngine {
         if let Some(ref proxy) = self.daemon_proxy {
             if let Ok(parsed_url) = Url::parse(url) {
                 if let Some(domain) = parsed_url.host_str() {
-                    match proxy.check_application_allowed(domain).await {
-                        Ok(false) => {
-                            return Ok(FilterDecision {
-                                action: FilterAction::Block,
-                                reason: format!("Domain {} blocked by active profile", domain),
-                                rule_id: Some("daemon_profile".to_string()),
-                                category: Some("profile_policy".to_string()),
-                            });
-                        }
-                        Ok(true) => {
-                            debug!("Domain {} allowed by active profile", domain);
-                        }
-                        Err(e) => {
-                            warn!("Failed to check with daemon: {}", e);
-                        }
+                    let answer = proxy.check_application_allowed(domain).await;
+                    if let Some(decision) = daemon_verdict(domain, answer) {
+                        return Ok(decision);
                     }
                 }
             }
@@ -285,6 +273,38 @@ impl FilterEngine {
     }
 }
 
+/// Turn the daemon's answer into a request verdict.
+///
+/// The daemon is the policy authority, so an answer that cannot be obtained is
+/// not permission: a failed or timed-out query denies the request. `Ok(true)`
+/// keeps the existing behaviour and lets the local rules decide.
+fn daemon_verdict(domain: &str, answer: zbus::Result<bool>) -> Option<FilterDecision> {
+    match answer {
+        Ok(true) => {
+            debug!("Domain {} allowed by active profile", domain);
+            None
+        }
+        Ok(false) => Some(FilterDecision {
+            action: FilterAction::Block,
+            reason: format!("Domain {} blocked by active profile", domain),
+            rule_id: Some("daemon_profile".to_string()),
+            category: Some("profile_policy".to_string()),
+        }),
+        Err(e) => {
+            warn!("Failed to check domain {} with daemon: {}", domain, e);
+            Some(FilterDecision {
+                action: FilterAction::Block,
+                reason: format!(
+                    "Policy could not be checked for domain {}; denying request",
+                    domain
+                ),
+                rule_id: Some("daemon_unavailable".to_string()),
+                category: Some("profile_policy".to_string()),
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -299,6 +319,30 @@ mod tests {
     async fn test_filter_engine_initialization() {
         let engine = create_test_engine().await;
         assert!(engine.is_filtering_enabled());
+    }
+
+    #[test]
+    fn an_unreachable_daemon_denies_instead_of_allowing() {
+        let answer = Err(zbus::Error::Failure("daemon unreachable".to_string()));
+
+        let decision =
+            daemon_verdict("example.com", answer).expect("a failed query must produce a verdict");
+
+        assert!(matches!(decision.action, FilterAction::Block));
+        assert!(decision.reason.contains("Policy could not be checked"));
+        assert_eq!(decision.rule_id.as_deref(), Some("daemon_unavailable"));
+    }
+
+    #[test]
+    fn a_daemon_answer_is_still_honoured() {
+        // A successful allow continues to the local rules rather than denying.
+        assert!(daemon_verdict("example.com", Ok(true)).is_none());
+
+        // An explicit deny from the daemon is still honoured.
+        let decision =
+            daemon_verdict("example.com", Ok(false)).expect("a deny must produce a verdict");
+        assert!(matches!(decision.action, FilterAction::Block));
+        assert_eq!(decision.rule_id.as_deref(), Some("daemon_profile"));
     }
 
     #[tokio::test]

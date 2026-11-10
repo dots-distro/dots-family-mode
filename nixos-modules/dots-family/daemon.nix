@@ -5,17 +5,31 @@ let
   internal = cfg.internal or { };
   packages = internal.packages or { };
   
-  # eBPF program paths - only set if ebpf package is provided
-  ebpfEnvVars = if packages.ebpf or null != null then [
-    "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
-    "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
+  # eBPF program paths. These are omitted entirely when no eBPF package is
+  # configured: an empty-string environment variable would be read as a path,
+  # so leaving it unset lets the daemon take its degraded monitoring path.
+  ebpfEnvVars = lib.optionals (packages.ebpf or null != null) [
     "BPF_PROCESS_MONITOR_PATH=${packages.ebpf}/bin/process-monitor"
     "BPF_NETWORK_MONITOR_PATH=${packages.ebpf}/bin/network-monitor"
     "BPF_FILESYSTEM_MONITOR_PATH=${packages.ebpf}/bin/filesystem-monitor"
-  ] else [
+  ];
+
+  # Parent users must be passed to the daemon, not only written into the
+  # D-Bus/group configuration. The daemon's second gate accepts only root and
+  # the UIDs in `DaemonConfig.parent_users`; an empty list denies every parent,
+  # so this variable has to follow `cfg.parentUsers`. The daemon parses
+  # `DOTS_FAMILY_PARENT_USERS` as a comma-separated list (config.rs,
+  # `parent_users_from_env`), and the environment is used when the TOML key is
+  # absent. The module does not generate `daemon.toml`, so the variable is the
+  # only place this value reaches the service.
+  parentUsersEnv = [
+    "DOTS_FAMILY_PARENT_USERS=${lib.concatStringsSep "," cfg.parentUsers}"
+  ];
+
+  daemonEnvVars = [
     "DOTS_FAMILY_CONFIG_DIR=/var/lib/dots-family/config"
     "DOTS_FAMILY_DB_PATH=${internal.config.databasePath or "/var/lib/dots-family/family.db"}"
-  ];
+  ] ++ parentUsersEnv ++ ebpfEnvVars;
 
   # Generate profile initialization script
   profileInitScript = pkgs.writeShellScript "init-profiles.sh" ''
@@ -69,12 +83,20 @@ in {
       after = [ "network.target" "dbus.service" ];
       wants = [ "dbus.service" ];
       wantedBy = [ "multi-user.target" ];
-      
+
+      # Start limiting belongs to the [Unit] section. Setting these inside
+      # serviceConfig emits them into [Service], where systemd 258 ignores
+      # them ("Unknown key ... ignoring", confirmed with systemd-analyze
+      # verify), so the restart burst would silently stay at the default.
+      # See the trade-off comment in serviceConfig below.
+      startLimitBurst = 20;
+      startLimitIntervalSec = 600;
+
       serviceConfig = {
         Type = "dbus";
         BusName = "org.dots.FamilyDaemon";
         ExecStart = "${packages.daemon or cfg.package}/bin/dots-family-daemon";
-        Environment = ebpfEnvVars;
+        Environment = daemonEnvVars;
         
         # User configuration
         DynamicUser = false;
@@ -115,11 +137,37 @@ in {
         MemoryDenyWriteExecute = true;
         LockPersonality = true;
         
-        # Restart policy
-        Restart = "on-failure";
+        # Restart policy.
+        #
+        # "always", not "on-failure": a clean exit must not end enforcement.
+        # With "on-failure" the daemon could be stopped for good simply by
+        # making it exit 0 (or by systemd reaping a normal shutdown), so the
+        # child would only have to wait for the service to be down.
+        #
+        # Trade-off: rate limiting is deliberately loose so a transient crash
+        # loop (e.g. a monitor restarting) does not leave the service
+        # permanently disabled after 3 failures in 5 minutes. It is still
+        # bounded, because an unbounded "always" would spin on a persistent
+        # configuration error and fill the journal. If the burst is exhausted
+        # systemd still gives up; noticing that requires external alerting
+        # (see docs/SECURITY_REVIEW.md B1 and ranked finding 4).
+        Restart = "always";
         RestartSec = 5;
-        StartLimitBurst = 3;
-        StartLimitIntervalSec = 300;
+
+        # No WatchdogSec here on purpose. The daemon does **not** call
+        # sd_notify / sd_notify_barrier and does not read NOTIFY_SOCKET (it
+        # uses Type=dbus, whose readiness notification is D-Bus, not a
+        # watchdog ping). Adding WatchdogSec without an application-side
+        # heartbeat would kill a healthy daemon on the first interval, so it
+        # must wait for sd_notify support in the daemon. See
+        # docs/SECURITY_REVIEW.md B1 for the residual gap.
+        #
+        # KillMode and TimeoutStopSec are left at their systemd defaults
+        # (control-group, 90 s): the daemon handles SIGTERM/SIGINT explicitly
+        # (crates/dots-family-daemon/src/daemon.rs) and stops the monitoring
+        # service before exiting, and control-group kill also tears down the
+        # eBPF monitor children it spawned. There is no evidence here that a
+        # different value is needed, so none is added.
         
         # Logging
         StandardOutput = "journal";

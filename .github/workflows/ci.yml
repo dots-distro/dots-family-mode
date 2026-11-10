@@ -1,3 +1,15 @@
+# CI status (2026-02-08, read from the repository; no green run is claimed)
+# - Security Audit: last observed passing. It sets continue-on-error, so it is advisory only.
+# - Rustfmt: this change formats tests/bdd/src/lib.rs and the pre-existing
+#   misformat in crates/dots-family-daemon/src/monitoring_service.rs.
+# - Test Suite / Clippy / Coverage: never verified. They used to run --workspace,
+#   which pulled in the GTK GUI crate; they now exclude it and `gui` checks it.
+# - Build: never verified; all 27 recorded runs failed. It now builds the
+#   non-GUI packages; the GUI crate is built by the `gui` job. HEAD also carries
+#   a truncated crates/dots-family-filter/src/proxy.rs, so any build fails at parse.
+# - Flake Check: never verified (added by this change).
+# No workflow run has been confirmed green.
+
 name: CI
 
 on:
@@ -22,8 +34,10 @@ jobs:
         with:
           name: dots-family-mode
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-      - name: Run tests
-        run: nix develop -c cargo test --workspace
+      - name: Run library and daemon tests
+        # dots-family-gui is a GTK4 application with no headless tests, so it is
+        # excluded from the library/daemon test run. The `gui` job compiles it.
+        run: nix develop -c cargo test --workspace --exclude dots-family-gui
 
   fmt:
     name: Rustfmt
@@ -49,7 +63,23 @@ jobs:
           name: dots-family-mode
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Run clippy
-        run: nix develop -c cargo clippy --workspace --all-features -- -D warnings
+        run: nix develop -c cargo clippy --workspace --exclude dots-family-gui --all-features -- -D warnings
+
+  gui:
+    name: GUI (GTK4) build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Check GUI crate
+        # dots-family-gui needs gtk4 and libadwaita (plus relm4 at the crate
+        # level). flake.nix lists gtk4 and libadwaita in buildInputs, so the
+        # devShell provides pkg-config and the headers. The runner has no X11 or
+        # Wayland display (and no xvfb), so this job only compiles the crate and
+        # does not start the GTK application.
+        run: nix develop -c cargo check -p dots-family-gui
 
   coverage:
     name: Code Coverage
@@ -64,7 +94,7 @@ jobs:
           name: dots-family-mode
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Generate coverage
-        run: nix develop -c cargo tarpaulin --workspace --out Html --output-dir coverage
+        run: nix develop -c cargo tarpaulin --workspace --exclude dots-family-gui --out Html --output-dir coverage
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -83,13 +113,33 @@ jobs:
         with:
           name: dots-family-mode
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-      - name: Build workspace
-        run: nix build
+      - name: Build non-GUI packages
+        # Build the daemon and library-side binaries explicitly. dots-family-gui
+        # is a separate GTK4 target and is compiled by the `gui` job, so a
+        # failure here names a daemon/library package rather than the whole
+        # default package.
+        run: nix build .#dots-family-daemon .#dots-family-monitor .#dots-family-ctl .#dots-terminal-filter
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
           name: dots-family-mode-binaries
-          path: result/bin/*
+          path: result*/bin/*
+
+  flake-check:
+    name: Flake Check (evaluate only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Evaluate flake checks without building
+        # The README promises NixOS module integration and VM test
+        # configurations. --no-build evaluates the checks and packages without
+        # compiling them.
+        run: nix flake check --no-build
+      - name: Evaluate NixOS configurations
+        run: nix eval .#nixosConfigurations --apply builtins.attrNames
 
   security-audit:
     name: Security Audit

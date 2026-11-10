@@ -7,13 +7,16 @@ use zbus::interface;
 
 use crate::{
     config::DaemonConfig, daemon::Daemon, enforcement::EnforcementEngine,
-    monitoring_service::MonitoringService, profile_manager::ProfileManager,
+    monitoring_service::MonitoringService, peer_auth::CallerPolicy,
+    profile_manager::ProfileManager,
 };
 
 pub struct FamilyDaemonService {
     profile_manager: ProfileManager,
     monitoring_service: MonitoringService,
     daemon: Option<Arc<Daemon>>,
+    /// Second gate behind the D-Bus policy: which callers may mutate state.
+    caller_policy: CallerPolicy,
 }
 
 impl FamilyDaemonService {
@@ -24,19 +27,54 @@ impl FamilyDaemonService {
         database: dots_family_db::Database,
     ) -> Result<Self> {
         let profile_manager = ProfileManager::new(config, database).await?;
-        Ok(Self { profile_manager, monitoring_service, daemon: None })
+        Ok(Self {
+            profile_manager,
+            monitoring_service,
+            daemon: None,
+            caller_policy: CallerPolicy::from_user_names(&config.parent_users),
+        })
     }
 
     pub async fn new_with_daemon(
-        _config: &DaemonConfig,
+        config: &DaemonConfig,
         monitoring_service: MonitoringService,
         daemon: Arc<Daemon>,
         profile_manager: ProfileManager,
     ) -> Result<Self> {
-        Ok(Self { profile_manager, monitoring_service, daemon: Some(daemon) })
+        Ok(Self {
+            profile_manager,
+            monitoring_service,
+            daemon: Some(daemon),
+            caller_policy: CallerPolicy::from_user_names(&config.parent_users),
+        })
+    }
+
+    /// Refuse a mutating call unless the bus reports the sender as root or a
+    /// configured parent user.
+    ///
+    /// The UID comes from `org.freedesktop.DBus.GetConnectionUnixUser` on the
+    /// daemon's existing connection, using the sender's unique name from the
+    /// message header. If the bus cannot answer, the call is refused.
+    async fn require_parent_caller(
+        &self,
+        connection: &zbus::Connection,
+        header: &zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<()> {
+        crate::peer_auth::require_parent_caller(&self.caller_policy, connection, header).await
     }
 }
 
+// Method split, for defence in depth:
+//
+// * Mutating methods call `require_parent_caller` and refuse any sender whose
+//   bus-reported UID is not root or a configured parent. These are
+//   `create_profile`, `set_active_profile`, `revoke_session`, `lock_session`
+//   and `sync_profile_to_policy`.
+// * Read-only methods stay open to children, because the child session uses
+//   them: `get_active_profile`, `check_application_allowed`,
+//   `get_remaining_time`, `list_profiles` and `validate_session`.
+//   `process_activity_for_policy` is also open: it only asks the policy engine
+//   for a decision and does not change policy or enforcement state.
 #[interface(name = "org.dots.FamilyDaemon")]
 impl FamilyDaemonService {
     async fn get_active_profile(&self) -> String {
@@ -296,17 +334,31 @@ impl FamilyDaemonService {
         }
     }
 
-    async fn create_profile(&self, name: &str, age_group: &str, username: &str) -> String {
+    async fn create_profile(
+        &self,
+        name: &str,
+        age_group: &str,
+        username: &str,
+        #[zbus(connection)] connection: &zbus::Connection,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<String> {
+        self.require_parent_caller(connection, &header).await?;
+
         let username_opt = if username.is_empty() { None } else { Some(username.to_string()) };
 
-        match self.profile_manager.create_profile_with_username(name, age_group, username_opt).await
-        {
-            Ok(profile_id) => profile_id,
-            Err(e) => {
-                warn!("Failed to create profile: {}", e);
-                format!("error:{}", e)
-            }
-        }
+        Ok(
+            match self
+                .profile_manager
+                .create_profile_with_username(name, age_group, username_opt)
+                .await
+            {
+                Ok(profile_id) => profile_id,
+                Err(e) => {
+                    warn!("Failed to create profile: {}", e);
+                    format!("error:{}", e)
+                }
+            },
+        )
     }
 
     async fn authenticate_parent(&self, password: &str) -> String {
@@ -323,14 +375,28 @@ impl FamilyDaemonService {
         self.profile_manager.validate_session(token).await
     }
 
-    async fn revoke_session(&self, token: &str) -> bool {
-        self.profile_manager.revoke_session(token).await
+    async fn revoke_session(
+        &self,
+        token: &str,
+        #[zbus(connection)] connection: &zbus::Connection,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<bool> {
+        self.require_parent_caller(connection, &header).await?;
+
+        Ok(self.profile_manager.revoke_session(token).await)
     }
 
-    async fn set_active_profile(&self, profile_id: &str) {
+    async fn set_active_profile(
+        &self,
+        profile_id: &str,
+        #[zbus(connection)] connection: &zbus::Connection,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<()> {
+        self.require_parent_caller(connection, &header).await?;
+
         if let Err(e) = self.profile_manager._set_active_profile(profile_id).await {
             warn!("Failed to set active profile: {}", e);
-            return;
+            return Ok(());
         }
 
         if let Some(ref daemon) = self.daemon {
@@ -357,6 +423,8 @@ impl FamilyDaemonService {
                 Err(e) => warn!("Failed to load profile for policy sync: {}", e),
             }
         }
+
+        Ok(())
     }
 
     async fn request_parent_permission(
@@ -570,6 +638,8 @@ impl FamilyDaemonService {
         }
     }
 
+    /// Read-only policy query: `process_activity` takes `&self` and returns a
+    /// decision without changing policy, so this stays callable by children.
     async fn process_activity_for_policy(&self, activity_json: &str) -> String {
         if let Some(ref daemon) = self.daemon {
             match serde_json::from_str::<ActivityEvent>(activity_json) {
@@ -596,14 +666,25 @@ impl FamilyDaemonService {
         }
     }
 
-    async fn sync_profile_to_policy(&self, profile_id: &str) -> String {
-        if let Some(ref daemon) = self.daemon {
+    /// Deploy a profile to the policy engine.
+    ///
+    /// Mutating: it replaces the active policy, so it is guarded like
+    /// `set_active_profile`.
+    async fn sync_profile_to_policy(
+        &self,
+        profile_id: &str,
+        #[zbus(connection)] connection: &zbus::Connection,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<String> {
+        self.require_parent_caller(connection, &header).await?;
+
+        Ok(if let Some(ref daemon) = self.daemon {
             match self.profile_manager._load_profile(profile_id).await {
                 Ok(profile) => {
                     // Sync to policy engine
                     let mut policy_engine = daemon.get_policy_engine_mut().await;
                     if let Err(e) = policy_engine.set_active_profile(profile.clone()).await {
-                        return format!(r#"{{"error":"{}"}}"#, e);
+                        return Ok(format!(r#"{{"error":"{}"}}"#, e));
                     }
                     drop(policy_engine);
 
@@ -620,7 +701,7 @@ impl FamilyDaemonService {
             }
         } else {
             r#"{"error":"Policy engine not available"}"#.to_string()
-        }
+        })
     }
 
     async fn get_daily_report(&self, profile_id: &str, date: &str) -> String {
@@ -706,8 +787,17 @@ impl FamilyDaemonService {
     }
 
     /// Lock the current user session
-    async fn lock_session(&self, username: &str) -> String {
-        if let Some(ref daemon) = self.daemon {
+    ///
+    /// Mutating: only root or a configured parent may call it.
+    async fn lock_session(
+        &self,
+        username: &str,
+        #[zbus(connection)] connection: &zbus::Connection,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> zbus::fdo::Result<String> {
+        self.require_parent_caller(connection, &header).await?;
+
+        Ok(if let Some(ref daemon) = self.daemon {
             let enforcement = daemon.get_enforcement_engine().await;
             match enforcement
                 .lock_session(if username.is_empty() { None } else { Some(username) })
@@ -721,7 +811,7 @@ impl FamilyDaemonService {
             }
         } else {
             r#"{"error":"Enforcement engine not available"}"#.to_string()
-        }
+        })
     }
 
     // ============================================================================

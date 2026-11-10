@@ -95,9 +95,9 @@ getent group dots-family >/dev/null 2>&1 || {
     success "Created dots-family group"
 }
 
-getent group dots-parents >/dev/null 2>&1 || {
-    groupadd -r dots-parents
-    success "Created dots-parents group"
+getent group dots-family-parents >/dev/null 2>&1 || {
+    groupadd -r dots-family-parents
+    success "Created dots-family-parents group"
 }
 
 # Create monitor user
@@ -138,7 +138,7 @@ else
 fi
 
 # Check groups
-for group in dots-family dots-parents; do
+for group in dots-family dots-family-parents; do
     if getent group "$group" >/dev/null 2>&1; then
         success "Group $group exists"
     else
@@ -159,8 +159,8 @@ if [[ $ERRORS -eq 0 ]]; then
     success "DBus policies installed successfully!"
     log ""
     log "Next steps:"
-    log "1. Add parent users to 'dots-parents' group:"
-    log "   sudo usermod -a -G dots-parents <parent-username>"
+    log "1. Add parent users to 'dots-family-parents' group:"
+    log "   sudo usermod -a -G dots-family-parents <parent-username>"
     log ""
     log "2. Add child users to 'dots-family' group:"
     log "   sudo usermod -a -G dots-family <child-username>"

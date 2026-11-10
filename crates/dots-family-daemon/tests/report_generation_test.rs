@@ -15,6 +15,7 @@ async fn setup_test_db() -> (Database, tempfile::TempDir, dots_family_daemon::co
         auth: dots_family_daemon::config::AuthConfig { parent_password_hash: None },
         dbus: dots_family_daemon::config::DbusConfig::default(),
         dry_run: Some(true),
+        parent_users: Vec::new(),
     };
 
     let db_config = dots_family_db::DatabaseConfig {

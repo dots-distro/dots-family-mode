@@ -28,7 +28,7 @@ This directory contains DBus policy configuration files for secure system-wide i
 
 ### User Groups
 
-1. **`dots-parents`** - Parent/administrator users
+1. **`dots-family-parents`** - Parent/administrator users
    - Full access to all daemon methods including administrative functions
    - Can authenticate, create profiles, and manage system settings
    - Receives all signals and notifications
@@ -81,7 +81,7 @@ This directory contains DBus policy configuration files for secure system-wide i
 sudo ./install-dbus-policies.sh
 
 # Add parent users to administrative group
-sudo usermod -a -G dots-parents <parent-username>
+sudo usermod -a -G dots-family-parents <parent-username>
 
 # Add child users to family group  
 sudo usermod -a -G dots-family <child-username>
@@ -96,7 +96,7 @@ sudo cp org.dots.FamilyMonitor.conf /etc/dbus-1/session.d/
 
 # Create system groups
 sudo groupadd -r dots-family
-sudo groupadd -r dots-parents
+sudo groupadd -r dots-family-parents
 
 # Create monitor user
 sudo useradd -r -s /bin/false dots-monitor
@@ -115,7 +115,7 @@ ls -l /etc/dbus-1/system.d/org.dots.FamilyDaemon.conf
 ls -l /etc/dbus-1/session.d/org.dots.FamilyMonitor.conf
 
 # Verify groups exist
-getent group dots-family dots-parents
+getent group dots-family dots-family-parents
 
 # Verify monitor user  
 id dots-monitor

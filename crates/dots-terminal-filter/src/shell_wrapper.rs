@@ -8,6 +8,7 @@ use zbus::Connection;
 
 use crate::config::TerminalConfig;
 use crate::educational::EducationalSystem;
+use crate::policy::profile_verdict;
 use crate::risk_analyzer::{RecommendedAction, RiskAnalyzer, RiskLevel};
 
 pub struct ShellWrapper {
@@ -294,25 +295,16 @@ impl ShellWrapper {
     }
 
     async fn check_profile_restrictions(&self, command: &str) -> Result<bool> {
-        if let Some(ref proxy) = self.daemon_proxy {
-            let cmd_parts: Vec<&str> = command.split_whitespace().collect();
-            let app_name = cmd_parts.first().unwrap_or(&"unknown");
-
-            match proxy.check_application_allowed(app_name).await {
-                Ok(allowed) => {
-                    if !allowed {
-                        warn!("Command '{}' blocked by active profile", command);
-                    }
-                    Ok(allowed)
-                }
-                Err(e) => {
-                    warn!("Failed to check profile restrictions: {}", e);
-                    Ok(true)
-                }
+        let answer = match self.daemon_proxy {
+            Some(ref proxy) => {
+                let cmd_parts: Vec<&str> = command.split_whitespace().collect();
+                let app_name = cmd_parts.first().unwrap_or(&"unknown");
+                Some(proxy.check_application_allowed(app_name).await)
             }
-        } else {
-            Ok(true)
-        }
+            None => None,
+        };
+
+        profile_verdict(command, answer)
     }
 
     async fn log_command_activity(&self, command: &str, action: &str) {
@@ -393,5 +385,34 @@ mod tests {
         let config = TerminalConfig::default();
         let risk_analyzer = RiskAnalyzer::new(&config);
         let _wrapper = ShellWrapper::new(config, risk_analyzer).await.unwrap();
+    }
+
+    #[test]
+    fn an_unreachable_daemon_denies_the_terminal_command() {
+        let answer = Err(zbus::Error::Failure("daemon unreachable".to_string()));
+
+        let verdict = profile_verdict("curl http://example.com", Some(answer))
+            .expect_err("a failed query must deny the command");
+
+        assert!(verdict.to_string().contains("Policy could not be checked"));
+        assert!(verdict.to_string().contains("daemon unreachable"));
+    }
+
+    #[test]
+    fn a_daemon_answer_is_still_honoured() {
+        // The allow path is unchanged when the daemon answers true.
+        assert!(profile_verdict("ls", Some(Ok(true))).expect("an allow must succeed"));
+
+        // An explicit deny from the daemon still blocks the command.
+        assert!(!profile_verdict("ls", Some(Ok(false))).expect("a deny must produce a verdict"));
+    }
+
+    #[test]
+    fn no_daemon_proxy_denies_the_terminal_command() {
+        let verdict =
+            profile_verdict("ls", None).expect_err("a missing proxy must deny the command");
+
+        assert!(verdict.to_string().contains("Policy could not be checked"));
+        assert!(verdict.to_string().contains("no daemon proxy"));
     }
 }

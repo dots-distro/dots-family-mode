@@ -2,13 +2,13 @@ use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use anyhow::{anyhow, Result};
 use dots_family_common::{
-    security::{EncryptionKey, PasswordManager, SessionToken},
+    security::{EncryptionKey, PasswordManager, RateLimiter, SessionToken},
     types::{ApplicationMode, Profile},
 };
 use dots_family_db::{queries::profiles::ProfileQueries, Database};
 use secrecy::SecretString;
 use sqlx::Row;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -35,6 +35,9 @@ pub struct ProfileManager {
     tamper_detected: Arc<RwLock<bool>>,
     /// Active session tokens for parent authentication
     active_sessions: Arc<RwLock<HashMap<String, SessionToken>>>,
+    /// Failed parent-authentication attempts; owned here so the limit spans
+    /// every D-Bus/CLI caller and lives as long as the password hash.
+    auth_rate_limiter: Arc<Mutex<RateLimiter>>,
     /// Notification manager for desktop and system notifications
     notification_manager: NotificationManager,
 }
@@ -51,6 +54,7 @@ impl ProfileManager {
             monitor_heartbeats: Arc::new(RwLock::new(HashMap::new())),
             tamper_detected: Arc::new(RwLock::new(false)),
             active_sessions: Arc::new(RwLock::new(HashMap::new())),
+            auth_rate_limiter: Arc::new(Mutex::new(RateLimiter::new())),
             notification_manager: NotificationManager::new(),
         };
 
@@ -459,6 +463,23 @@ impl ProfileManager {
             return Err(anyhow!("Invalid password"));
         }
 
+        // Refuse early once the failure limit is reached. This check lives here,
+        // in the shared authentication path, so every D-Bus/CLI caller is covered.
+        {
+            let mut limiter = self.auth_rate_limiter.lock().await;
+            if !limiter.check_rate_limit(None) {
+                let wait_seconds = limiter.retry_after_seconds().unwrap_or(0);
+                warn!(
+                    "Parent authentication refused: too many failed attempts, retry in {} seconds",
+                    wait_seconds
+                );
+                return Err(anyhow!(
+                    "Too many failed authentication attempts. Try again in {} seconds.",
+                    wait_seconds
+                ));
+            }
+        }
+
         // Get stored password hash from config
         let stored_hash = match &self.config.auth.parent_password_hash {
             Some(hash) => hash,
@@ -472,7 +493,20 @@ impl ProfileManager {
         let password_secret = SecretString::new(password.to_string().into());
 
         // Verify password against stored hash
-        match PasswordManager::verify_password(&password_secret, stored_hash) {
+        let verification = PasswordManager::verify_password(&password_secret, stored_hash);
+
+        // Record the outcome without logging the password or its content. A
+        // successful login clears the counter; a failure counts towards the limit.
+        {
+            let mut limiter = self.auth_rate_limiter.lock().await;
+            if matches!(&verification, Ok(true)) {
+                limiter.reset();
+            } else {
+                limiter.record_attempt(false, None);
+            }
+        }
+
+        match verification {
             Ok(true) => {
                 info!("Parent authentication successful");
 
@@ -545,9 +579,18 @@ impl ProfileManager {
 
         // Derive encryption key from password
         let encryption_key = EncryptionKey::derive_from_password(&password_secret, None);
+        let key = encryption_key.as_sqlcipher_key();
 
         self.config.auth.parent_password_hash = Some(password_hash);
-        self.config.database.encryption_key = Some(encryption_key.as_sqlcipher_key());
+
+        // The key must never be written to the TOML config, which is readable and
+        // contains no secret material. Store it in a separate root-only file and
+        // keep only the in-memory copy for this process.
+        self.config
+            .database
+            .write_encryption_key(&key)
+            .map_err(|e| anyhow!("Failed to persist database key file: {}", e))?;
+        self.config.database.encryption_key = Some(key);
 
         // Save configuration to disk
         if let Err(e) = self.config.save() {
@@ -555,7 +598,10 @@ impl ProfileManager {
             return Err(anyhow!("Failed to persist configuration: {}", e));
         }
 
-        info!("Parent password set successfully - configuration saved to disk");
+        info!(
+            "Parent password set successfully - key stored in {}",
+            self.config.database.encryption_key_path().display()
+        );
         warn!("Database encryption key derived but requires daemon restart to apply");
 
         Ok(())
@@ -563,7 +609,11 @@ impl ProfileManager {
 
     #[allow(dead_code)] // Will be used by CLI/GUI applications
     pub fn get_database_encryption_key(&self) -> Option<String> {
-        self.config.database.encryption_key.clone()
+        self.config
+            .database
+            .encryption_key
+            .clone()
+            .or_else(|| self.config.database.read_encryption_key())
     }
 
     pub async fn send_heartbeat(&self, monitor_id: &str) -> Result<()> {
@@ -1668,6 +1718,7 @@ mod tests {
                 use_session_bus: false,
             },
             dry_run: Some(false),
+            parent_users: Vec::new(),
         };
 
         let db_config = dots_family_db::DatabaseConfig {
@@ -2163,5 +2214,62 @@ mod tests {
         assert!(result.is_err());
         let error = result.unwrap_err();
         assert!(error.to_string().contains("authentication not configured"));
+    }
+
+    #[tokio::test]
+    async fn repeated_wrong_passwords_are_refused_after_the_limit() {
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config, db).await.unwrap();
+        manager.set_parent_password("correct_password").await.unwrap();
+
+        let limit = manager.auth_rate_limiter.lock().await.max_attempts();
+
+        // The first `limit` failures are rejected as invalid passwords.
+        for attempt in 1..=limit {
+            let error = manager
+                .authenticate_parent("wrong_password")
+                .await
+                .expect_err("a wrong password must not authenticate");
+            assert!(
+                error.to_string().contains("Invalid password"),
+                "attempt {attempt} should be an invalid-password error, got: {error}"
+            );
+        }
+
+        // The next attempt is refused with the wait message.
+        let error = manager
+            .authenticate_parent("wrong_password")
+            .await
+            .expect_err("an attempt over the limit must be refused")
+            .to_string();
+        assert!(
+            error.contains("Too many failed authentication attempts"),
+            "unexpected error: {error}"
+        );
+        assert!(error.contains("Try again in"), "error must name the wait: {error}");
+        assert!(error.contains("seconds"), "error must name the wait unit: {error}");
+    }
+
+    #[tokio::test]
+    async fn a_correct_password_after_a_failure_still_works() {
+        let (db, _temp_dir, config) = setup_test_db().await;
+        let mut manager = ProfileManager::new(&config, db).await.unwrap();
+        manager.set_parent_password("correct_password").await.unwrap();
+
+        // One failed attempt counts towards the limit.
+        let error = manager
+            .authenticate_parent("wrong_password")
+            .await
+            .expect_err("a wrong password must not authenticate");
+        assert!(error.to_string().contains("Invalid password"));
+        assert_eq!(manager.auth_rate_limiter.lock().await.failed_attempt_count(), 1);
+
+        // The correct password still authenticates and resets the counter.
+        let token = manager
+            .authenticate_parent("correct_password")
+            .await
+            .expect("the correct password after a failure should authenticate");
+        assert!(!token.is_empty());
+        assert_eq!(manager.auth_rate_limiter.lock().await.failed_attempt_count(), 0);
     }
 }

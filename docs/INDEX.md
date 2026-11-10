@@ -6,7 +6,12 @@ Complete documentation for DOTS Family Mode parental control system.
 
 ### Getting Started
 - **[README.md](README.md)** - Project overview and quick start commands
-- **[VM_TESTING_GUIDE.md](../VM_TESTING_GUIDE.md)** - VM testing guide with automated tests
+- **[history/README.md](history/README.md)** - Historical session notes and status reports (not current instructions)
+
+### Project Policies
+- **[../LICENSING.md](../LICENSING.md)** - AGPL-3.0-or-later and commercial licensing
+- **[../SECURITY.md](../SECURITY.md)** - Supported versions, private reporting, and scope
+- **[history/README.md](history/README.md)** - Historical session notes, kept for traceability only
 
 ### Architecture & Design
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture, component design, data flow, and communication protocols
@@ -31,7 +36,11 @@ Complete documentation for DOTS Family Mode parental control system.
 
 ## Current Implementation Status
 
-### ✅ Completed Features (Phase 8)
+See [../README.md](../README.md#status) for the authoritative status. CI is
+currently red, so the feature list below describes code present in the tree,
+not verified behaviour.
+
+### Components present in the tree (Phase 8 layout)
 
 1. **Core Daemon** - Policy enforcement with eBPF monitoring
 2. **Activity Monitor** - Window tracking and session monitoring
@@ -85,15 +94,21 @@ Complete documentation for DOTS Family Mode parental control system.
 |----------|--------|--------------|-------------|
 | NIXOS_INTEGRATION.md | ✅ Current | 2026-01-21 | NixOS modules |
 | RUST_APPLICATIONS.md | ✅ Current | 2026-01-12 | Rust applications |
-| VM_TESTING_GUIDE.md | ✅ Current | 2026-01-21 | VM testing |
+| history/README.md | ✅ Current | 2026-02-07 | Historical session notes |
 | EBPF_ENHANCEMENTS.md | ✅ Current | 2026-01-26 | eBPF Phase 1-3 |
 | EBPF_QUICK_REFERENCE.md | ✅ Current | 2026-01-26 | eBPF quick reference |
 | PHASE3_INTEGRATION_PLAN.md | ✅ Current | 2026-01-26 | Integration testing |
 
+### Project Policies
+| Document | Status | Description |
+|----------|--------|-------------|
+| ../LICENSING.md | ✅ Current | Licence summary and commercial contact |
+| ../SECURITY.md | ✅ Current | Vulnerability reporting and security scope |
+
 ### Test Evidence
 | Document | Status | Description |
 |----------|--------|-------------|
-| test-evidence/*.md | ✅ Current | Test results and coverage |
+| history/README.md | ✅ Current | Historical test and session records, not current results |
 
 ## Reading Paths
 
@@ -118,12 +133,12 @@ Complete documentation for DOTS Family Mode parental control system.
 
 ### For Testers
 1. README.md - Quick start
-2. VM_TESTING_GUIDE.md - VM testing procedures
-3. test-evidence/ - Test results
+2. history/README.md - Historical test and session records (not current results)
+3. Source tests in tests/ and per-crate `#[cfg(test)]` modules
 
 ## Key Concepts
 
-### Core Components (All Implemented)
+### Core Components (present in the tree)
 - ✅ **dots-family-daemon** - Central coordination service
 - ✅ **dots-family-monitor** - Activity tracking service
 - ✅ **dots-family-filter** - Web content filtering proxy
@@ -206,6 +221,6 @@ When updating documentation:
 
 ---
 
-**Last Updated**: January 26, 2026
-**Status**: Phase 3 eBPF Complete - Integration Testing Phase
+**Last Updated**: February 7, 2026
+**Status**: Early beta; CI is red. See [../README.md](../README.md#status).
 **Version**: 0.1.0

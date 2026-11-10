@@ -91,8 +91,10 @@ in {
                      receive_member="tamper_detected"/>
             </policy>
 
-            <!-- Parent users (in dots-parents group) have administrative privileges -->
-            <policy group="dots-parents">
+            <!-- Parent users (in dots-family-parents group) have administrative privileges.
+                 This group name must match the group the module creates in default.nix;
+                 a mismatch silently denies parents every administrative method. -->
+            <policy group="dots-family-parents">
               <allow send_destination="org.dots.FamilyDaemon"
                      send_interface="org.dots.FamilyDaemon"
                      send_member="authenticate_parent"/>
@@ -169,8 +171,8 @@ in {
                      receive_member="activity_changed"/>
             </policy>
 
-            <!-- Parent users have full access -->
-            <policy group="dots-parents">
+            <!-- Parent users have full access. Group must match the module-created group. -->
+            <policy group="dots-family-parents">
               <allow send_destination="org.dots.FamilyMonitor"
                      send_interface="org.dots.FamilyMonitor"/>
               <allow receive_sender="org.dots.FamilyMonitor"
@@ -184,7 +186,7 @@ in {
     # Create required system groups and users
     users.groups = {
       dots-family = { };
-      dots-parents = { };
+      dots-family-parents = { };
     };
 
     users.users.dots-monitor = {

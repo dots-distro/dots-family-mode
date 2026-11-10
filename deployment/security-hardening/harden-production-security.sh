@@ -476,7 +476,7 @@ check_user_groups() {
     local errors=0
     
     # Verify critical groups exist
-    for group in dots-family dots-parents; do
+    for group in dots-family dots-family-parents; do
         if ! getent group "$group" >/dev/null 2>&1; then
             log_message "ALERT: Required group $group does not exist"
             ((errors++))
@@ -484,7 +484,7 @@ check_user_groups() {
     done
     
     # Check for unauthorized users in parent group
-    local parent_users=$(getent group dots-parents | cut -d: -f4)
+    local parent_users=$(getent group dots-family-parents | cut -d: -f4)
     if [[ -n "$parent_users" ]]; then
         log_message "INFO: Parent group members: $parent_users"
     fi
@@ -634,7 +634,7 @@ $(sysctl -a 2>/dev/null | grep -E "kernel.yama.ptrace_scope|kernel.dmesg_restric
 $(find /var/lib/dots-family -type f -exec ls -la {} \; 2>/dev/null || echo "Directory not found")
 
 === Group Membership ===
-$(getent group dots-family dots-parents 2>/dev/null || echo "Groups not found")
+$(getent group dots-family dots-family-parents 2>/dev/null || echo "Groups not found")
 
 === eBPF Status ===
 $(bpftool prog list 2>/dev/null | head -5 || echo "bpftool not available")
